@@ -40,8 +40,8 @@ def start(task, action, revision):
 
 
 def daily_call_limit(day):
-    # Explicit user authorization for the 2026-10-20 live verification audit only.
-    return 45 if day=='2026-10-20' else 30
+    # User explicitly removed the cap for this date; future dates retain the normal cap.
+    return None if day=='2026-10-20' else 30
 
 
 def request_json(system, user, max_tokens=1400):
@@ -51,7 +51,7 @@ def request_json(system, user, max_tokens=1400):
         day = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
         db.execute('INSERT OR IGNORE INTO organizer_calls VALUES (?,0)', (day,))
         limit=daily_call_limit(day)
-        if db.execute('SELECT count FROM organizer_calls WHERE day=?', (day,)).fetchone()[0] >= limit:
+        if limit is not None and db.execute('SELECT count FROM organizer_calls WHERE day=?', (day,)).fetchone()[0] >= limit:
             raise RuntimeError(f'今日文本整理已达{limit}次请求上限；已有文稿和结果不受影响。')
         db.execute('UPDATE organizer_calls SET count=count+1 WHERE day=?', (day,))
     try:

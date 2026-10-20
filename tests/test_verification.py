@@ -102,9 +102,10 @@ class VerificationTests(unittest.TestCase):
             self.assertEqual(client.post(path,json=body).status_code,409)
 
     def test_temporary_limit_expires_by_date(self):
-        self.assertEqual(organizer.daily_call_limit('2026-10-20'),45)
+        self.assertIsNone(organizer.daily_call_limit('2026-10-20'))
         self.assertEqual(organizer.daily_call_limit('2026-10-21'),30)
         self.assertEqual(organizer.daily_call_limit('2026-10-19'),30)
+        self.assertEqual(organizer.daily_call_limit('2027-10-20'),30)
 
 
     def test_user_can_correct_model_claim_type_without_changing_original(self):
