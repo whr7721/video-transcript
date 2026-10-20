@@ -1,0 +1,85 @@
+from typing import Literal
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
+import documents
+import research
+from studio_api import task
+
+router=APIRouter(prefix='/api/studio/research')
+
+
+class ResearchInput(BaseModel):
+    basis:Literal['original','draft','manuscript']='original'
+    revision:int=Field(default=1,ge=1)
+    generation_id:str|None=Field(default=None,max_length=64)
+    selection:str=Field(default='',max_length=4000)
+    question:str=Field(default='',max_length=600)
+    mode:Literal['explain','cases','limits']='explain'
+    online:bool=False
+
+
+class NoteInput(BaseModel):
+    job_id:str=Field(max_length=64)
+    topic_title:str=Field(min_length=1,max_length=100)
+    personal:str=Field(default='',max_length=12000)
+
+
+class NoteEdit(BaseModel):
+    revision:int=Field(ge=1)
+    personal:str=Field(max_length=12000)
+
+
+@router.post('/documents/{ident}')
+def start(ident:str,body:ResearchInput):
+    try:return research.start(task(ident),body)
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.get('/documents/{ident}')
+def jobs(ident:str):
+    task(ident)
+    return research.listing(ident)
+
+
+@router.get('/jobs/{ident}')
+def get(ident:str):
+    job=research.get(ident)
+    if not job:raise HTTPException(404,'深入任务不存在。')
+    return job
+
+
+@router.post('/jobs/{ident}/cancel')
+def cancel(ident:str):
+    job=research.cancel(ident)
+    if not job:raise HTTPException(404,'深入任务不存在。')
+    return job
+
+
+@router.get('/topics')
+def topics():return research.topics()
+
+
+@router.get('/notes')
+def notes(topic_id:str|None=None):return research.note_list(topic_id)
+
+
+@router.post('/notes')
+def save_note(body:NoteInput):
+    try:return research.save_note(body.job_id,body.topic_title,body.personal)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.put('/notes/{ident}')
+def edit_note(ident:str,body:NoteEdit):
+    try:return research.update_note(ident,body.revision,body.personal)
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(404,str(exc))
+
+
+@router.get('/notes/{ident}/export')
+def export(ident:str):
+    try:body=research.export_note(ident)
+    except ValueError as exc:raise HTTPException(404,str(exc))
+    return Response(body,media_type='text/markdown; charset=utf-8',headers={'Content-Disposition':'attachment; filename="shiwen-topic-note.md"'})
