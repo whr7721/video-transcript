@@ -108,6 +108,50 @@ class ResearchTests(unittest.TestCase):
             sources=research.collected_sources(job,['one','two','three','four'])
         self.assertEqual(tool.call_count,3);self.assertEqual(len(sources),1)
 
+    def test_search_receives_bounded_original_question_or_selection(self):
+        job=self.job(True);job['question']='问'*160
+        with patch.object(research,'tool',return_value={'results':[]}) as tool:
+            research.collected_sources(job,['查询'])
+        self.assertEqual(tool.call_args.args[1]['ori_question'],'问'*128)
+        job['question']=''
+        with patch.object(research,'tool',return_value={'results':[]}) as tool:
+            research.collected_sources(job,['查询'])
+        self.assertEqual(tool.call_args.args[1]['ori_question'],'公开过程')
+
+    def test_quality_sort_cross_query_dedup_and_metadata(self):
+        job=self.job(True)
+        def row(url,score=None,authority=None):
+            return {'url':url,'content':(url+'正文')*15,'rerank_score':score,'authority':authority}
+        answers=[{'results':[row('https://example.com/low',1,4),row('https://example.com/unknown')]},
+                 {'results':[row('https://example.com/good',2,2),row('https://example.com/best',1.5,3),row('https://example.com/low',2.8,4)]}]
+        with patch.object(research,'tool',side_effect=answers):sources=research.collected_sources(job,['a','b'])
+        self.assertEqual([s['url'].rsplit('/',1)[-1] for s in sources],['low','best','good','unknown'])
+        self.assertEqual(sources[0]['rerank_score'],2.8);self.assertEqual(sources[1]['authority'],3)
+        self.assertIsNone(sources[-1]['authority'])
+
+    def test_high_authority_cannot_rescue_low_relevance_or_trigger_fetch(self):
+        job=self.job(True)
+        with patch.object(research,'tool',return_value={'results':[{'url':'https://example.com/irrelevant','rerank_score':0.3,'authority':4,'content':''}]}) as tool:
+            sources=research.collected_sources(job,['query'])
+        self.assertEqual(sources,[]);self.assertEqual(tool.call_count,1)
+        self.assertIn('低于1.5',job['warnings'][0])
+
+    def test_invalid_quality_values_are_unknown(self):
+        for row in [{'rerank_score':True,'authority':'3'},{'rerank_score':float('nan'),'authority':-1},
+                    {'rerank_score':float('inf'),'authority':3.5},{'rerank_score':4,'authority':8}]:
+            self.assertEqual(research.quality_signals(row),(None,None))
+
+    def test_budget_revalues_old_estimates_and_blocks_before_request(self):
+        job=self.job(True)
+        with store.connect() as db:
+            research.init(db)
+            db.execute('INSERT INTO research_billing VALUES (?,?,?,?,?)',('legacy','2026-10-01','search','success',.005))
+            db.execute('INSERT INTO research_billing VALUES (?,?,?,?,?)',('spent','2026-10-01','search','success',9.989))
+        with patch.object(research,'datetime') as clock,patch.object(research.httpx.Client,'post') as post:
+            clock.now.return_value.strftime.return_value='2026-10-20'
+            with self.assertRaisesRegex(RuntimeError,'本月'):research.tool('search',{'query':'new'},job)
+        post.assert_not_called()
+
     def test_partial_search_results_survive_later_query_failure(self):
         job=self.job(True)
         with patch.object(research,'tool',side_effect=[{'results':[{'url':'https://example.com/a','content':'材料。'*40}]},RuntimeError('限流')]):
@@ -133,7 +177,7 @@ class ResearchTests(unittest.TestCase):
         job=self.job(True)
         with patch.object(settings,'search_key',return_value='secret-not-printed'),patch.object(research.httpx.Client,'post',return_value=response) as post:
             research.tool('search',{'query':'公开构建'},job);research.tool('search',{'query':'公开构建'},job)
-        self.assertEqual(post.call_count,1);self.assertAlmostEqual(job['tool_cost_estimate'],.005)
+        self.assertEqual(post.call_count,1);self.assertAlmostEqual(job['tool_cost_estimate'],.006)
 
     def test_api_notes_export_and_cross_site_rejection(self):
         job=self.job();job.update(status='completed',sections=[]);research.save(job)

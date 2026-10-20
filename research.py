@@ -2,6 +2,7 @@
 import hashlib
 import ipaddress
 import json
+import math
 import re
 import threading
 import time
@@ -17,7 +18,8 @@ import store
 
 LOCK=threading.RLock()
 EXECUTOR=ThreadPoolExecutor(max_workers=1,thread_name_prefix='shiwen-research')
-VERSION='passage-research-v1.1'
+VERSION='passage-research-v1.2'
+TOOL_ESTIMATE_YUAN=0.006
 ACTIVE={'queued','running'}
 
 
@@ -138,10 +140,11 @@ def tool(kind,payload,job):
     with LOCK,store.connect() as db:
         init(db)
         if db.execute('SELECT count(*) FROM research_billing WHERE day=?',(day,)).fetchone()[0]>=80:raise RuntimeError('今日搜索/抓取已达80次上限；已有结果仍可保存。')
-        spent=db.execute('SELECT coalesce(sum(estimate),0) FROM research_billing WHERE day LIKE ?',(day[:7]+'%',)).fetchone()[0]
-        if spent+.005>10:raise RuntimeError('本月搜索工具估算已达10元，请先核对账单；已有资料不受影响。')
-        db.execute('INSERT INTO research_billing VALUES (?,?,?,?,?)',(bill,day,kind,'reserved',.005))
-    value=None;charge=.005
+        spent=db.execute('SELECT coalesce(sum(CASE WHEN estimate>0 AND estimate<? THEN ? ELSE estimate END),0) FROM research_billing WHERE day LIKE ?',
+                         (TOOL_ESTIMATE_YUAN,TOOL_ESTIMATE_YUAN,day[:7]+'%')).fetchone()[0]
+        if spent+TOOL_ESTIMATE_YUAN>10:raise RuntimeError('本月搜索工具估算已达10元，请先核对账单；已有资料不受影响。')
+        db.execute('INSERT INTO research_billing VALUES (?,?,?,?,?)',(bill,day,kind,'reserved',TOOL_ESTIMATE_YUAN))
+    value=None;charge=TOOL_ESTIMATE_YUAN
     try:
         with httpx.Client(trust_env=False,timeout=httpx.Timeout(45,connect=15)) as client:
             response=client.post('https://api.deepseek.com/v1/tools/'+kind,headers={'Authorization':'Bearer '+settings.search_key()},json=payload)
@@ -152,7 +155,7 @@ def tool(kind,payload,job):
         value=response.json()
         if not isinstance(value,dict):raise RuntimeError('搜索服务返回格式不正确。')
         has_result=bool(value.get('results')) if kind=='search' else bool(value.get('content'))
-        charge=.005 if has_result else 0
+        charge=TOOL_ESTIMATE_YUAN if has_result else 0
         cache_put(key,value)
         return value
     except (httpx.HTTPError,ValueError):
@@ -164,20 +167,42 @@ def tool(kind,payload,job):
         job['tool_cost_estimate']+=charge
 
 
+def quality_signals(row):
+    def number(value,maximum,integer=False):
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value):return None
+        if not 0<=value<=maximum or (integer and int(value)!=value):return None
+        return value
+    return number(row.get('rerank_score'),3),number(row.get('authority'),4,True)
+
+
+def quality_order(row):
+    score,authority=quality_signals(row)
+    # Relevant results first; among them prefer strong authority, then finer scores.
+    return (score is not None and score>=1.5,authority is not None and authority>=3,
+            score if score is not None else -1,authority if authority is not None else -1)
+
+
 def collected_sources(job,queries):
-    candidates={}
+    candidates={};low_quality=0
     for query in queries[:3]:
         check_cancel(job);job.update(stage='search');save(job)
-        try:result=tool('search',{'query':query[:128],'count':5,'need_content':True},job)
+        payload={'query':query[:128],'count':5,'need_content':True}
+        original=(job.get('question') or job['context'].get('selection','')).strip()
+        if original:payload['ori_question']=original[:128]
+        try:result=tool('search',payload,job)
         except RuntimeError as exc:
             if isinstance(exc,Cancelled):raise
             job['warnings'].append(str(exc));break
         for row in result.get('results',[])[:5]:
             if not isinstance(row,dict):continue
+            score,_=quality_signals(row)
+            if score is not None and score<1.5:
+                low_quality+=1;continue
             url=public_url(row.get('url',''))
-            if url and url not in candidates:candidates[url]=row
+            if url and (url not in candidates or quality_order(row)>quality_order(candidates[url])):candidates[url]=row
+    if low_quality:job['warnings'].append(f'已排除{low_quality}条官方相关质量分低于1.5的搜索结果；高权威不能替代相关性。')
     sources=[];fetch_count=0
-    for url,row in candidates.items():
+    for url,row in sorted(candidates.items(),key=lambda item:quality_order(item[1]),reverse=True):
         if len(sources)>=5:break
         check_cancel(job)
         body=row.get('content','')
@@ -194,7 +219,8 @@ def collected_sources(job,queries):
         fingerprint=hashlib.sha256(normalized(body).encode()).hexdigest()
         if any(s['content_hash']==fingerprint for s in sources):continue
         sources.append({'id':'web-'+str(len(sources)+1),'kind':'web','url':url,'title':str(row.get('title') or url)[:300],
-                        'body':body,'published_at':row.get('date'),'retrieved_at':time.time(),'content_hash':fingerprint})
+                        'body':body,'rerank_score':quality_signals(row)[0],'authority':quality_signals(row)[1],'published_at':row.get('date'),'retrieved_at':time.time(),'content_hash':fingerprint})
+    if any(s['rerank_score'] is None for s in sources):job['warnings'].append('部分来源未提供有效质量分，仅作待核实候补，不视为官方优质结果。')
     return sources
 
 
