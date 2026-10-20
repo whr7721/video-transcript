@@ -18,7 +18,7 @@ import store
 
 LOCK=threading.RLock()
 EXECUTOR=ThreadPoolExecutor(max_workers=1,thread_name_prefix='shiwen-research')
-VERSION='passage-research-v1.2'
+VERSION='passage-research-v1.4-verify'
 TOOL_ESTIMATE_YUAN=0.006
 ACTIVE={'queued','running'}
 
@@ -85,16 +85,17 @@ def context(task,basis,revision,generation_id,selection):
 
 
 def start(task,body):
-    if body.mode in {'cases','limits'} and not body.online:raise ValueError('真实案例和外部局限需要联网检索；也可先选择不联网的解释。')
+    if body.mode in {'cases','limits','verify'} and not body.online:raise ValueError('真实案例和外部局限需要联网检索；也可先选择不联网的解释。')
     if body.online and not settings.search_key():raise ValueError('请在设置中配置 DeepSeek 官方搜索 Key，再开启联网。')
     if not settings.cloud_key():raise ValueError('请先配置硅基流动模型 Key。')
+    if body.mode=='verify' and not body.selection.strip():raise ValueError('核实需要明确选段，请先选择要核实的原话。')
     ctx=context(task,body.basis,body.revision,body.generation_id,body.selection.strip())
     if not ctx['selection'] and not body.question.strip():raise ValueError('请先选择一段内容或输入想深入的问题。')
     fingerprint=json.dumps([task['id'],ctx,body.mode,body.online,body.question.strip(),organizer.MODEL,VERSION],ensure_ascii=False)
     ident=hashlib.sha256(fingerprint.encode()).hexdigest()[:16]
     with LOCK:
         old=get(ident)
-        if old and old['status'] in ACTIVE|{'completed'}:return old
+        if old and old['status'] in ACTIVE|{'completed','awaiting_confirmation'}:return old
         with store.connect() as db:
             init(db)
             pending=db.execute("SELECT count(*) FROM research_jobs WHERE json_extract(payload,'$.status') IN ('queued','running')").fetchone()[0]
@@ -266,6 +267,10 @@ def check_support(sections,sources,mode,request,question=""):
 def run(job):
     try:
         check_cancel(job);job.update(status='running',stage='prepare');save(job)
+        if job['mode']=='verify':
+            import verification
+            verification.extract(job)
+            save(job);return
         ctx=job['context'];sources=[{'id':'current','kind':'passage','title':'本次文稿上下文','url':'',
                                   'body':ctx['excerpt'],'retrieved_at':time.time()}]
         if job['online']:
@@ -317,7 +322,7 @@ def cancel(ident):
     with LOCK:
         job=get(ident)
         if not job:return None
-        if job['status'] in ACTIVE:job.update(status='cancelled',stage='cancelled');save(job)
+        if job['status'] in ACTIVE|{'awaiting_confirmation'}:job.update(status='cancelled',stage='cancelled');save(job)
         return job
 
 
@@ -379,7 +384,10 @@ def export_note(ident):
            '来源文稿：'+job['task_id']+'；版本：'+job['context']['version'],'','## 深入结果（AI生成，未等同人工核实）']
     for s in job.get('sections',[]):
         lines+=['','### '+s['heading'],s['text']]
-        for c in s['citations']:lines+=['','原文摘录 ['+c['source_id']+']：'+c['quote']]
+        for c in s['citations']:
+            lines+=['','原文摘录 ['+c['source_id']+']：'+c['quote']]
+            if c.get('relation') in {'supports','contradicts','partial'}:
+                lines+=['证据关系（AI建议）：'+{'supports':'支持','contradicts':'反驳','partial':'部分支持'}[c['relation']]]
     lines+=['','## 我的理解',note['personal'],'','## 来源']
     for src in job.get('sources',[]):lines+=['','- ['+src['id']+'] '+src['title']+' '+src.get('url','')]
     lines+=['','## 未决问题',*job.get('open_questions',[]),'','## 范围提示',*job.get('warnings',[])]

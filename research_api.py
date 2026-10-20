@@ -15,7 +15,7 @@ class ResearchInput(BaseModel):
     generation_id:str|None=Field(default=None,max_length=64)
     selection:str=Field(default='',max_length=4000)
     question:str=Field(default='',max_length=600)
-    mode:Literal['explain','cases','limits']='explain'
+    mode:Literal['explain','cases','limits','verify']='explain'
     online:bool=False
 
 
@@ -55,6 +55,19 @@ def cancel(ident:str):
     job=research.cancel(ident)
     if not job:raise HTTPException(404,'深入任务不存在。')
     return job
+
+
+class ConfirmClaims(BaseModel):
+    claim_ids:list[str]=Field(min_length=1,max_length=3)
+    kinds:dict[str,Literal['fact','opinion']]=Field(default_factory=dict,max_length=3)
+
+
+@router.post('/jobs/{ident}/confirm')
+def confirm_claims(ident:str,body:ConfirmClaims):
+    import verification
+    try:return verification.confirm(ident,body.claim_ids,body.kinds)
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
 
 
 @router.get('/topics')

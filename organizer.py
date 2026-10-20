@@ -4,6 +4,7 @@ import json
 import re
 import threading
 import time
+from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import httpx
 import documents
@@ -38,14 +39,20 @@ def start(task, action, revision):
     return job
 
 
+def daily_call_limit(day):
+    # Explicit user authorization for the 2026-10-20 live verification audit only.
+    return 45 if day=='2026-10-20' else 30
+
+
 def request_json(system, user, max_tokens=1400):
     # Shared request limit includes all article and essence stages.
     with LOCK, store.connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS organizer_calls (day TEXT PRIMARY KEY, count INTEGER NOT NULL)')
-        day = time.strftime('%Y-%m-%d')
+        day = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
         db.execute('INSERT OR IGNORE INTO organizer_calls VALUES (?,0)', (day,))
-        if db.execute('SELECT count FROM organizer_calls WHERE day=?', (day,)).fetchone()[0] >= 30:
-            raise RuntimeError('今日文本整理已达30次请求上限；已有文稿和结果不受影响。')
+        limit=daily_call_limit(day)
+        if db.execute('SELECT count FROM organizer_calls WHERE day=?', (day,)).fetchone()[0] >= limit:
+            raise RuntimeError(f'今日文本整理已达{limit}次请求上限；已有文稿和结果不受影响。')
         db.execute('UPDATE organizer_calls SET count=count+1 WHERE day=?', (day,))
     try:
         with httpx.Client(trust_env=False, timeout=httpx.Timeout(180, connect=15)) as client:

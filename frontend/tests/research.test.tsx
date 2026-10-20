@@ -58,3 +58,38 @@ test('saving settings updates search availability without losing selected passag
  await waitFor(()=>expect(screen.queryByText('联网功能需要单独配置 DeepSeek 官方搜索 Key。')).toBeNull())
  expect((screen.getByLabelText(/本次选段/) as HTMLTextAreaElement).value).toBe(passage.selection)
 })
+
+
+test('verification waits for explicit claim selection and submits only chosen ids',async()=>{
+ configured=true
+ const awaiting={...result,id:'verify-1',mode:'verify',status:'awaiting_confirmation',claims:[
+  {id:'1',original:'原话第一句。',statement:'第一条事实',kind:'fact'},
+  {id:'2',original:'原话第二句。',statement:'第二条建议',kind:'opinion'}]}
+ const posted:any[]=[]
+ const previous=globalThis.fetch
+ vi.stubGlobal('fetch',vi.fn(async(path:string,options?:RequestInit)=>{
+  if(path.endsWith('/documents/'+passage.taskId)&&options?.method!=='POST')return {ok:true,json:async()=>[awaiting]}
+  if(path.endsWith('/confirm')){posted.push(JSON.parse(String(options?.body)));return {ok:true,json:async()=>({...result,id:'verify-1',mode:'verify',sections:[{...result.sections[0],heading:'证据不足：第一条事实'}]})}}
+  return previous(path,options)
+ }))
+ render(<ResearchPanel passage={passage} onSettings={()=>{}}/>)
+ await screen.findByText('先确认要查哪句话')
+ expect(posted).toEqual([])
+ fireEvent.click(screen.getByLabelText(/第二条建议/))
+ fireEvent.click(screen.getByRole('button',{name:'确认所选命题，开始核实'}))
+ await screen.findByText('证据不足：第一条事实')
+ expect(posted).toEqual([{claim_ids:['1'],kinds:{'1':'fact'}}]);expect(saves).toBe(0)
+})
+
+test('cannot submit verification when all claims are deselected',async()=>{
+ const previous=globalThis.fetch
+ vi.stubGlobal('fetch',vi.fn(async(path:string,options?:RequestInit)=>{
+  if(path.endsWith('/documents/'+passage.taskId)&&options?.method!=='POST')return {ok:true,json:async()=>[{...result,id:'v',status:'awaiting_confirmation',claims:[{id:'1',original:'原话。',statement:'唯一命题',kind:'fact'}]}]}
+  return previous(path,options)
+ }))
+ render(<ResearchPanel passage={passage} onSettings={()=>{}}/>)
+ await screen.findByText('唯一命题')
+ await waitFor(()=>expect((screen.getByLabelText(/唯一命题/) as HTMLInputElement).checked).toBe(true))
+ fireEvent.click(screen.getByLabelText(/唯一命题/))
+ expect((screen.getByRole('button',{name:'确认所选命题，开始核实'}) as HTMLButtonElement).disabled).toBe(true)
+})
