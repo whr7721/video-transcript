@@ -59,6 +59,29 @@ class ArticleTests(unittest.TestCase):
         value=article_parser.parse(html)
         self.assertEqual([b['text'] for b in value['blocks']],['前文','','后文\n换行'])
 
+    def test_anchor_wrapped_images_preserve_order_without_duplicates(self):
+        for wrapper in ['<a href="https://example.com/full">{images}</a>',
+                        '<a href="https://example.com/full"><span>{images}</span></a>',
+                        '<p><a href="https://example.com/full">{images}</a></p>',
+                        '<a href="javascript:bad()">{images}</a>']:
+            with self.subTest(wrapper=wrapper):
+                images='<img src="https://example.com/one.png" alt="第一张"><img data-src="https://example.com/two.png" alt="第二张">'
+                html='<main><p>前文</p>'+wrapper.format(images=images)+'<p>后文</p></main>'
+                value=article_parser.parse(html)
+                found=[b for b in value['blocks'] if b['type']=='image']
+                self.assertEqual([b['url'] for b in found],['https://example.com/one.png','https://example.com/two.png'])
+                self.assertEqual([b['text'] for b in found],['第一张','第二张'])
+                self.assertFalse(any(b.get('url','').startswith('javascript:') for b in value['blocks']))
+
+    def test_anchor_image_download_failure_is_visible_and_partial(self):
+        html='<main><a href="https://example.com/full"><img src="https://example.com/a.png"></a></main>'
+        with patch.object(articles.EXECUTOR,'submit'):item=articles.start('html',html)
+        with patch.object(article_fetch,'fetch',side_effect=ValueError('图片不可读取')):articles.run(item,html)
+        self.assertEqual(item['status'],'ready');self.assertEqual(item['completeness'],'partial')
+        image=next(b for b in item['blocks'] if b['type']=='image')
+        self.assertEqual(image['asset_status'],'missing');self.assertEqual(image['asset_error'],'图片不可读取')
+        self.assertTrue(any('部分图片未保存' in w for w in item['warnings']))
+
     def test_dedup_and_different_source_remain_distinct(self):
         with patch.object(articles.EXECUTOR,'submit') as submit:
             a=articles.start('text','同一份原文');b=articles.start('text','同一份原文');c=articles.start('text','同一份原文',source_url='https://example.com/other')

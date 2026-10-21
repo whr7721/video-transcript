@@ -5,7 +5,7 @@ from urllib.parse import urljoin,urlsplit
 from bs4 import BeautifulSoup,Tag
 import trafilatura
 
-VERSION='article-blocks-v1.1'
+VERSION='article-blocks-v1.2'
 
 
 def safe_link(value,base=''):
@@ -67,6 +67,8 @@ def parse(content,kind='html',source_url='',title=''):
             elif name=='a':
                 # Standalone links are retained in the destination appendix below.
                 if not safe_link(node.get('href',''),source_url):add('paragraph',node.get_text(' ',strip=True))
+                # Linked galleries still carry source content, even without link text.
+                for image in node.find_all('img'):walk(image)
             elif name=='pre':add('code',node.get_text('',strip=False).strip('\n'))
             elif name=='table':
                 rows=[[c.get_text(' ',strip=True) for c in r.find_all(['td','th'],recursive=False)] for r in node.find_all('tr')]
