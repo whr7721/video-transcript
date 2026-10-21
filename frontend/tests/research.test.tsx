@@ -75,6 +75,7 @@ test('verification waits for explicit claim selection and submits only chosen id
  render(<ResearchPanel passage={passage} onSettings={()=>{}}/>)
  await screen.findByText('先确认要查哪句话')
  expect(posted).toEqual([])
+ await waitFor(()=>expect((screen.getByLabelText(/第二条建议/) as HTMLInputElement).checked).toBe(true))
  fireEvent.click(screen.getByLabelText(/第二条建议/))
  fireEvent.click(screen.getByRole('button',{name:'确认所选命题，开始核实'}))
  await screen.findByText('证据不足：第一条事实')

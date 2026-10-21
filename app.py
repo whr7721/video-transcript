@@ -25,6 +25,8 @@ import media_buffer
 import organizer
 import research
 import articles
+import discovery
+from discovery_api import router as discovery_router
 from article_api import router as article_router
 from research_api import router as research_router
 from studio_api import router as studio_router
@@ -86,6 +88,7 @@ async def lifespan(app):
     organizer.recover()
     research.recover()
     articles.recover()
+    discovery.recover()
     for task in reversed(store.all_tasks()):
         if task["status"] in {"queued", "running"}:
             task.update(status="queued", message="正在恢复上次未完成的任务")
@@ -331,6 +334,7 @@ def login():
 app.include_router(studio_router)
 app.include_router(research_router)
 app.include_router(article_router)
+app.include_router(discovery_router)
 
 
 @app.post('/api/studio/buffer/resume')
