@@ -15,6 +15,7 @@ BACKEND = (
     'documents.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
     'research_api.py', 'studio_api.py', 'articles.py', 'article_api.py',
     'article_parser.py', 'article_fetch.py', 'requirements.lock.txt', 'requirements.txt',
+    'setup_models.py', 'check_core.py',
 )
 FRONTEND = (
     'src/Studio.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
@@ -55,7 +56,7 @@ def copy(source, target):
 
 
 def build(output=None):
-    output = Path(output or ROOT/'runtime'/'v1-c').resolve()
+    output = Path(output or ROOT/'runtime'/'v1-d').resolve()
     output.mkdir(parents=True, exist_ok=True)
     # Fresh staging prevents an old output or accidental extra file being carried forward.
     with tempfile.TemporaryDirectory(prefix='core-package-') as temporary:
@@ -77,12 +78,14 @@ def build(output=None):
         (staging/'frontend/package.json').write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding='utf-8')
         copy(ROOT/'distribution/README.md', staging/'README.md')
         copy(ROOT/'distribution/start-core.ps1', staging/'start-core.ps1')
+        for name in ('DEPLOYMENT_ACCEPTANCE.md','THIRD_PARTY_NOTICES.md','THIRD_PARTY_LICENSES.txt'):
+            copy(ROOT/'distribution'/name, staging/name)
         verify(staging)
         manifest = {p.relative_to(staging).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()) if p.is_file()}
         (staging/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         count = verify(staging)
-        archive = output/'shiwen-core-v1-c.zip'
+        archive = output/'shiwen-core-v1-d.zip'
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
             for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()):
                 if p.is_file():

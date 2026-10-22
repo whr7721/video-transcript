@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-22",
+  "status": "deliverable_ready_external_acceptance_pending",
+  "environment": {
+    "os": "Windows 11 Home Chinese 10.0.26200",
+    "python": "3.11.9 x64",
+    "cpu": "AMD Ryzen 9 7940HX 16C32T",
+    "physical_ram_bytes": 16340418560,
+    "same_developer_machine": true
+  },
+  "fresh_venv": {
+    "new_venv": true,
+    "unicode_space_directory": true,
+    "installed_locked_packages": 40,
+    "pip_check": "No broken requirements found",
+    "pip_wheel_cache_used": true,
+    "frontend_node_required": false,
+    "launch": "start-core.ps1 -Port 8771"
+  },
+  "local_model_download": {
+    "schema_version": 1,
+    "system": "Windows",
+    "release": "10",
+    "python": "3.11.9",
+    "proxy_mode": "direct",
+    "proxy_environment_present": false,
+    "downloads": [
+      {
+        "asset": "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2",
+        "bytes": 163002883,
+        "sha256": "7d1efa2138a65b0b488df37f8b89e3d91a60676e416f515b952358d83dfd347e",
+        "seconds": 27.734
+      },
+      {
+        "asset": "silero_vad.onnx",
+        "bytes": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "seconds": 2.375
+      }
+    ],
+    "already_verified": {
+      "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/model.int8.onnx": false,
+      "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/tokens.txt": false,
+      "silero_vad.onnx": false
+    },
+    "verified": {
+      "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/model.int8.onnx": true,
+      "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/tokens.txt": true,
+      "silero_vad.onnx": true
+    }
+  },
+  "long_audio": {
+    "source_rss": "https://feed.xyzfm.space/j8yp8gxkmgqr",
+    "source_title": "E254 我的意外之财",
+    "sample_duration_seconds": 7200,
+    "input_kind": "continuous first 120 minutes, no repeated/silent padding",
+    "asr_seconds": 164.05,
+    "preparation_seconds": 1.139,
+    "task_seconds": 166.27,
+    "segments_reused": 0,
+    "segments": 779,
+    "characters": 36793,
+    "chain": {
+      "task_id": "b33db03eb1b9a504",
+      "duration": 7200.0,
+      "audio_range_status": 206,
+      "draft_revision": 2,
+      "manual_note_id": "2e78d8d3cd2b4a21",
+      "keys_configured": false,
+      "with_ai": false,
+      "raw_unchanged": true,
+      "exported": true,
+      "seconds": 184.484
+    },
+    "read_times": {
+      "document_read": {
+        "seconds": 0.0489,
+        "bytes": 383045
+      },
+      "draft_export": {
+        "seconds": 0.0489,
+        "bytes": 557583
+      },
+      "raw_export": {
+        "seconds": 0.1413,
+        "bytes": 109023
+      }
+    },
+    "save": {
+      "seconds": 0.0836,
+      "revision": 3
+    },
+    "restart": {
+      "draft_revision": 3,
+      "draft_unchanged": true,
+      "raw_unchanged": true,
+      "topics_unchanged": true,
+      "manual_note_exported": true
+    },
+    "sampled_resources": {
+      "rss_peak_sampled_bytes": 560525312,
+      "data_peak_sampled_bytes": 462028715,
+      "samples": 141,
+      "observation_seconds": 155.094
+    },
+    "resource_limit": "Sampling began after upload started; sampled peak is not a whole-run absolute maximum. Disk includes DB and two managed WAV copies.",
+    "quality": "head/middle/tail audio clips and transcript prepared locally; not independently listened/graded",
+    "whole_manuscript_available": false,
+    "selection_manual_note_available": true,
+    "paid_ai_calls_this_phase": 0
+  },
+  "pending": [
+    "Independent Windows installation by another tester",
+    "Real model download on an independently verified no-proxy machine",
+    "Long audio head/middle/tail and terminology listening review"
+  ],
+  "regression": {
+    "backend_tests": 128
+  }
+}

@@ -135,3 +135,14 @@
 - 按 [Python ZipInfo](https://docs.python.org/3/library/zipfile.html#zipfile.ZipInfo) 固定 ZIP 时间戳、Unix 普通文件权限、压缩等级、相对路径排序。相同输入在同运行环境重复打包字节一致；不承诺不同 zlib/编译资源版本仍同哈希。回归额外改变源文件 mtime，避免只验证同一秒构建。
 - 本机真实证据：两条不同的连续 6 分钟中文播客片段完成 HTTP 上传/本地识别/编辑/笔记/导出；其中一次真实云模型选段说明完成，其余离线链在无 Key 进程复验；重启前后 15 张表记录摘要一致。私有 13 张表及 1669 个非数据库文件摘要未变。证据见 experiments/workbench 与里程碑文档，不提交素材或模型输出。
 - 验证边界：组件 DOM 测试不是浏览器视觉验收。Chrome 连接不可用，工具清单无可操作浏览器，预览仅排队打开；触屏、中文输入法、视觉和实际点击播放仍待用户人工确认。一次 AI 成功不能代表总体质量评测。V1-D 的无代理模型下载、独立 Windows 部署不在本轮范围。
+
+## 2026-10-22 · V1-D 干净交付准备（独立机器验收待外部条件）
+
+- 用户确认 V1-C 审查无发现、ZIP P3 独立复验结案，并要求推进 V1-D。确认暂时没有独立电脑，先完成可交付部分；这不构成免除外部验收。本轮不公开私有仓库、不重启私有工作台。
+- 本站部署阻碍是旧 setup_models.py 硬编码本机代理、下载后才记哈希、无环境检查、README依赖作者机器背景。对照 [sherpa 官方固定模型说明](https://k2-fsa.github.io/sherpa/onnx/sense-voice/pretrained.html)、[官方发布API](https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/tags/asr-models)、[Python ProxyHandler](https://docs.python.org/3/library/urllib.request.html#urllib.request.ProxyHandler)，采用无新增依赖的标准库下载器，不引入 Hugging Face/ModelScope SDK 或模型运行栈迁移。
+- 两个固定官方发布件预先钉住大小和 SHA256；压缩包校验后只读取两个固定普通成员，不执行通用 extractall。临时下载失败清理、不把 HTML/截断文件安装为模型；已校验文件可离线复用。默认 ProxyHandler({}) 禁用环境及 Windows 代理发现，显式 --proxy 才使用代理，不修改系统设置，不记录代理地址/凭据。VPN/TUN/网关状态仍需真人在外部测试环境确认。
+- 本机实测：全新 models 目录真实直连下载163002883字节模型包及643854字节 VAD，分别27.734秒、2.375秒，发布件与三个模型文件全通过固定校验；不是独立无代理机器结论。旧模型目录只做只读校验，未替换已有权重。
+- 部署复用 [pip repeatable installs](https://pip.pypa.io/en/stable/topics/repeatable-installs/) 的精确版本锁定思路，保留现有40个锁定版本，不声称版本锁等于哈希锁。在中文/空格解压目录创建新 venv、真实安装并 pip check；安装使用本机 wheel 缓存，不能称干净网络冷下载。前端预编译免Node，环境检查仅使用标准库，独立核对版本、工具、端口、数据目录和模型，不 import app 或改数据库。
+- 公开 README 增加普通用户安装、模型失败/离线校验、PowerShell单进程执行、端口冲突、备份与隐私说明；配独立验收表记录人工协助。内部 README 保留私有入口历史说明，发行只取公开说明；不把含私有历史的 Git 仓库公开。
+- 条款核验发现 [SenseVoiceSmall 模型卡](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) 为自定义 [FunASR MODEL_LICENSE](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)，不能用代码 MIT 或 sherpa Apache-2.0 替代权重条款。包不附模型、FFmpeg 或 Python，保留前端依赖版权/许可文本和来源通知，自身公开许可/公众发布暂缓。
+- 验证：下载故障/代理/压缩成员/离线校验与非侵入预检有回归测试；交付在本机新解压目录演练，不以目录隔离冒充另一台 Windows。真实长素材与实际听校分别记证据；机器输出首尾有字不等于识别准确。人工界面验收挂账见 AGENTS.md，未新增UI范围。

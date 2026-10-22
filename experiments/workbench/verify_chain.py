@@ -16,6 +16,7 @@ def main():
     parser.add_argument('--port',type=int,default=8769)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--with-ai',action='store_true')
+    parser.add_argument('--timeout',type=int,default=240,help='Observation timeout; increase explicitly for genuine long samples')
     args=parser.parse_args()
     if not args.file.is_file():parser.error('sample file missing')
     with httpx.Client(base_url=f'http://127.0.0.1:{args.port}',trust_env=False,timeout=90) as c:
@@ -29,7 +30,7 @@ def main():
         while True:
             task=c.get('/api/tasks/'+ident).json()
             if task['status'] in {'completed','failed','waiting_space'}:break
-            if time.monotonic()-started>240:raise RuntimeError('transcription timeout')
+            if time.monotonic()-started>args.timeout:raise RuntimeError('transcription timeout')
             time.sleep(.5)
         assert task['status']=='completed',task.get('message')
         raw=task['result']['text'];doc=c.get('/api/studio/documents/'+ident).json()
