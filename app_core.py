@@ -19,16 +19,18 @@ if store.DATA != CORE_DATA:
     raise RuntimeError('请在独立进程启动核心入口，不能与其他入口共用模块状态')
 import settings
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from app_shared import install_shared, recover_shared
 from source_contract import TaskHandlers
 import local_files
+import podcasts
 import core_instance
 
 handlers = TaskHandlers()
 handlers.register('local_file', local_files.run_task)
+handlers.register('podcast', local_files.run_task)
 
 
 @asynccontextmanager
@@ -52,6 +54,7 @@ async def lifespan(app):
 app = FastAPI(title='拾文 · 本地内容工作台', lifespan=lifespan, docs_url=None, redoc_url=None)
 install_shared(app)
 app.include_router(local_files.router)
+app.include_router(podcasts.router)
 
 
 @app.get('/api/health')
@@ -60,7 +63,7 @@ def health():
     ready = all(p.is_file() for p in (MODEL/'model.int8.onnx', MODEL/'tokens.txt', ROOT/'models/silero_vad.onnx'))
     return {'status': 'ok', 'profile': 'core', 'models_ready': ready,
             'settings': settings.public(), 'capabilities': {'file_import': True, 'sources': handlers.kinds(),
-            'max_file_bytes': 1_000_000_000,'max_duration_sec':7200}}
+            'podcast_import':True,'max_file_bytes': 1_000_000_000,'max_duration_sec':7200}}
 
 
 @app.get('/api/tasks')
@@ -89,6 +92,12 @@ def export(ident: str, kind: str):
     path = store.DATA/'jobs'/ident/f'transcript.{kind}'
     if not path.is_file():
         raise HTTPException(404, '导出文件不存在')
+    if kind=='md' and value.get('source',{}).get('kind')=='podcast':
+        # Render current attribution without mutating stored original exports or drafts.
+        source=value['source']
+        return Response(path.read_text(encoding='utf-8')+'\n\n节目来源：'+source['feed_url']+'\n',
+                        media_type='text/markdown; charset=utf-8',
+                        headers={'Content-Disposition':f'attachment; filename="shiwen-{ident}.md"'})
     return FileResponse(path, filename=f'拾文-{ident}.{kind}')
 
 

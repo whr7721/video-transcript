@@ -59,3 +59,34 @@ def fetch(url,limit=3_000_000,referer=''):
                     parts.append(chunk)
                 return b''.join(parts),response.headers.get('content-type',''),url
     raise ValueError('来源跳转过多，已停止获取。')
+
+
+def stream(url, consume, limit, stopped=lambda: False, budget=900, declared_size=None):
+    """Bounded streaming variant; retains the article fetch defaults above unchanged."""
+    from urllib.parse import urljoin
+    url=public_url(url);started=time.monotonic();total=0
+    with httpx.Client(transport=PublicTransport(),trust_env=False,follow_redirects=False,
+                      timeout=httpx.Timeout(5,connect=8),headers={'User-Agent':'Shiwen/0.1 podcast-reader'}) as client:
+        for _ in range(6):
+            if stopped():raise InterruptedError('获取已取消')
+            if time.monotonic()-started>budget:raise ValueError('来源读取超时，请重试')
+            with client.stream('GET',url) as response:
+                if response.status_code in {301,302,303,307,308}:
+                    if not response.headers.get('location'):raise ValueError('来源跳转无效')
+                    url=public_url(urljoin(url,response.headers['location']));continue
+                if response.status_code!=200:raise ValueError(f'来源暂时无法读取（HTTP {response.status_code}），请稍后重试')
+                length=response.headers.get('content-length')
+                if length is not None:
+                    if not length.isdigit() or int(length)>limit:raise ValueError('来源大小无效或超过限制')
+                    if declared_size:declared_size(int(length))
+                # Decoded bytes, not the server's possibly compressed Content-Length, own quota.
+                for block in response.iter_bytes(chunk_size=65536):
+                    if stopped():raise InterruptedError('获取已取消')
+                    if time.monotonic()-started>budget:raise ValueError('来源读取超时，请重试')
+                    total+=len(block)
+                    if total>limit:raise ValueError('来源超过本次大小限制')
+                    consume(block)
+                if not total:raise ValueError('来源内容为空')
+                if length and not response.headers.get('content-encoding') and total!=int(length):raise ValueError('来源字节不完整，请重试')
+                return {'bytes':total,'content_type':response.headers.get('content-type',''),'url':url}
+    raise ValueError('来源跳转过多，已停止获取')

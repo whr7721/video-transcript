@@ -4,6 +4,8 @@ import json
 import shutil
 import tempfile
 import zipfile
+import platform
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -16,12 +18,14 @@ BACKEND = (
     'research_api.py', 'studio_api.py', 'articles.py', 'article_api.py',
     'article_parser.py', 'article_fetch.py', 'requirements.lock.txt', 'requirements.txt',
     'setup_models.py', 'check_core.py',
+    'podcast_feed.py','podcast_text.py','podcasts.py',
 )
 FRONTEND = (
     'src/Studio.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
     'src/styles.css', 'src/articles.css', 'src/lib/utils.ts',
     'core/main.tsx', 'core/index.html', 'core/public/logo.svg',
     'core/FileCapture.tsx','core/files.css',
+    'core/PodcastCapture.tsx','core/Capture.tsx','core/podcasts.css',
     'vite.core.config.ts', 'tsconfig.json', 'package-lock.json',
 )
 COMPONENTS = ('button.tsx', 'tabs.tsx', 'dialog.tsx', 'tooltip.tsx')
@@ -55,8 +59,20 @@ def copy(source, target):
     shutil.copyfile(source, target)
 
 
+def verify_manifest(directory):
+    directory=Path(directory)
+    verify(directory)
+    manifest=json.loads((directory/'manifest.json').read_text(encoding='utf-8'))
+    actual={p.relative_to(directory).as_posix() for p in directory.rglob('*') if p.is_file() and p!=directory/'manifest.json'}
+    if not isinstance(manifest,dict) or set(manifest)!=actual:raise ValueError('包内文件集合与manifest不一致')
+    for name,digest in manifest.items():
+        if not isinstance(digest,str) or hashlib.sha256((directory/name).read_bytes()).hexdigest()!=digest:
+            raise ValueError('包内文件hash不一致: '+name)
+    return len(actual)
+
+
 def build(output=None):
-    output = Path(output or ROOT/'runtime'/'v1-d').resolve()
+    output = Path(output or ROOT/'runtime'/'r1').resolve()
     output.mkdir(parents=True, exist_ok=True)
     # Fresh staging prevents an old output or accidental extra file being carried forward.
     with tempfile.TemporaryDirectory(prefix='core-package-') as temporary:
@@ -78,14 +94,15 @@ def build(output=None):
         (staging/'frontend/package.json').write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding='utf-8')
         copy(ROOT/'distribution/README.md', staging/'README.md')
         copy(ROOT/'distribution/start-core.ps1', staging/'start-core.ps1')
-        for name in ('DEPLOYMENT_ACCEPTANCE.md','THIRD_PARTY_NOTICES.md','THIRD_PARTY_LICENSES.txt'):
+        for name in ('DEPLOYMENT_ACCEPTANCE.md','THIRD_PARTY_NOTICES.md','THIRD_PARTY_LICENSES.txt','RELEASE_CHECKLIST.md'):
             copy(ROOT/'distribution'/name, staging/name)
         verify(staging)
         manifest = {p.relative_to(staging).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()) if p.is_file()}
         (staging/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         count = verify(staging)
-        archive = output/'shiwen-core-v1-d.zip'
+        verify_manifest(staging)
+        archive = output/'shiwen-core-r1.zip'
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
             for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()):
                 if p.is_file():
@@ -98,7 +115,27 @@ def build(output=None):
             with zipfile.ZipFile(archive) as z:
                 z.extractall(extracted)
             assert verify(extracted) == count
-        return {'archive': str(archive), 'files': count, 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest()}
+            verify_manifest(extracted)
+        digest=hashlib.sha256(archive.read_bytes()).hexdigest()
+        (output/'SHA256SUMS.txt').write_text(digest+'  '+archive.name+'\n',encoding='utf-8')
+        def command(args):
+            try:
+                result=subprocess.run(args,cwd=ROOT,capture_output=True,text=True,timeout=15)
+                return result.stdout.strip() if result.returncode==0 else 'unavailable'
+            except (OSError,subprocess.TimeoutExpired):return 'unavailable'
+        vite=ROOT/'frontend/node_modules/vite/package.json'
+        metadata={'schema_version':1,'archive':archive.name,'sha256':digest,'files':count,
+                  'source_commit':command(['git','rev-parse','HEAD']),
+                  'working_tree_dirty':bool(command(['git','status','--porcelain'])),
+                  'python':platform.python_version(),'zlib':zipfile.zlib.ZLIB_VERSION,
+                  'node':command(['node','--version']),'npm':command(['npm.cmd' if platform.system()=='Windows' else 'npm','--version']),
+                  'vite':json.loads(vite.read_text(encoding='utf-8'))['version'] if vite.is_file() else 'unavailable',
+                  'dependency_lock_sha256':hashlib.sha256((ROOT/'requirements.lock.txt').read_bytes()).hexdigest(),
+                  'frontend_lock_sha256':hashlib.sha256((ROOT/'frontend/package-lock.json').read_bytes()).hexdigest(),
+                  'external_acceptance':'pending; see release checklist',
+                  'signature':'none; SHA256 is not an author signature'}
+        (output/'release-metadata.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
+        return {'archive': str(archive), 'files': count, 'sha256': digest}
 
 
 if __name__ == '__main__':

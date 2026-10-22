@@ -14,6 +14,18 @@ from unittest.mock import patch
 
 
 class DistributionTests(unittest.TestCase):
+    def test_manifest_rejects_modified_truncated_and_extra_files(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);file=root/'content.txt';file.write_bytes(b'original')
+            (root/'manifest.json').write_text(json.dumps({'content.txt':hashlib.sha256(b'original').hexdigest()}))
+            self.assertEqual(package.verify_manifest(root),1)
+            for content in (b'changed!',b'orig'):
+                file.write_bytes(content)
+                with self.assertRaises(ValueError):package.verify_manifest(root)
+            file.write_bytes(b'original');(root/'unexpected').touch()
+            with self.assertRaises(ValueError):package.verify_manifest(root)
+
     def test_archive_reproducible_across_new_staging_and_source_mtime(self):
         with tempfile.TemporaryDirectory() as temp:
             first=package.build(Path(temp)/'one')
@@ -118,7 +130,7 @@ with TestClient(app_core.app) as client:
     health=client.get('/api/health').json()
     assert health['profile']=='core' and health['models_ready'] is False
     assert health['capabilities']['file_import'] is True
-    assert health['capabilities']['sources']==['local_file']
+    assert health['capabilities']['sources']==['local_file','podcast']
     for path in ('/api/login','/api/batches','/api/discovery/search','/api/tasks'):
         assert client.post(path,json={'share_text':'https://example.com'}).status_code in (404,405)
     assert client.post('/api/settings',headers={'Origin':'https://evil.example'},json={}).status_code==403

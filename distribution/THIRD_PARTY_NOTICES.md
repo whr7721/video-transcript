@@ -11,6 +11,8 @@
 
 ## 后端（pip 按锁文件安装）
 
+RSS新增 feedparser 6.0.14（BSD-2-Clause）与 feedparser-sgmllib 2.1.0（PSF-2.0），以安装包自带许可为准。发布wheel的实际依赖与main分支声明不同，本版锁定验证过的wheel依赖，不隐式增加第二套HTTP客户端。
+
 FastAPI（MIT）、Starlette（BSD-3-Clause）、Uvicorn（BSD-3-Clause）、HTTPX（BSD-3-Clause）、NumPy（BSD-3-Clause）、psutil（BSD-3-Clause）、Pydantic（MIT）、sherpa-onnx（Apache-2.0）、Trafilatura（Apache-2.0）、BeautifulSoup（MIT）。完整精确版本及传递依赖见 requirements.lock.txt；许可证全文随各自 wheel/dist-info 安装，不能把本表视作所有传递依赖的许可替代品。Python 和 SQLite 使用各自运行时条款。
 
 ## 前端

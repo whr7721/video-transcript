@@ -4,6 +4,8 @@
 
 ## 本地文件核心候选包（V1-D）
 
+RSS选单集导入已实现，待独立审查和新增界面点验，随后实施长稿章节导读。**M2（抖音选中转写）明确押后：这两项完成后再评估优先级，不自动启动。** 已有M1候选与私有功能保留。公开包README只列通用路线，不混入私有来源；RSS里程碑同步交付公开路线图和哈希发布流程，证据见RSS_SINGLE_EPISODE_MILESTONE_20261022.md。
+
 可分享核心使用独立入口 `app_core:app` 与独立数据目录，不需要本仓库的私有来源工具。公开包部署说明见 [distribution/README.md](distribution/README.md)，测试记录表见 [DEPLOYMENT_ACCEPTANCE.md](distribution/DEPLOYMENT_ACCEPTANCE.md)。不要直接把整个私有仓库或历史公开。
 
 在已构建核心前端后运行 `.venv/Scripts/python.exe build_core_package.py`，生成白名单 ZIP，附预编译工作台、固定版本模型准备器、环境检查和第三方通知；不附模型或运行数据。独立 Windows 与无代理机器部署由外部测试者实测，暂时缺少环境，不能据本机演练宣布最终通过。以下旧段落记录私有入口及其历史能力，不作为核心包安装步骤。

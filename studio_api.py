@@ -49,7 +49,11 @@ def cleanup():
 def get_document(ident:str):
     value=task(ident)
     record=next((r for r in media_buffer.inventory() if r['id']==ident),None)
-    return {**documents.get(value),'audio_available':(store.DATA/'jobs'/ident/'audio.wav').is_file(),
+    with store.connect() as db:
+        associations=[json.loads(r[0]) for r in db.execute('SELECT payload FROM source_associations WHERE task_id=?',(ident,))] if db.execute("SELECT 1 FROM sqlite_master WHERE name='source_associations'").fetchone() else []
+    return {**documents.get(value),'source':value.get('source',{}),'source_associations':associations,
+            'timing_precision':value.get('result',{}).get('timing_precision','vad_segments'),
+            'audio_available':(store.DATA/'jobs'/ident/'audio.wav').is_file(),
             'video_available':(store.DATA/'jobs'/ident/'original.mp4').is_file(),
             'media_pinned':bool(record and record['pinned']), 'model':organizer.MODEL,
             'generation_capabilities':organizer.capabilities(value)}
@@ -102,7 +106,8 @@ def version(ident:str,revision:int):
 def export(ident:str,kind:str):
     value=task(ident);doc=documents.get(value)
     if kind not in {'json','txt'}: raise HTTPException(404,'不支持的格式')
-    payload=json.dumps({**doc,'title':value.get('title',''),'source':value.get('source',{})},ensure_ascii=False,indent=2) if kind=='json' else documents.text(doc['content'])
+    payload=json.dumps({**doc,'title':value.get('title',''),'source':value.get('source',{}),
+                        'source_associations':get_document(ident)['source_associations']},ensure_ascii=False,indent=2) if kind=='json' else documents.text(doc['content'])
     return Response(payload,media_type='application/json' if kind=='json' else 'text/plain; charset=utf-8',
                     headers={'Content-Disposition':f'attachment; filename="shiwen-draft-{ident}.{kind}"'})
 

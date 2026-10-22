@@ -8,5 +8,5 @@ export type SourceUI={
  Navigation:ComponentType
  Management:ComponentType
  SettingsLink:ComponentType
- SourceLink:ComponentType<{task:{video_id?:string;source?:{kind:string;original_name?:string}}}>
+ SourceLink:ComponentType<{task:{video_id?:string;source?:{kind:string;original_name?:string;feed_url?:string;show_title?:string;ingest?:string}}}>
 }

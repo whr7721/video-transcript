@@ -21,7 +21,7 @@ def finish_transcription(task, update, directory, audio, duration, metadata, sta
                    "cost_yuan": 0, "review_note": "原文由语音识别生成，保留讲话内容；人名、数字和专有名词建议回听核对。未进行全文人工校对。"})
     atomic_json(directory / "transcript.json", result)
     (directory / "transcript.txt").write_text(result["text"], encoding="utf-8")
-    source_label = metadata.get('source_url') or metadata.get('source', {}).get('original_name') or '本地素材'
+    source_label = metadata.get('source_url') or metadata.get('source', {}).get('feed_url') or metadata.get('source', {}).get('original_name') or '本地素材'
     markdown = f"# {metadata.get('title', '未命名素材')}\n\n作者：{metadata.get('author', '')}\n\n来源：{source_label}\n\n> {result['review_note']}\n\n## 讲话全文\n\n{result['text']}\n"
     (directory / "transcript.md").write_text(markdown, encoding="utf-8")
     media_buffer.state(task['id'], 'awaiting_review')

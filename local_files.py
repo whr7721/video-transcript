@@ -128,7 +128,7 @@ def write_chunk(ident,event,chunk,hasher,count):
     return count+len(chunk)
 
 
-def accept(value,digest,count,event):
+def accept(value,digest,count,event,source_override=None):
     part=directory(value['id'])/'original.part'
     info=local_media.inspect(part,value['filename'])
     fingerprint=hashlib.sha256((digest+'|'+MODEL_VERSION+'|local|auto-language|first-audio').encode()).hexdigest()
@@ -166,9 +166,11 @@ def accept(value,digest,count,event):
         media_buffer.register(ident)
         part.replace(target/'original.media')
         source=FileSource(original_name=value['filename'],sha256=digest,size_bytes=count).model_dump()
+        if source_override is not None: source=source_override
         task={'id':ident,'source':source,'media_info':info,'title':Path(value['filename']).stem,'author':'',
               'provider':'local','status':'queued','stage':'queued','message':'文件已接收，等待解码与识别',
               'created_at':time.time(),'progress':0,'keep_media':False,'media_available':True}
+        if source.get('kind')=='podcast': task.update(title=source['episode_title'],author=source['show_title'])
         task['warnings']=[f"发现 {info['audio_tracks']} 条音轨，仅识别第一条"] if info['audio_tracks']>1 else []
         # One transaction owns task/index/admission. Recovery removes only unclaimed managed files.
         value.update(status='accepted',task_id=ident)
@@ -276,16 +278,22 @@ def run_task(task,update):
         if fields.get('stage') or now-last[0]>=1:
             update(**fields);last[0]=now
     finish_transcription(task,progress_update,path,path/'audio.wav',duration,
-                         {'title':task['title'],'author':'','source':task['source']},started,True)
+                         {'title':task['title'],'author':task.get('author',''),'source':task['source']},started,True)
 
 
 def worker():
     while not STOP.is_set():
         try: ident=TASKS.get(timeout=0.2)
         except queue.Empty: continue
+        if ident.startswith('podcast:'):
+            try:
+                import podcasts
+                podcasts.process(ident.split(':',1)[1])
+            finally: TASKS.task_done()
+            continue
         try:
             task=store.get(ident)
-            if not task or task.get('source',{}).get('kind')!='local_file': continue
+            if not task or task.get('source',{}).get('kind') not in {'local_file','podcast'}: continue
             if task['status'] not in {'queued','running'} and not task.get('media_restore_pending'): continue
             if not task.get('media_restore_pending'): update_task(ident,status='running',error=None)
             handler=HANDLERS.resolve(task) if HANDLERS else run_task
@@ -313,7 +321,10 @@ def start(handlers=None):
     with store.connect() as db:
         uploads=[json.loads(r[0]) for r in db.execute('SELECT payload FROM file_uploads')]
     for value in uploads:
-        if value['status']!='accepted': abort(value['id'],'interrupted')
+        if value['status']!='accepted':
+            terminal=value['status'] in {'cancelled','discarded','expired','interrupted'}
+            if not terminal or (directory(value['id'])/'original.part').exists():
+                abort(value['id'],value['status'] if terminal else 'interrupted')
     # Crash between rename and task transaction: clean only fixed owned names in registered job directories.
     for row in media_buffer.inventory():
         ident=row['id'];task=store.get(ident)
@@ -321,10 +332,13 @@ def start(handlers=None):
             for name in ('original.media','audio.partial.wav'):
                 (directory(ident)/name).unlink(missing_ok=True)
     for task in reversed(store.all_tasks()):
-        if task.get('source',{}).get('kind')=='local_file':
+        if task.get('source',{}).get('kind') in {'local_file','podcast'}:
             (directory(task['id'])/'audio.partial.wav').unlink(missing_ok=True)
             if task['status'] in {'queued','running'} or task.get('media_restore_pending'): TASKS.put(task['id'])
     THREAD=threading.Thread(target=worker,daemon=True,name='core-file-worker');THREAD.start()
+    if handlers and 'podcast' in handlers.kinds():
+        import podcasts
+        podcasts.recover()
 
 
 def stop():
@@ -336,7 +350,7 @@ def stop():
 def retry(ident:str):
     with LOCK:
         value=store.get(ident)
-        if not value or value.get('source',{}).get('kind')!='local_file': raise HTTPException(404,'本地任务不存在')
+        if not value or value.get('source',{}).get('kind') not in {'local_file','podcast'}: raise HTTPException(404,'本地任务不存在')
         if value['status'] not in {'failed','waiting_space'}: raise HTTPException(409,'此任务不需要重试')
         update_task(ident,status='queued',stage='queued',error=None,message='等待继续，将复用已完成语音片段')
         TASKS.put(ident)
@@ -347,7 +361,7 @@ def resume():
     media_buffer.ensure_space()
     count=0
     for task in store.all_tasks():
-        if task.get('source',{}).get('kind')=='local_file':
+        if task.get('source',{}).get('kind') in {'local_file','podcast'}:
             if task['status']=='waiting_space': retry(task['id']);count+=1
             elif task.get('media_restore_waiting'):
                 update_task(task['id'],media_restore_waiting=False)

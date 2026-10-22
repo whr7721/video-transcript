@@ -163,3 +163,17 @@
 - 首版RSS公开地址、选一集、节目文字text/plain/VTT或本地ASR两路径；没有音频不伪造回听，shownotes不当全文，解析预览不自动下载。feedparser固定发布版本与依赖待实施验证；原始XML仅作测试对照，不自写兼容框架。
 - 按用户要求，R1验收含公开README路线图和哈希发布流程。依据GitHub官方Releases说明，整仓库自动source archive不作为干净包；先冻结/打包/验manifest/解压扫描/重复构建，最后生成ZIP外部SHA256SUMS及发布元数据，不自引用ZIP哈希，不将hash等同签名。准备流程不等于授权公众发布。
 - 详细步骤与真实双路径/取消/配额/旧数据/发布验收见 RSS_SINGLE_EPISODE_PLAN_20261022.md。本轮仅调研和方案文档，未动工。
+
+## 2026-10-22 · R1 RSS单集导入（已实施，待独立审查）
+
+- 用户已确认实施，随后转达V1-D审查结束且无P0/P1。顺序保持RSS单集→长稿章节导读；M2押后，两项完成后再评估，不启动私有采集扩展。
+- 采用已发布feedparser6.0.14 wheel，实际只依赖feedparser-sgmllib2.1.0，和此前main pyproject要求requests的声明不同；锁定实测wheel依赖，不新增HTTP客户端。核对dist-info：前者BSD-2-Clause，后者PSF-2.0，已附许可正文。原先拟写二者同BSD的判断在提交前更正。
+- 已安装版本没有podcast namespace模块，不能直接读取假设存在的podcast_transcripts字段。沿用feedparser处理RSS/Atom，并从有界、禁DTD的XML树只提取官方namespace全文元数据；节点/深度/字节受限，元数据预览不获取enclosure或全文。
+- 复用article_fetch.PublicTransport逐跳目标校验，新增受控流式变体，保留原文章fetch默认行为。复用local_files.upload/admission与同一worker、槽和5GB字节计量；获取记录与已入库资产分离，明确podcast来源和source_associations，不改旧资产身份或稿件。
+- 节目文字使用独立publisher原稿路径、稳定块ID及缺时间戳标记；可用的节目文字不调用ASR，没有音频不假装可回听。官方文字仍标完整性/准确性未人工核验。实例包含英语节目文字，不据此宣称英文音频识别通过。
+- UI采用frontend-design、ui-ux-pro-max建议的现有蓝白/中文阅读布局、原生表单、焦点可见、整行radio和20项分页，未复制外部播放器。按web-design-guidelines检查日期国际化、长标题换行、状态播报和错误焦点；CUA仅有空MCP Apps，无可操作浏览器，GUI人工挂账见AGENTS.md。
+- 真实样本：Python Bytes两集、Audience两集直接导入官方VTT；知行小酒馆E253约79分钟经76.6MB下载/校验/本地ASR完成约3.09万字，ASR287.61秒，整链348.86秒（期间并行回归，非速度承诺）。五集均完成编辑、手动笔记、原稿/编辑稿导出。另一次现有文本模型选段说明成功并存专题/导出，只有一次调用，无搜索调用。
+- 真实取消最初暴露终态先于finally删除的竞态，已改为清理后发布终态并加入回归；重跑在约0.66MB时取消，暂存已删且并发文件PUT为409。初次重启过严的全表比较也发现恢复反复改写干净终态会话，收窄后18表摘要一致；旧私有13表与1669文件与既有基线相同。
+- 发行采用包内manifest精确文件集合+逐文件hash验证、解压禁词门、两次独立暂存ZIP比较；最后生成外部SHA256SUMS与release-metadata（commit/脏标记/工具/锁摘要），不把ZIP自身hash放回ZIP、不将hash当签名。公开README路线图/发布清单同步，私有M2排期只在内部记录。
+- 某些候选feed出现超时/404或解析到非公开IP，保留拒绝与失败记录，未绕过。新venv/空模型/无Key的发行包真实节目文字链通过；独立机器等挂账未冒称完成。详见RSS_SINGLE_EPISODE_MILESTONE_20261022.md及experiments/podcasts/，未提交正文/音频/密钥/数据库。
+- 最终解压复核还发现：把新包覆盖解压到上次验收目录会保留旧hash名JS，严格manifest正确拒绝额外文件。改在全新空目录复核，公开README补充升级也须新目录，保留旧数据通过显式路径选择，不靠覆盖解压“升级”。

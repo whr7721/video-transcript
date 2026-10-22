@@ -12,6 +12,24 @@ class FileSource(BaseModel):
     size_bytes: int = Field(gt=0, le=1_000_000_000)
 
 
+class PodcastSource(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    schema_version: Literal[1] = 1
+    kind: Literal['podcast'] = 'podcast'
+    original_name: str = Field(min_length=1,max_length=255)
+    feed_url: str = Field(max_length=4000)
+    show_title: str = Field(max_length=500)
+    episode_title: str = Field(max_length=500)
+    guid: str | None = Field(default=None,max_length=2000)
+    audio_url: str | None = Field(default=None,max_length=4000)
+    transcript_url: str | None = Field(default=None,max_length=4000)
+    ingest: Literal['local_asr','publisher_text']
+    text_format: str | None = None
+    sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    size_bytes: int = Field(gt=0,le=1_000_000_000)
+    fetched_at: float
+
+
 class TaskHandlers:
     def __init__(self):
         self._handlers = {}
