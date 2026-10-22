@@ -146,3 +146,12 @@
 - 公开 README 增加普通用户安装、模型失败/离线校验、PowerShell单进程执行、端口冲突、备份与隐私说明；配独立验收表记录人工协助。内部 README 保留私有入口历史说明，发行只取公开说明；不把含私有历史的 Git 仓库公开。
 - 条款核验发现 [SenseVoiceSmall 模型卡](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) 为自定义 [FunASR MODEL_LICENSE](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)，不能用代码 MIT 或 sherpa Apache-2.0 替代权重条款。包不附模型、FFmpeg 或 Python，保留前端依赖版权/许可文本和来源通知，自身公开许可/公众发布暂缓。
 - 验证：下载故障/代理/压缩成员/离线校验与非侵入预检有回归测试；交付在本机新解压目录演练，不以目录隔离冒充另一台 Windows。真实长素材与实际听校分别记证据；机器输出首尾有字不等于识别准确。人工界面验收挂账见 AGENTS.md，未新增UI范围。
+
+## 2026-10-22 · 下一步路线调研（候选，未实施）
+
+- 针对真实两小时稿可转写但难阅读、文章/音视频存储分立、无跨资料索引的现状，推荐R1 RSS显式单集 → R2章节导读/按章整理 → K1统一来源引用/本地检索 → K2专题内研究 → C1创作。保留原V2 RSS方向，建议将原V4中的章节阅读部分前移；待用户确认，不自动扩大开发范围。抖音M2保留私有侧线。
+- 对照 [Readwise播客阅读](https://blog.readwise.io/update-dec2025/)、[Global Ghostreader](https://docs.readwise.io/reader/guides/ghostreader/global)、[Podwise](https://docs.podwise.ai/)、[Open Notebook](https://github.com/lfnovo/open-notebook) 官方文档/实体源码，确认单纯转写/问答/引用并非独有。借鉴资料/派生产物/个人笔记分层和范围研究，不移植其完整服务栈。
+- RSS首选候选为 [feedparser](https://github.com/kurtmckee/feedparser)：核对pyproject/完整LICENSE，代码BSD-2-Clause、未归档且当前支持Python3.10+，但有requests/feedparser-sgmllib依赖，并非零成本。本站HTTP先有界取字节再解析；[标准全文/章节](https://github.com/Podcastindex-org/podcast-namespace)有则用，不把shownotes误作全文。
+- 只读实测一个既有RSS：约5.12MB、267集、均有enclosure、无标准全文/章节标签；初设2MB研究限制拒绝，8MB研究上限重读成功。不能由此推断全平台覆盖，生产限额需更多样本决定。本机SQLite3.45.1内存实验确认trigram三字词命中、二字“客户/蒸馏”不命中；不能直接宣传FTS5支持全部中文检索。
+- 先用来源只读投影+SQLite可重建索引，原始数据不迁移；以中文短词/同义词/ASR错字/无答案题的20题候选集评测，再决定embedding。复用现有上下文/引用验证，但逐字匹配不等于语义支持。
+- V2EX按章阅读/Markdown案例与Reddit导出诉求只作社区个案线索；未复制来源项目，未装依赖或调用付费API。完整候选取舍、阶段边界及验收见 NEXT_ROUTE_RESEARCH_20261022.md；本轮只增调研文档，不改V1-D待审查代码。
