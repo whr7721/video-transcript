@@ -20,6 +20,7 @@ FRONTEND = (
     'src/Studio.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
     'src/styles.css', 'src/articles.css', 'src/lib/utils.ts',
     'core/main.tsx', 'core/index.html', 'core/public/logo.svg',
+    'core/FileCapture.tsx','core/files.css',
     'vite.core.config.ts', 'tsconfig.json', 'package-lock.json',
 )
 COMPONENTS = ('button.tsx', 'tabs.tsx', 'dialog.tsx', 'tooltip.tsx')
@@ -54,7 +55,7 @@ def copy(source, target):
 
 
 def build(output=None):
-    output = Path(output or ROOT/'runtime'/'v1-b').resolve()
+    output = Path(output or ROOT/'runtime'/'v1-c').resolve()
     output.mkdir(parents=True, exist_ok=True)
     # Fresh staging prevents an old output or accidental extra file being carried forward.
     with tempfile.TemporaryDirectory(prefix='core-package-') as temporary:
@@ -78,14 +79,18 @@ def build(output=None):
         copy(ROOT/'distribution/start-core.ps1', staging/'start-core.ps1')
         verify(staging)
         manifest = {p.relative_to(staging).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-                    for p in staging.rglob('*') if p.is_file()}
+                    for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()) if p.is_file()}
         (staging/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         count = verify(staging)
-        archive = output/'shiwen-core-v1-b.zip'
-        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
-            for p in staging.rglob('*'):
+        archive = output/'shiwen-core-v1-c.zip'
+        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+            for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()):
                 if p.is_file():
-                    z.write(p, p.relative_to(staging))
+                    info=zipfile.ZipInfo(p.relative_to(staging).as_posix(),(1980,1,1,0,0,0))
+                    info.create_system=3
+                    info.external_attr=0o100644 << 16
+                    info.compress_type=zipfile.ZIP_DEFLATED
+                    z.writestr(info,p.read_bytes(),compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
         with tempfile.TemporaryDirectory(prefix='core-verify-') as extracted:
             with zipfile.ZipFile(archive) as z:
                 z.extractall(extracted)

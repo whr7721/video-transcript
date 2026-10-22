@@ -101,6 +101,7 @@ def start(task,body):
             pending=db.execute("SELECT count(*) FROM research_jobs WHERE json_extract(payload,'$.status') IN ('queued','running')").fetchone()[0]
         if pending>=3:raise ValueError('已有3个深入任务在排队，请稍后再试。')
         job={'id':ident,'task_id':task['id'],'title':task.get('title',''),'mode':body.mode,'online':body.online,
+             'source':task.get('source',{}),
              'question':body.question.strip(),'context':ctx,'model':organizer.MODEL,'status':'queued','stage':'queued',
              'created_at':time.time(),'sources':[],'usage':[],'tool_cost_estimate':0,'warnings':[]}
         save(job,restart=True);EXECUTOR.submit(run,job)
@@ -376,12 +377,35 @@ def update_note(ident,revision,personal):
     return get_note(ident)
 
 
+def manual_note(task,body):
+    if not body.personal.strip():raise ValueError('请先写下自己的理解')
+    ctx=context(task,body.basis,body.revision,body.generation_id,body.selection.strip())
+    ident=uuid.uuid4().hex[:16]
+    job={'id':ident,'task_id':task['id'],'title':task.get('title',''),'mode':'manual','online':False,
+         'source':task.get('source',{}),
+         'question':'手动来源笔记','context':ctx,'model':None,'status':'completed','stage':'done',
+         'created_at':time.time(),'sources':[],'sections':[],'warnings':['手动笔记，未调用AI、未联网、未作事实核实。'],
+         'usage':[],'tool_cost_estimate':0}
+    # Atomic with save_note's insert, so a rejected note never leaves a fake research record.
+    with LOCK,store.connect() as db:
+        init(db)
+        title=body.topic_title.strip()
+        if not title:raise ValueError('请填写专题名称')
+        topic=hashlib.sha256(title.encode()).hexdigest()[:16];note_id=uuid.uuid4().hex[:16];now=time.time()
+        db.execute('INSERT INTO research_jobs VALUES (?,?)',(ident,json.dumps(job,ensure_ascii=False)))
+        db.execute('INSERT OR IGNORE INTO research_topics VALUES (?,?,?)',(topic,title,now))
+        db.execute('INSERT INTO research_notes VALUES (?,?,?,?,?,?,?)',(note_id,topic,ident,body.personal,1,now,now))
+    return get_note(note_id)
+
+
 def export_note(ident):
     note=get_note(ident)
     if not note:raise ValueError('笔记不存在。')
     job=get(note['job_id'])
     lines=['# '+note['topic_title'],'','## 研究问题',job['question'] or job['context']['selection'],'',
-           '来源文稿：'+job['task_id']+'；版本：'+job['context']['version'],'','## 深入结果（AI生成，未等同人工核实）']
+           '来源文稿：'+job['task_id']+'；版本：'+job['context']['version'],
+           '来源文件／标题：'+(job.get('source',{}).get('original_name') or job.get('title','')),'','## 来源选段',job['context']['selection'],'',
+           '## 手动来源笔记（未调用AI）' if job['mode']=='manual' else '## 深入结果（AI生成，未等同人工核实）']
     for s in job.get('sections',[]):
         lines+=['','### '+s['heading'],s['text']]
         for c in s['citations']:

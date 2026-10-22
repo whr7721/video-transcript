@@ -108,6 +108,13 @@ def cancel_upload(ident:str):
     return {'status':'cancelled'}
 
 
+@router.get('/uploads/{ident}')
+def upload_status(ident:str):
+    with LOCK:
+        value=upload_get(ident)
+        return {'upload_id':ident,'status':value['status'],'task_id':value.get('task_id')}
+
+
 def write_chunk(ident,event,chunk,hasher,count):
     with LOCK,media_buffer.LOCK:
         if event.is_set(): raise InterruptedError('上传已取消')

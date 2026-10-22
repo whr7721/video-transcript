@@ -125,3 +125,13 @@
 - 实验调度曾把六格式与长文件拒绝同时上传，收到预期单槽 409。调整为串行重跑；不把 409 当媒体解码失败。短语音格式样本、真实两小时连续播客及实写配额占位文件分别标注，不能互相替代。
 - 仍待改进：本机大 WAV 的流式上传约 95 秒，说明有逐块配额盘点/路径检查开销；没有假称磁盘极限吞吐。V1-C 可按 profile 结果优化批次盘点与进度，但需保留实收计费和取消边界。长稿全文整理仍有既有容量限制，V1-C 前置提示；V1-D 的无代理模型下载未执行。
 - 无新增依赖、模型或外部生产 API。本轮真实证据和复跑脚本见 `experiments/local_files/` 及 `MILESTONE_V1_B_20261022.md`；公共样本音频和转写正文仅留在 runtime，不进 Git。
+
+## 2026-10-22 · V1-C 工作台贯通（已实施，待独立审查）
+
+- 本站需要让文件上传的实际字节进度、服务端准入和 ASR 进度各自可解释。核对 [MDN XHR upload](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/upload) 与 [Uppy XHR 源码](https://github.com/transloadit/uppy/blob/main/packages/@uppy/xhr-upload/src/index.ts)，采用原生 XHR 直接发送 File，复用 V1-B 两步上传会话；不引入 Uppy/tus 的额外状态与依赖。100% 仅代表发送结束，仍显示校验中；取消与准入同时发生时查询会话状态，不能谎报删除成功。
+- 阅读 frontend-design、ui-ux-pro-max、web-design-guidelines，并核对 [Radix Progress](https://www.radix-ui.com/primitives/docs/components/progress) 与 [Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines)。沿用现有蓝白、中文系统字体和编辑器，以原生 progress、焦点可见、44px 操作区、弹窗限高和文件名换行改善入口；未照搬营销页设计或新增组件框架。
+- 核心入口注入 FileCapture/TaskActions，共享工作台保留现有来源组合契约。容量计算复用 organizer 的分块函数，24000 字全文整理限制在排队、检查 Key 和模型调用之前执行；保留全文阅读、编辑、导出与选段研究，不以截断掩盖容量限制。
+- 无 Key 场景增加显式手动笔记：保留来源选段和版本，数据库事务同时保存研究记录、专题及笔记，导出标记未调用 AI。AI 研究仍独立，不把人工理解伪装成模型输出。现有原稿、历史稿与笔记不回填、不迁移。
+- 按 [Python ZipInfo](https://docs.python.org/3/library/zipfile.html#zipfile.ZipInfo) 固定 ZIP 时间戳、Unix 普通文件权限、压缩等级、相对路径排序。相同输入在同运行环境重复打包字节一致；不承诺不同 zlib/编译资源版本仍同哈希。回归额外改变源文件 mtime，避免只验证同一秒构建。
+- 本机真实证据：两条不同的连续 6 分钟中文播客片段完成 HTTP 上传/本地识别/编辑/笔记/导出；其中一次真实云模型选段说明完成，其余离线链在无 Key 进程复验；重启前后 15 张表记录摘要一致。私有 13 张表及 1669 个非数据库文件摘要未变。证据见 experiments/workbench 与里程碑文档，不提交素材或模型输出。
+- 验证边界：组件 DOM 测试不是浏览器视觉验收。Chrome 连接不可用，工具清单无可操作浏览器，预览仅排队打开；触屏、中文输入法、视觉和实际点击播放仍待用户人工确认。一次 AI 成功不能代表总体质量评测。V1-D 的无代理模型下载、独立 Windows 部署不在本轮范围。

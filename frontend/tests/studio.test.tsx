@@ -32,6 +32,20 @@ test('mounts actual editor with saved source and keeps draft separate',async()=>
  expect(screen.getByText('文稿保存验证',{selector:'h1'})).toBeTruthy()
 })
 
+test('oversized source exposes full text but blocks whole-manuscript calls',async()=>{
+ const original=fetch;let generated=0
+ vi.stubGlobal('fetch',vi.fn(async(path:string,options?:RequestInit)=>{
+  if(path.endsWith('/generate'))generated++
+  const response=await original(path,options);const data=await response.json()
+  if(path==='/api/studio/documents/'+task.id&&!options?.method){data.generation_capabilities={raw_characters:36793,manuscript_limit:24000,manuscript:{available:false,reason:'超限'},summary:{available:true,reason:''},quotes:{available:true,reason:''}}}
+  return {ok:true,json:async()=>data}
+ }))
+ render(<App/>);await screen.findByRole('textbox',{name:'整理稿编辑区'})
+ expect(await screen.findByText(/超过完整整理稿 24,000 字上限/)).toBeTruthy()
+ expect((screen.getByRole('button',{name:'生成完整整理稿'}) as HTMLButtonElement).disabled).toBe(true)
+ expect(screen.getByRole('button',{name:'改用选段研究'})).toBeTruthy();expect(generated).toBe(0)
+})
+
 test('editor mutation autosaves a new revision and survives task polling',async()=>{
  render(<App/> )
  const editor=await screen.findByRole('textbox',{name:'整理稿编辑区'})

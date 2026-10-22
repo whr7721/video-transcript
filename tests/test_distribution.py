@@ -14,6 +14,23 @@ from unittest.mock import patch
 
 
 class DistributionTests(unittest.TestCase):
+    def test_archive_reproducible_across_new_staging_and_source_mtime(self):
+        with tempfile.TemporaryDirectory() as temp:
+            first=package.build(Path(temp)/'one')
+            # copyfile creates new staging mtimes, and a different source mtime must not affect ZIP.
+            source=package.ROOT/'distribution/README.md'
+            stamp=source.stat()
+            try:
+                os.utime(source,(stamp.st_atime,stamp.st_mtime-86400))
+                second=package.build(Path(temp)/'two')
+            finally:os.utime(source,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
+            self.assertEqual(first['sha256'],second['sha256'])
+            self.assertEqual(Path(first['archive']).read_bytes(),Path(second['archive']).read_bytes())
+            with zipfile.ZipFile(first['archive']) as archive:
+                names=archive.namelist()
+                self.assertEqual(names,sorted(names))
+                self.assertTrue(all(i.date_time==(1980,1,1,0,0,0) for i in archive.infolist()))
+
     def test_core_refuses_nonempty_unmarked_data_directory(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

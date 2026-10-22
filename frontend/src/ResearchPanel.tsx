@@ -29,21 +29,23 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[searchReady,setSearchReady]=useState(false)
  const [view,setView]=useState('research'),[topic,setTopic]=useState('我的学习与创作'),[personal,setPersonal]=useState('')
  const [topics,setTopics]=useState<Topic[]>([]),[notes,setNotes]=useState<Note[]>([]),[filter,setFilter]=useState(''),[editing,setEditing]=useState<Note|null>(null)
- const [editText,setEditText]=useState('')
+ const [editText,setEditText]=useState(''),[manualText,setManualText]=useState(''),[manualBusy,setManualBusy]=useState(false),[modelReady,setModelReady]=useState(true)
  const taskId=passage.taskId
  useEffect(()=>{setSelection(passage.selection);setSelectedBasis(passage)},[passage.selection,passage.basis,passage.revision,passage.generation_id])
  useEffect(()=>{let disposed=false
   Promise.all([api<ResearchJob[]>('/documents/'+taskId),api<Topic[]>('/topics'),api<Note[]>('/notes')]).then(([js,ts,ns])=>{if(!disposed){setJobs(js);setJob(js[0]||null);setTopics(ts);setNotes(ns)}}).catch(()=>setError('无法载入深入记录，请刷新页面重试。'))
   return()=>{disposed=true}
  },[taskId])
- useEffect(()=>{let disposed=false;fetch('/api/settings').then(r=>r.json()).then(v=>{if(!disposed)setSearchReady(!!v.search_key_configured)}).catch(()=>{});return()=>{disposed=true}},[taskId,settingsVersion])
+ useEffect(()=>{let disposed=false;fetch('/api/settings').then(r=>r.json()).then(v=>{if(!disposed){setSearchReady(!!v.search_key_configured);setModelReady(v.key_configured!==false)}}).catch(()=>{});return()=>{disposed=true}},[taskId,settingsVersion])
  useEffect(()=>{if(!job||!['queued','running'].includes(job.status))return;let stopped=false
   const timer=setInterval(()=>api<ResearchJob>('/jobs/'+job.id).then(next=>{if(!stopped){setJob(next);setJobs(old=>[next,...old.filter(x=>x.id!==next.id)])}}).catch(()=>{if(!stopped)setError('读取任务进度失败，可刷新后继续查看。')}),1500)
   return()=>{stopped=true;clearInterval(timer)}
  },[job?.id,job?.status])
+ async function saveManual(){setError('');setNotice('');setManualBusy(true);try{await api('/documents/'+taskId+'/manual-note',{method:'POST',body:JSON.stringify({...selectedBasis,selection,topic_title:topic,personal:manualText})});await refreshNotes();setManualText('');setNotice('手动笔记已保存，来源与版本一并保留；没有调用AI。')}catch(e){setError((e as Error).message)}finally{setManualBusy(false)}}
  async function refreshNotes(){const [ts,ns]=await Promise.all([api<Topic[]>('/topics'),api<Note[]>('/notes')]);setTopics(ts);setNotes(ns)}
  async function start(){
   setError('');setNotice('')
+  if(!modelReady){setError('AI深入需要硅基流动 Key；仍可先手动记笔记。');return}
   if(online&&!searchReady){setError('联网需要 DeepSeek 官方搜索 Key。请打开设置配置，或取消联网先解释。');return}
   if(mode!=='explain'&&!online){setError('真实案例和外部局限需要开启联网，避免把模型举例当成事实。');return}
   setBusy(true)
@@ -56,6 +58,8 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
  async function confirmClaims(){if(!job)return;setBusy(true);setError('');try{setJob(await api<ResearchJob>('/jobs/'+job.id+'/confirm',{method:'POST',body:JSON.stringify({claim_ids:claimIds,kinds:Object.fromEntries(claimIds.map(id=>[id,claimKinds[id]]))})}))}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  const pending=!!job&&['queued','running'].includes(job.status)
  return <section className="research-panel" aria-label="段落深入与专题笔记">
+  <details className="manual-note-form"><summary>只记自己的理解 · 不调用 AI</summary><p className="research-hint">保存当前选段与来源版本，无需任何 Key。</p><label htmlFor="manual-topic" className="research-label">笔记专题</label><input id="manual-topic" name="manual_topic" autoComplete="off" maxLength={100} value={topic} onChange={e=>setTopic(e.target.value)}/><label htmlFor="manual-note" className="research-label">我的来源笔记</label><textarea id="manual-note" name="manual_note" maxLength={12000} value={manualText} onChange={e=>setManualText(e.target.value)} placeholder="用自己的话记录理解、疑问或下一步…"/><Button disabled={manualBusy||!manualText.trim()||!topic.trim()} onClick={saveManual}><Save size={14} aria-hidden="true"/>保存手动笔记</Button></details>
+  {!modelReady&&<p className="research-hint">AI整理与深入需要硅基流动 Key。<button className="text-link" onClick={onSettings}>配置文本模型 Key</button> 手动笔记不受影响。</p>}
   <div className="research-navigation"><Button size="sm" variant={view==='research'?'default':'ghost'} aria-pressed={view==='research'} onClick={()=>setView('research')}><Search size={14} aria-hidden="true"/>深入一下</Button><Button size="sm" variant={view==='notes'?'default':'ghost'} aria-pressed={view==='notes'} onClick={()=>setView('notes')}><BookOpen size={14} aria-hidden="true"/>专题笔记</Button></div>
   {error&&<p className="inline-error" role="alert">{error}</p>}{notice&&<p className="research-notice" role="status">{notice}</p>}
   {view==='research'?<>
@@ -72,7 +76,7 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
    {jobs.length>1&&<label className="research-label">本篇深入记录<select value={job?.id||''} onChange={e=>{setJob(jobs.find(j=>j.id===e.target.value)||null);setPersonal('');setNotice('')}}>{jobs.map(j=><option value={j.id} key={j.id}>{j.question||j.context.selection.slice(0,35)||j.mode} · {j.status==='awaiting_confirmation'?'待确认命题':j.status==='completed'?'已完成':j.status==='failed'?'未完成':j.status==='cancelled'?'已取消':'处理中'}</option>)}</select></label>}
    {job?.status==='awaiting_confirmation'&&<div className="verify-confirm" aria-label="选择待核实命题"><h3>先确认要查哪句话</h3><p className="research-hint">请对照原话检查数字、时间、否定和范围。未选中的命题不查；拆解不准确可取消后缩小选段。</p><fieldset><legend>选择命题（最多3条）</legend>{job.claims?.map(c=><label className="verify-claim" key={c.id}><input type="checkbox" name="verify_claim" value={c.id} checked={claimIds.includes(c.id)} onChange={e=>setClaimIds(old=>e.target.checked?[...old,c.id]:old.filter(id=>id!==c.id))}/><span><strong>{c.statement}</strong><small>{claimKinds[c.id]==='opinion'?'主观判断／建议，不作真假判定':'待核实事实命题'}</small><blockquote>{c.original}</blockquote></span></label>)}{job.claims?.map(c=><label className="research-label" key={'kind-'+c.id}>第{c.id}条如何处理<select name={'verify_kind_'+c.id} value={claimKinds[c.id]||c.kind} onChange={e=>setClaimKinds(old=>({...old,[c.id]:e.target.value}))}><option value="fact">按可检验事实查证</option><option value="opinion">按主观判断保留</option></select></label>)}</fieldset><Button disabled={busy||!claimIds.length} onClick={confirmClaims}>确认所选命题，开始核实</Button></div>}
    {job?.status==='failed'&&<p className="inline-error" role="alert">{job.error}</p>}{job?.status==='cancelled'&&<p className="research-hint">任务已取消，正在进行的远端请求可能仍计费。</p>}
-   {job?.status==='completed'&&<div className="research-result"><h3>{job.question||'这段内容的深入理解'}</h3><a className="research-origin" href={'/studio/?task='+job.task_id}>查看来源文稿</a><p className="research-hint">以下针对该次选段与文稿版本生成，切换选段不会自动改写已有结果。</p>{job.warnings.map((w,i)=><p className="research-warning" key={i}>{w}</p>)}
+   {job?.status==='completed'&&<div className="research-result"><h3>{job.question||'这段内容的深入理解'}</h3>{job.mode==='manual'&&<p className="research-hint">手动记录 · 未调用AI</p>}<a className="research-origin" href={'/studio/?task='+job.task_id}>查看来源文稿</a><p className="research-hint">以下针对该次选段与文稿版本生成，切换选段不会自动改写已有结果。</p>{job.warnings.map((w,i)=><p className="research-warning" key={i}>{w}</p>)}
     {job.sections?.map((item,i)=><section className="research-answer" key={i}><h4>{item.heading}</h4><p>{item.text}</p><small>{item.support_status==='model_checked'?'附来源摘录 · AI已复核，非人工核实':item.basis==='has_source_excerpt'?'附来源摘录，仍需判断是否支持结论':'AI分析 · 待核实'}</small>{item.support_status==='needs_review'&&<p className="research-warning">来源支持不足：{item.support_note}</p>}{item.citations.map((c,j)=>{const source=job.sources.find(s=>s.id===c.source_id);return <details key={j}><summary>{source?.title||'本次文稿上下文'}</summary>{c.relation&&<p className="research-hint">证据关系：{c.relation==='supports'?'支持':c.relation==='contradicts'?'反驳':'部分支持'}（AI建议）</p>}<blockquote>{c.quote}</blockquote>{source?.url?<a href={source.url} target="_blank" rel="noreferrer">打开原始来源 <ExternalLink size={12} aria-hidden="true"/></a>:<p className="research-hint">来自本次选段上下文，不代表作者观点已被外部验证。</p>}</details>})}</section>)}
     {!!job.open_questions?.length&&<details><summary>尚未解决的问题</summary><ul>{job.open_questions.map((q,i)=><li key={i}>{q}</li>)}</ul></details>}
     {!!job.sources.filter(s=>s.kind==='web').length&&<details className="research-sources"><summary>本次读取的外部来源</summary>{job.sources.filter(s=>s.kind==='web').map(s=><p key={s.id}><a href={s.url} target="_blank" rel="noreferrer">{s.title}</a><small>{s.published_at?'发布：'+s.published_at:''} · 读取：{new Date(s.retrieved_at*1000).toLocaleDateString('zh-CN')}</small></p>)}</details>}

@@ -17,10 +17,36 @@ EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix='shiwen-organize
 LOCK = threading.RLock()
 
 
+def source_chunks(task):
+    chunks,chunk,size=[],[],0
+    for source in documents.sources(task):
+        if len(source['text'])>6000:raise ValueError('来源段超过6000字，不能自动截断；请改用选段研究。')
+        if chunk and size+len(source['text'])>6000:
+            chunks.append(chunk);chunk=[];size=0
+        chunk.append({'id':source['id'],'text':source['text']});size+=len(source['text'])
+    if chunk:chunks.append(chunk)
+    if len(chunks)>8:raise ValueError('原稿超过8块整理容量；全文仍完整保留，请改用选段研究。')
+    return chunks
+
+
+def capabilities(task):
+    raw=task.get('result',{}).get('text','')
+    reason='' if raw.strip() and len(raw)<=24000 else '完整整理稿支持24000字以内原稿；全文不截断，仍可阅读、编辑、导出和选段研究。'
+    try:source_chunks(task);other=''
+    except ValueError as exc:other=str(exc)
+    return {'raw_characters':len(raw),'manuscript_limit':24000,
+            'manuscript':{'available':not bool(reason),'reason':reason},
+            'summary':{'available':not bool(other),'reason':other},
+            'quotes':{'available':not bool(other),'reason':other}}
+
+
 def start(task, action, revision):
     doc = documents.get(task)
     if revision != doc['revision']: raise documents.Conflict('请先保存当前编辑稿，再生成整理结果。')
     if action not in {'paragraphs','summary','quotes','manuscript'}: raise ValueError('未知整理操作。')
+    if action!='paragraphs':
+        capability=capabilities(task)[action]
+        if not capability['available']:raise ValueError(capability['reason'])
     if action != 'paragraphs' and not settings.cloud_key(): raise ValueError('请先在设置中配置硅基流动 Key；手动编辑和分段仍可使用。')
     fingerprint = json.dumps([task.get('result',{}).get('text'), doc['content'] if action == 'paragraphs' else '', action, revision, MODEL, VERSION], ensure_ascii=False)
     ident = hashlib.sha256(fingerprint.encode()).hexdigest()[:16]
@@ -110,14 +136,7 @@ def run(job, task, doc):
             job['items']=[]
         else:
             sources=documents.sources(task)
-            chunks, chunk, size = [], [], 0
-            for source in sources:
-                if len(source['text']) > 6000: raise RuntimeError('来源段过长，暂不自动截断。请先使用短段文稿。')
-                if chunk and size+len(source['text'])>6000:
-                    chunks.append(chunk);chunk=[];size=0
-                chunk.append({'id':source['id'],'text':source['text']});size+=len(source['text'])
-            if chunk: chunks.append(chunk)
-            if len(chunks)>8: raise RuntimeError('原稿超过本轮整理容量；请先选择更短的视频。')
+            chunks=source_chunks(task)
             results, rejected, tokens = [], 0, 0
             for chunk in chunks:
                 value, usage = call_model(chunk,job['action'])

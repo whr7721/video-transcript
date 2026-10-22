@@ -51,7 +51,14 @@ def get_document(ident:str):
     record=next((r for r in media_buffer.inventory() if r['id']==ident),None)
     return {**documents.get(value),'audio_available':(store.DATA/'jobs'/ident/'audio.wav').is_file(),
             'video_available':(store.DATA/'jobs'/ident/'original.mp4').is_file(),
-            'media_pinned':bool(record and record['pinned']), 'model':organizer.MODEL}
+            'media_pinned':bool(record and record['pinned']), 'model':organizer.MODEL,
+            'generation_capabilities':organizer.capabilities(value)}
+
+
+@router.get('/documents/{ident}/media-status')
+def media_status(ident:str):
+    task(ident)
+    return {'audio_available':(store.DATA/'jobs'/ident/'audio.wav').is_file()}
 
 
 @router.post('/documents/{ident}/pin')
@@ -95,7 +102,7 @@ def version(ident:str,revision:int):
 def export(ident:str,kind:str):
     value=task(ident);doc=documents.get(value)
     if kind not in {'json','txt'}: raise HTTPException(404,'不支持的格式')
-    payload=json.dumps(doc,ensure_ascii=False,indent=2) if kind=='json' else documents.text(doc['content'])
+    payload=json.dumps({**doc,'title':value.get('title',''),'source':value.get('source',{})},ensure_ascii=False,indent=2) if kind=='json' else documents.text(doc['content'])
     return Response(payload,media_type='application/json' if kind=='json' else 'text/plain; charset=utf-8',
                     headers={'Content-Disposition':f'attachment; filename="shiwen-draft-{ident}.{kind}"'})
 

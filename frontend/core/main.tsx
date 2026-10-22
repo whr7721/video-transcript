@@ -4,12 +4,14 @@ import {createRoot} from 'react-dom/client'
 import {App} from '../src/Studio'
 import ArticleLibrary from '../src/ArticleLibrary'
 import type {SourceUI} from '../src/source-ui'
+import FileCapture,{FileTaskActions} from './FileCapture'
 
 const sourceUI:SourceUI={
  empty:'这里将保存你的本地音视频文稿。',
- description:'文件处理接口已就绪，图形化导入将在下一阶段开放。',
- introduction:'原稿、整理与个人笔记，在这里连起来。\n可先通过随包命令行导入音视频；图形化导入将在下一阶段开放。',
- Capture:()=> <div className="dialog-form"><p>本地音视频可通过随包 import_file.py 提交，图形化上传将在下一阶段开放。也可以使用图文素材库，导入文章或粘贴正文。</p><a className="text-link" href="/studio/?view=library">打开图文素材库</a></div>,
+ description:'选择本地音视频，转写、回听与笔记在同一个工作台完成。',
+ introduction:'从一段本地声音开始。\n原话、编辑稿与自己的理解，各自保留，在这里连起来。',
+ Capture:FileCapture,
+ TaskActions:FileTaskActions,
  Navigation:()=>null,
  Management:()=> <span>本地内容工作台</span>,
  SettingsLink:()=>null,

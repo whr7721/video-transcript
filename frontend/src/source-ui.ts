@@ -3,7 +3,8 @@ export type SourceUI={
  empty:string
  description:string
  introduction:string
- Capture:ComponentType<{onCreated:(id:string)=>Promise<void>;notify:(message:string)=>void}>
+ Capture:ComponentType<{onCreated:(id:string)=>Promise<void>;notify:(message:string)=>void;onBusyChange?:(busy:boolean)=>void}>
+ TaskActions?:ComponentType<{task:{id:string;status:string};onRefresh:()=>Promise<void>;notify:(message:string)=>void}>
  Navigation:ComponentType
  Management:ComponentType
  SettingsLink:ComponentType

@@ -30,6 +30,18 @@ class NoteEdit(BaseModel):
     personal:str=Field(max_length=12000)
 
 
+class ManualNote(ResearchInput):
+    topic_title:str=Field(min_length=1,max_length=100)
+    personal:str=Field(min_length=1,max_length=12000)
+
+
+@router.post('/documents/{ident}/manual-note')
+def manual_note(ident:str,body:ManualNote):
+    try:return research.manual_note(task(ident),body)
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
 @router.post('/documents/{ident}')
 def start(ident:str,body:ResearchInput):
     try:return research.start(task(ident),body)

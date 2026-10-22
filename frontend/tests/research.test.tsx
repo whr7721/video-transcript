@@ -51,6 +51,22 @@ test('real case search waits for configured key instead of inventing cases',asyn
  fireEvent.click(screen.getByRole('button',{name:'配置搜索 Key'}));expect(onSettings).toHaveBeenCalledOnce()
 })
 
+test('manual source note works without model key and never starts AI',async()=>{
+ const original=fetch
+ vi.stubGlobal('fetch',vi.fn(async(path:string,options?:RequestInit)=>{
+  if(path==='/api/settings')return {ok:true,json:async()=>({key_configured:false,search_key_configured:false})}
+  if(path.endsWith('/manual-note')){saves++;return {ok:true,json:async()=>({id:'manual-1'})}}
+  return original(path,options)
+ }))
+ render(<ResearchPanel passage={passage} onSettings={()=>{}}/>)
+ await screen.findByRole('button',{name:'配置文本模型 Key'})
+ screen.getByText('只记自己的理解 · 不调用 AI').closest('details')!.open=true
+ fireEvent.change(screen.getByLabelText('我的来源笔记'),{target:{value:'我会先验证前提。'}})
+ fireEvent.click(screen.getByRole('button',{name:'保存手动笔记'}))
+ await screen.findByText('手动笔记已保存，来源与版本一并保留；没有调用AI。')
+ expect(saves).toBe(1);expect(starts).toBe(0)
+})
+
 test('saving settings updates search availability without losing selected passage',async()=>{
  const {rerender}=render(<ResearchPanel passage={passage} onSettings={()=>{}} settingsVersion={0}/>)
  await screen.findByText('联网功能需要单独配置 DeepSeek 官方搜索 Key。')
