@@ -137,30 +137,7 @@ def download_video(urls, target, progress):
     raise RuntimeError("视频下载失败或直链已过期，请重试以重新获取。")
 
 
-def probe_media(path):
-    result = subprocess.run(["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", str(path)],
-                            check=True, capture_output=True, timeout=35)
-    info = json.loads(result.stdout)
-    if not any(s.get("codec_type") == "audio" for s in info.get("streams", [])):
-        raise RuntimeError("视频没有可识别的音轨。")
-    duration = float(info.get("format", {}).get("duration", 0))
-    if duration <= 0:
-        raise RuntimeError("无法读取视频时长。")
-    return duration
-
-
-def extract_audio(video, audio):
-    if audio.exists():
-        try:
-            return probe_media(audio)
-        except Exception:
-            pass
-    partial = audio.with_name("audio.partial.wav")
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(video), "-vn", "-ac", "1", "-ar", "16000",
-                    "-c:a", "pcm_s16le", str(partial)], check=True, capture_output=True, timeout=180)
-    duration = probe_media(partial)
-    partial.replace(audio)
-    return duration
+from media_io import probe_media, extract_audio
 
 
 def run_task(task, update, cloud_key=""):
@@ -208,26 +185,8 @@ def run_task(task, update, cloud_key=""):
             pass
     media_buffer.ensure_space(reserve)
     extract_audio(video, audio)
-    update(duration=round(duration, 2), stage="transcribing", message="正在识别讲话，原文会逐段出现")
-    from transcribe import local_transcribe, cloud_transcribe
-
-    def progress(fraction, count, text):
-        update(progress=round(fraction, 4), segment_count=count, partial_text=text,
-               message=f"已识别 {count} 个语音片段")
-
-    if task["provider"] == "cloud":
-        result = cloud_transcribe(audio, directory / "cloud_chunks", progress, cloud_key)
-    else:
-        result = local_transcribe(audio, directory / "local_chunks", progress)
-    result.update({"video_id": video_id, "title": title, "author": author,
-                   "source_url": f"https://www.douyin.com/video/{video_id}", "duration": duration,
-                   "total_seconds": round(time.perf_counter() - start, 2), "created_at": time.time(),
-                   "cost_yuan": 0, "review_note": "原文由语音识别生成，保留讲话内容；人名、数字和专有名词建议回听核对。未进行全文人工校对。"})
-    atomic_json(directory / "transcript.json", result)
-    (directory / "transcript.txt").write_text(result["text"], encoding="utf-8")
-    markdown = f"# {title}\n\n作者：{author}\n\n来源：{result['source_url']}\n\n> {result['review_note']}\n\n## 讲话全文\n\n{result['text']}\n"
-    (directory / "transcript.md").write_text(markdown, encoding="utf-8")
-    media_buffer.state(task['id'], 'awaiting_review')
-    update(status="completed", stage="completed", progress=1, partial_text="", completed_at=time.time(),
-           result=result, media_available=video.exists(), elapsed_seconds=result["total_seconds"],
-           message="全文已保存，音视频已进入缓冲，确认最终稿后才可清理")
+    from transcript_stage import finish_transcription
+    finish_transcription(task, update, directory, audio, duration,
+                         {"video_id": video_id, "title": title, "author": author,
+                          "source_url": f"https://www.douyin.com/video/{video_id}"},
+                         start, video.exists(), cloud_key)

@@ -18,6 +18,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+if os.environ.get('SHIWEN_PROFILE') == 'core':
+    raise RuntimeError('私有入口和核心入口必须使用独立进程')
+
 import settings
 import store
 import batches
@@ -32,11 +35,25 @@ from research_api import router as research_router
 from studio_api import router as studio_router
 from pipeline import MC_PY, input_url, run_task
 from session import prepare_session
+from source_contract import TaskHandlers
 
 ROOT = Path(__file__).resolve().parent
 TASKS = queue.Queue()
 MUTEX = threading.RLock()
 LOGIN = None
+SOURCE_HANDLERS = TaskHandlers()
+SOURCE_HANDLERS.register('platform_video', lambda task, update: run_task(
+    task, update, settings.cloud_key() if task['provider'] == 'cloud' else ''))
+SOURCE_HANDLERS.register('platform_creator', lambda task, update: batches.run_creator(task, update, TASKS.put))
+
+
+def private_handler(task):
+    # Legacy records are interpreted here, without migrating stored user data.
+    source = task.get('source') or {'kind': 'platform_creator' if task.get('kind') == 'creator' else 'platform_video'}
+    handler = SOURCE_HANDLERS.resolve({'source': source})
+    if handler is None:
+        raise ValueError('当前入口未注册此来源处理器')
+    return handler
 
 
 def worker():
@@ -61,10 +78,7 @@ def worker():
                 if parent and parent.get('paused'):
                     update(status='paused', message='批次已暂停，等待继续')
                     continue
-            if task.get('kind') == 'creator':
-                batches.run_creator(task, update, TASKS.put)
-            else:
-                run_task(task, update, settings.cloud_key() if task["provider"] == "cloud" else "")
+            private_handler(task)(task, update)
         except media_buffer.BufferFull as exc:
             update(status='waiting_space',stage='waiting_space',error=None,message=str(exc))
         except Exception as exc:
@@ -83,11 +97,7 @@ def worker():
 
 @asynccontextmanager
 async def lifespan(app):
-    store.init()
-    media_buffer.migrate_known()
-    organizer.recover()
-    research.recover()
-    articles.recover()
+    recover_shared()
     discovery.recover()
     for task in reversed(store.all_tasks()):
         if task["status"] in {"queued", "running"}:
@@ -102,25 +112,8 @@ async def lifespan(app):
 
 
 app = FastAPI(title="拾文 · 视频原文工作台", lifespan=lifespan, docs_url=None, redoc_url=None)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"])
-
-
-@app.middleware("http")
-async def local_security(request: Request, call_next):
-    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-        origin = request.headers.get("origin")
-        if origin and origin != f"{request.url.scheme}://{request.headers.get('host')}":
-            return JSONResponse({"detail": "仅允许从本工具页面提交任务。"}, status_code=403)
-        if request.headers.get("sec-fetch-site") == "cross-site":
-            return JSONResponse({"detail": "不允许跨站请求。"}, status_code=403)
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
-    if request.url.path.startswith("/api"):
-        response.headers["Cache-Control"] = "no-store"
-    return response
-
+from app_shared import install_shared, recover_shared
+install_shared(app)
 
 class NewTask(BaseModel):
     share_text: str = Field(min_length=1, max_length=5000)
@@ -331,9 +324,6 @@ def login():
     return {"status": "opened"}
 
 
-app.include_router(studio_router)
-app.include_router(research_router)
-app.include_router(article_router)
 app.include_router(discovery_router)
 
 

@@ -1,17 +1,18 @@
 import json
+import os
 import sqlite3
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-DATA = ROOT / "data"
+DATA = Path(os.environ.get("SHIWEN_DATA_DIR", ROOT / "data")).resolve()
 DB = DATA / "tasks.sqlite3"
 
 
 @contextmanager
 def connect():
-    DATA.mkdir(exist_ok=True)
+    DATA.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB, timeout=20)
     db.row_factory = sqlite3.Row
     try:

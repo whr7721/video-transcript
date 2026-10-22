@@ -14,7 +14,7 @@ async function api<T>(path:string,init?:RequestInit):Promise<T>{
  return r.json()
 }
 const stateName=(s:string)=>({queued:'等待导入',running:'正在导入',ready:'可阅读',failed:'需要处理'}[s]||s)
-export default function ArticleLibrary(){
+export default function ArticleLibrary({extraNavigation}:{extraNavigation?:React.ReactNode}){
  const [items,setItems]=useState<Item[]>([]),[item,setItem]=useState<Item|null>(null),[filter,setFilter]=useState('')
  const [dialog,setDialog]=useState(false),[kind,setKind]=useState('url'),[content,setContent]=useState(''),[title,setTitle]=useState(''),[url,setUrl]=useState('')
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[note,setNote]=useState(''),[question,setQuestion]=useState(''),[saving,setSaving]=useState(false)
@@ -65,7 +65,7 @@ export default function ArticleLibrary(){
    <div className="article-nav-title"><h1>图文素材</h1><span>{items.length}</span></div>
    <label className="article-search"><Search size={16}/><span className="sr-only">搜索图文标题或作者</span><input type="search" autoComplete="off" name="article_search" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="标题、作者…"/></label>
    <nav className="article-item-list" aria-label="已导入材料">{items.filter(i=>(i.title+' '+(i.author||'')).includes(filter)).map(i=><button key={i.id} className={item?.id===i.id?'selected':''} aria-current={item?.id===i.id?'page':undefined} onClick={()=>load(i.id).catch(e=>setMessage(e.message))}><FileText size={17}/><span><strong>{i.title}</strong><small>{i.author||'手动导入或待解析'} · {stateName(i.status)}</small></span></button>)}{items.length===0&&<p>先留下一篇真正想读的内容。<br/>支持文章链接、粘贴正文和网页 HTML。</p>}</nav>
-   <a className="article-back" href="/studio/?view=discovery">抖音话题发现<ArrowUpRight size={16}/></a>
+   {extraNavigation}
    <a className="article-back" href="/studio/"><ArrowLeft size={16}/>视频文稿工作台</a>
   </aside>
   <main id="article-reading" className="article-main" aria-busy={item?.status==='running'}>

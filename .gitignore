@@ -10,6 +10,8 @@ __pycache__/
 
 node_modules/
 frontend/dist/
+frontend/dist-core/
+data-core/
 *.tsbuildinfo
 .env.*
 !.env.example

@@ -94,3 +94,23 @@
 **已知适配器边界（源码发现）**：一页返回超过总上限时，适配器会把未保留作品也记入seen_ids并推进整页游标；续采可能跳过页内剩余候选。多关键词结束判断、缺失data被当空页、启动失败覆盖输出、登录/验证/限流细分也不能仅凭契约声明视为已验收。本站对覆盖输出做数据保护；未修改ZCode适配器，M2前交ZCode修复分页语义并增加页2失败/异常数据fixtures。当前搜索候选明确标为有限采样，不提供“全部收集完成”承诺。
 
 **暂缓/衔接**：M1不调模型扩词/打分、不下载、不转写；M2须显式冻结选择、重取详情/时长，复用下载与5GB缓冲；未知时长不能凭本页标签绕过M2限制。M3再根据全文抽客户、交付、获客、成本及证据缺口。许可证仍继承MediaCrawler非商业学习限制，CLI隔离没有改变授权；公众商业化前另行处理。
+
+
+## 2026-10-21：干净核心V1方案（候选，待用户确认，未动工）
+
+用户要求本地音视频入口优先于抖音M2，并确认独立部署验收系统为Windows 10/11。读取clean-core-v1-intel及背景报告后，核对源码发现：ASR可复用，但app/pipeline启动装配、固定媒体清单、抖音来源链接、模型下载强制7890代理和manuscript的24000字上限均需处理。“全链100%复用”和“一小时2—3分钟”不可作为实施事实或验收承诺。
+
+推荐单份核心＋静态私有来源适配层＋白名单生成干净包；公开入口不导入、不注册、不打包抖音代码，私有启动保留原data，干净包独立data-core。不把当前私有Git历史公开。只隐藏菜单或维持两个长期分叉均不采用。V1拟支持单文件1GB、中文本地CPU、最长两小时；长稿完整阅读/导出与选段研究，不顺手扩大全文AI整理容量。
+
+外部核验：[Buzz](https://github.com/chidiwilliams/buzz)及[file_transcriber源码](https://github.com/chidiwilliams/buzz/blob/main/buzz/transcriber/file_transcriber.py)借鉴来源/转写分段，不能直接依赖其PyQt6+yt-dlp类；[Open Notebook](https://github.com/lfnovo/open-notebook)借鉴来源/笔记分离而不迁移完整栈，不据市场报告宣布无人覆盖；[Starlette流式请求](https://starlette.dev/requests/)采用已有request.stream原始单文件体，不把multipart max_part_size误当文件大小上限；[FFmpeg协议控制](https://ffmpeg.org/ffmpeg-protocols.html)结合容器允许清单，禁止外部引用型输入。设计skills用于复用现有工作台和补上传进度/恢复，不重做视觉系统。
+
+证据等级：本轮为本机只读源码和外部官方/原仓库核验，无新功能或长音频实测。完整候选方案、四里程碑与验收门见CLEAN_CORE_V1_PLAN_20261021.md；待用户确认后实施，Docker/RSS/公开发布/英文后排。
+# 2026-10-22 · V1-A 核心装配与发行边界（已实施，待独立审查）
+
+- 本站问题：启动模块、任务调度、前端静态 import 和 public 历史页面同时耦合私有采集器，隐藏菜单不能得到可分享的核心。
+- 采用 [FastAPI 多模块 APIRouter 装配](https://fastapi.tiangolo.com/tutorial/bigger-applications/)：`app_shared.py` 统一已有编辑/研究/文章 API、安全中间件及恢复；私有 `app.py` 保持旧路由，新增 `app_core.py` 只装配核心。不是复制一套处理逻辑。
+- 采用 [Vite 独立 root/publicDir 构建](https://vite.dev/config/shared-options.html)：共享 `Studio.tsx` 接收显式 `SourceUI` 组件；私有来源表单及导航移出共享文件，核心入口不 import 私有入口。独立 public 目录只含 Logo，避免历史 HTML 自动复制进发行包。沿用现有 React/Tiptap/Radix，无新增依赖。
+- 不采用运行时 feature flag 隐藏私有模块、源码字符串替换或整仓库复制：这些无法可靠满足全目录排除与数据隔离。内部白名单 builder 只复制核心源码和已编译资源，并扫描所有路径和全部字节、最终 ZIP 解压重扫；验证器含禁词，故留在内部仓库。
+- 本站复用点：FFmpeg 探测/音轨转换移至 `media_io.py`；转写、片段缓存调用及导出落盘移至 `transcript_stage.py`，私有管线调用共享阶段。保留旧任务 ID/结果结构，通过私有调度层解释历史来源，不批量迁移用户记录。
+- 成本与边界：增加两个入口及前端组合契约，后续仍须同时回归；核心数据独立且拒绝未标记的非空目录。V1-A 不包含文件上传、长音频压力、模型下载器或同学独立部署。共享媒体阶段仍保留旧转换限制，V1-B 将完成本地文件准入和额度预留。
+- 证据：现有回归与新增发行隔离测试、核心/私有前端构建、最终包扫描及私有数据前后摘要，见 `MILESTONE_V1_A_20261022.md`。没有调用付费模型、没有真实平台爬取，没有把 mock 当模型质量验收。
