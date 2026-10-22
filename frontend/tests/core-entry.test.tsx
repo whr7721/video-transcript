@@ -11,7 +11,7 @@ test('core entry exposes an honest preview and cannot submit a source link',asyn
  render(<CoreApp/>)
  expect(await screen.findByText('这里将保存你的本地音视频文稿。')).toBeTruthy()
  fireEvent.click(screen.getAllByRole('button',{name:/新建提取/})[0])
- expect(await screen.findByText('当前为核心隔离预览，本地文件入口将在下一阶段开放。')).toBeTruthy()
+ expect(await screen.findByText('文件处理接口已就绪，图形化导入将在下一阶段开放。')).toBeTruthy()
  expect(screen.queryByRole('textbox',{name:/分享链接/})).toBeNull()
  expect(document.querySelector('[href*="view=discovery"]')).toBeNull()
  expect(fetcher.mock.calls.some(([,options]:any)=>options?.method==='POST')).toBe(false)

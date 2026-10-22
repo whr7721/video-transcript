@@ -7,9 +7,9 @@ import type {SourceUI} from '../src/source-ui'
 
 const sourceUI:SourceUI={
  empty:'这里将保存你的本地音视频文稿。',
- description:'当前为核心隔离预览，本地文件入口将在下一阶段开放。',
- introduction:'原稿、整理与个人笔记，在这里连起来。\n本地文件入口将在下一阶段开放；现在可以使用图文素材库。',
- Capture:()=> <div className="dialog-form"><p>本地文件入口正在准备中。当前版本可使用图文素材库，导入文章或粘贴正文。</p><a className="text-link" href="/studio/?view=library">打开图文素材库</a></div>,
+ description:'文件处理接口已就绪，图形化导入将在下一阶段开放。',
+ introduction:'原稿、整理与个人笔记，在这里连起来。\n可先通过随包命令行导入音视频；图形化导入将在下一阶段开放。',
+ Capture:()=> <div className="dialog-form"><p>本地音视频可通过随包 import_file.py 提交，图形化上传将在下一阶段开放。也可以使用图文素材库，导入文章或粘贴正文。</p><a className="text-link" href="/studio/?view=library">打开图文素材库</a></div>,
  Navigation:()=>null,
  Management:()=> <span>本地内容工作台</span>,
  SettingsLink:()=>null,

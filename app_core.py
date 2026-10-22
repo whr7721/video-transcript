@@ -24,8 +24,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from app_shared import install_shared, recover_shared
 from source_contract import TaskHandlers
+import local_files
+import core_instance
 
-handlers = TaskHandlers()  # File admission/processing is the next milestone.
+handlers = TaskHandlers()
+handlers.register('local_file', local_files.run_task)
 
 
 @asynccontextmanager
@@ -36,13 +39,19 @@ async def lifespan(app):
         raise RuntimeError('该目录不是核心数据目录；请指定空目录，不能自动迁移已有数据')
     CORE_DATA.mkdir(parents=True, exist_ok=True)
     marker.write_text('core-v1', encoding='utf-8')
-    recover_shared()
-    # Unknown source tasks are never dispatched or rewritten by this entry.
-    yield
+    instance=core_instance.acquire(CORE_DATA/'.instance.lock')
+    try:
+        recover_shared()
+        local_files.start(handlers)
+        yield
+    finally:
+        local_files.stop()
+        instance.close()
 
 
 app = FastAPI(title='拾文 · 本地内容工作台', lifespan=lifespan, docs_url=None, redoc_url=None)
 install_shared(app)
+app.include_router(local_files.router)
 
 
 @app.get('/api/health')
@@ -50,7 +59,8 @@ def health():
     from transcribe import MODEL
     ready = all(p.is_file() for p in (MODEL/'model.int8.onnx', MODEL/'tokens.txt', ROOT/'models/silero_vad.onnx'))
     return {'status': 'ok', 'profile': 'core', 'models_ready': ready,
-            'settings': settings.public(), 'capabilities': {'file_import': False, 'sources': handlers.kinds()}}
+            'settings': settings.public(), 'capabilities': {'file_import': True, 'sources': handlers.kinds(),
+            'max_file_bytes': 1_000_000_000,'max_duration_sec':7200}}
 
 
 @app.get('/api/tasks')
@@ -103,9 +113,11 @@ def set_settings(body: SettingsInput):
 
 @app.post('/api/studio/buffer/resume')
 def resume_buffer():
-    import media_buffer
-    media_buffer.ensure_space()
-    return {'resumed': 0, 'message': '本地文件任务入口尚未开放'}
+    return local_files.resume()
+
+
+import studio_api
+studio_api.on_finalize=resume_buffer
 
 
 assets = ROOT/'frontend'/'dist-core'

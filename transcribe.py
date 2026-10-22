@@ -17,7 +17,7 @@ def get_recognizer():
     global _recognizer
     if _recognizer is None:
         if not (MODEL / "model.int8.onnx").exists():
-            raise RuntimeError("本地模型未就绪，请运行 setup_models.py。")
+            raise RuntimeError("本地模型未就绪，请按当前版本 README 准备模型文件。")
         import sherpa_onnx
         _recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
             model=str(MODEL / "model.int8.onnx"), tokens=str(MODEL / "tokens.txt"),

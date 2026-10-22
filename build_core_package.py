@@ -11,6 +11,7 @@ FORBIDDEN = (b'douyin', b'mediacrawler')
 BACKEND = (
     'app_core.py', 'app_shared.py', 'source_contract.py', 'store.py', 'settings.py',
     'media_io.py', 'transcript_stage.py', 'transcribe.py', 'media_buffer.py',
+    'local_files.py', 'local_media.py', 'core_instance.py', 'import_file.py',
     'documents.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
     'research_api.py', 'studio_api.py', 'articles.py', 'article_api.py',
     'article_parser.py', 'article_fetch.py', 'requirements.lock.txt', 'requirements.txt',
@@ -53,7 +54,7 @@ def copy(source, target):
 
 
 def build(output=None):
-    output = Path(output or ROOT/'runtime'/'v1-a').resolve()
+    output = Path(output or ROOT/'runtime'/'v1-b').resolve()
     output.mkdir(parents=True, exist_ok=True)
     # Fresh staging prevents an old output or accidental extra file being carried forward.
     with tempfile.TemporaryDirectory(prefix='core-package-') as temporary:
@@ -80,7 +81,7 @@ def build(output=None):
                     for p in staging.rglob('*') if p.is_file()}
         (staging/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         count = verify(staging)
-        archive = output/'shiwen-core-v1-a.zip'
+        archive = output/'shiwen-core-v1-b.zip'
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
             for p in staging.rglob('*'):
                 if p.is_file():

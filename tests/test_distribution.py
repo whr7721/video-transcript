@@ -100,7 +100,8 @@ before=store.get(record['id'])
 with TestClient(app_core.app) as client:
     health=client.get('/api/health').json()
     assert health['profile']=='core' and health['models_ready'] is False
-    assert health['capabilities']=={'file_import':False,'sources':[]}
+    assert health['capabilities']['file_import'] is True
+    assert health['capabilities']['sources']==['local_file']
     for path in ('/api/login','/api/batches','/api/discovery/search','/api/tasks'):
         assert client.post(path,json={'share_text':'https://example.com'}).status_code in (404,405)
     assert client.post('/api/settings',headers={'Origin':'https://evil.example'},json={}).status_code==403

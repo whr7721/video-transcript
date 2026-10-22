@@ -114,3 +114,14 @@
 - 本站复用点：FFmpeg 探测/音轨转换移至 `media_io.py`；转写、片段缓存调用及导出落盘移至 `transcript_stage.py`，私有管线调用共享阶段。保留旧任务 ID/结果结构，通过私有调度层解释历史来源，不批量迁移用户记录。
 - 成本与边界：增加两个入口及前端组合契约，后续仍须同时回归；核心数据独立且拒绝未标记的非空目录。V1-A 不包含文件上传、长音频压力、模型下载器或同学独立部署。共享媒体阶段仍保留旧转换限制，V1-B 将完成本地文件准入和额度预留。
 - 证据：现有回归与新增发行隔离测试、核心/私有前端构建、最终包扫描及私有数据前后摘要，见 `MILESTONE_V1_A_20261022.md`。没有调用付费模型、没有真实平台爬取，没有把 mock 当模型质量验收。
+# 2026-10-22 · V1-B 本地文件链路（已实施，待 ZCode 审查）
+
+- 本站采用 [Starlette Request.stream](https://starlette.dev/requests/) 和 [原始 requests.py](https://github.com/Kludex/starlette/blob/main/starlette/requests.py) 的原始请求体流。两步创建/PUT 上传会话让取消有稳定 ID；不采用 multipart、Uppy/tus 或新增中间件，避免把 multipart 字段上限误当文件总上限。按实收字节校验，Content-Length 只作一致性检查；支持无 Content-Length 请求。
+- 借鉴 [Buzz 文件转写阶段划分](https://github.com/chidiwilliams/buzz/blob/main/buzz/transcriber/file_transcriber.py)，复用本站已有 ASR/cache/导出阶段；未复制其 PyQt/下载器依赖或任务框架。新增小型本地串行 worker 和源码不含平台依赖的 HTTP/CLI 入口。
+- 按 [FFmpeg 协议](https://ffmpeg.org/ffmpeg-protocols.html) 与 [容器文档](https://ffmpeg.org/ffmpeg-formats.html) 限定 file 协议、四类容器，检查实际签名、音轨、有限时长，禁用 MOV 外部数据引用。强制仅第一条音轨，限制 64 轨和 probe 输出字段；完整解码失败不得进入 ASR。
+- 不把 probe 时长当可信资源预算：转换先预留，输出出现后减少剩余预留，增加超时和输出上限；预留留出检测虚假时长及 muxer 尾包的空间。到达保护上限后不把截断的 WAV 宣布为完整成功。
+- 落地到 `local_files.py`/`local_media.py`/`media_buffer.py`：暂存与原文件/WAV 均计费；同字节按模型/语种配置唯一去重；重导入只补媒体，不重写已有原稿/人工稿。OS 实例锁保证同一核心目录只有一个 quota writer；线程锁、串行写入和转换预留共同避免超卖。原私有任务不迁移。
+- 真实经验：接近 5GB 时，仅清理少量已确认素材可能仍不足，必须保留等待状态；lease 会按实际五分钟过期，不能把一次 touch 当永久保护。显式取消还要结束等待下一网络块的协程，否则客户端不关闭 socket 时会占上传槽到超时；已补真实 socket 验收。
+- 实验调度曾把六格式与长文件拒绝同时上传，收到预期单槽 409。调整为串行重跑；不把 409 当媒体解码失败。短语音格式样本、真实两小时连续播客及实写配额占位文件分别标注，不能互相替代。
+- 仍待改进：本机大 WAV 的流式上传约 95 秒，说明有逐块配额盘点/路径检查开销；没有假称磁盘极限吞吐。V1-C 可按 profile 结果优化批次盘点与进度，但需保留实收计费和取消边界。长稿全文整理仍有既有容量限制，V1-C 前置提示；V1-D 的无代理模型下载未执行。
+- 无新增依赖、模型或外部生产 API。本轮真实证据和复跑脚本见 `experiments/local_files/` 及 `MILESTONE_V1_B_20261022.md`；公共样本音频和转写正文仅留在 runtime，不进 Git。

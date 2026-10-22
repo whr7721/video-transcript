@@ -1,0 +1,324 @@
+{
+  "six_formats": [
+    {
+      "format": "wav",
+      "input_bytes": 1120078,
+      "sha256": "88730640c04fbaaa79e6c50860803649895888bb5e7a66239c99f10c04ebd9d2",
+      "task_id": "eadda0d1e1d2210a",
+      "cached_admission": false,
+      "status": "completed",
+      "duration": 35.0,
+      "segments": 4,
+      "text_chars": 165,
+      "engine": "SenseVoice INT8 · 本地 CPU",
+      "asr_seconds": 1.13,
+      "segments_reused": 0,
+      "seconds": 2.734,
+      "has_video": false
+    },
+    {
+      "format": "flac",
+      "input_bytes": 763148,
+      "sha256": "c62c9b2ee5c58b9ca52b55fad806fcb011f04596fd53e49f2a7962a3c4232f30",
+      "task_id": "a36c6df306c5ec6a",
+      "cached_admission": false,
+      "status": "completed",
+      "duration": 35.0,
+      "segments": 4,
+      "text_chars": 165,
+      "engine": "SenseVoice INT8 · 本地 CPU",
+      "asr_seconds": 1.1,
+      "segments_reused": 0,
+      "seconds": 2.438,
+      "has_video": false
+    },
+    {
+      "format": "mp3",
+      "input_bytes": 105525,
+      "sha256": "70466ea67a6bdaf15178d4b3cd9c6b946594c7392dceeb78db3150782e8426f8",
+      "task_id": "36962cba485b22a7",
+      "cached_admission": false,
+      "status": "completed",
+      "duration": 35.0,
+      "segments": 6,
+      "text_chars": 169,
+      "engine": "SenseVoice INT8 · 本地 CPU",
+      "asr_seconds": 1.15,
+      "segments_reused": 0,
+      "seconds": 2.046,
+      "has_video": false
+    },
+    {
+      "format": "m4a",
+      "input_bytes": 338541,
+      "sha256": "eb590f39f33f8b06ef6e39691ed1687d965853d8c613c8f1473a54d5fd83f075",
+      "task_id": "d35341a6b6ef5eda",
+      "cached_admission": false,
+      "status": "completed",
+      "duration": 35.01,
+      "segments": 5,
+      "text_chars": 167,
+      "engine": "SenseVoice INT8 · 本地 CPU",
+      "asr_seconds": 1.19,
+      "segments_reused": 0,
+      "seconds": 2.172,
+      "has_video": false
+    },
+    {
+      "format": "mp4",
+      "input_bytes": 364664,
+      "sha256": "ef78f5b8c8c8fcbea86a0833342363712824c59c6d03b21408d4ddb900da3b05",
+      "task_id": "f287447f94ff14b5",
+      "cached_admission": false,
+      "status": "completed",
+      "duration": 35.01,
+      "segments": 5,
+      "text_chars": 167,
+      "engine": "SenseVoice INT8 · 本地 CPU",
+      "asr_seconds": 1.2,
+      "segments_reused": 0,
+      "seconds": 2.203,
+      "has_video": true
+    },
+    {
+      "format": "mov",
+      "input_bytes": 364719,
+      "sha256": "430d384dff4ec465115b90ad66ee7d39670c55e034edffb5dfa15de9b9fa28ab",
+      "task_id": "9de925846e7e95e6",
+      "cached_admission": false,
+      "status": "completed",
+      "duration": 35.01,
+      "segments": 5,
+      "text_chars": 167,
+      "engine": "SenseVoice INT8 · 本地 CPU",
+      "asr_seconds": 1.23,
+      "segments_reused": 0,
+      "seconds": 2.422,
+      "has_video": true
+    }
+  ],
+  "cancel_http": {
+    "disconnect_received_bytes": 100000,
+    "disconnect_temp_removed": true,
+    "cancel_received_bytes": 100000,
+    "cancel_temp_removed": true,
+    "cancel_slot_released_seconds": 0.344
+  },
+  "abrupt_restart": {
+    "upload_id": "16055b34a37c4ce8",
+    "bytes": 100000,
+    "tasks_sha256": "7c974a7914bbc26e41767562cfb3a5b96fbe368b9f57007508a3de21dd3ddeed",
+    "temporary_removed": true,
+    "tasks_unchanged": true
+  },
+  "oversize_duration": {
+    "status_code": 400,
+    "detail": {
+      "detail": "文件必须有音轨且时长不超过两小时"
+    },
+    "seconds": 95.094,
+    "partial_removed": true
+  },
+  "cold_long": {
+    "capacity_bytes": 5000000000,
+    "source_kind": "continuous_public_podcast_first_7200_seconds",
+    "filler_kind": "physically_written_quota_fixtures_not_audio",
+    "snapshots": [
+      {
+        "phase": "before_upload",
+        "capacity_bytes": 5000000000,
+        "used_bytes": 4700000000,
+        "reserved_bytes": 0,
+        "reclaimable_bytes": 100000000,
+        "protected_bytes": 4600000000,
+        "waiting": 0
+      },
+      {
+        "phase": "paused_after_confirmed_cleanup",
+        "capacity_bytes": 5000000000,
+        "used_bytes": 4830400078,
+        "reserved_bytes": 0,
+        "reclaimable_bytes": 0,
+        "protected_bytes": 4830400078,
+        "waiting": 1
+      },
+      {
+        "phase": "completed_awaiting_review",
+        "capacity_bytes": 5000000000,
+        "used_bytes": 4460800156,
+        "reserved_bytes": 0,
+        "reclaimable_bytes": 1000000000,
+        "protected_bytes": 3460800156,
+        "waiting": 0
+      }
+    ],
+    "fixtures": [
+      {
+        "id": "1111111111111111",
+        "bytes": 1000000000,
+        "state": "awaiting_review",
+        "pinned": false,
+        "leased": false
+      },
+      {
+        "id": "2222222222222222",
+        "bytes": 1000000000,
+        "state": "finalized",
+        "pinned": true,
+        "leased": false
+      },
+      {
+        "id": "3333333333333333",
+        "bytes": 1000000000,
+        "state": "finalized",
+        "pinned": false,
+        "leased": true
+      },
+      {
+        "id": "4444444444444444",
+        "bytes": 1000000000,
+        "state": "active",
+        "pinned": false,
+        "leased": false
+      },
+      {
+        "id": "5555555555555555",
+        "bytes": 600000000,
+        "state": "awaiting_review",
+        "pinned": false,
+        "leased": false
+      },
+      {
+        "id": "6666666666666666",
+        "bytes": 100000000,
+        "state": "finalized",
+        "pinned": false,
+        "leased": false
+      }
+    ],
+    "task_id": "b33db03eb1b9a504",
+    "input_bytes": 230400078,
+    "input_sha256": "cc8b0f3e121058b97cfdab9866f0b1f636c1a2ac54e2c86edb8a523337005179",
+    "upload_seconds": 95.547,
+    "peak": {
+      "physical_bytes": 4830400078,
+      "reserved_bytes": 230408192,
+      "combined_bytes": 4830400078,
+      "rss_bytes": 557694976,
+      "samples": 1407
+    },
+    "processing_seconds": 281.485,
+    "status": "completed",
+    "duration": 7200.0,
+    "asr_seconds": 277.5,
+    "segments": 779,
+    "text_chars": 36793,
+    "last_segment_end": 7200.0,
+    "source_unchanged": true,
+    "machine": {
+      "cpu": "AMD64 Family 25 Model 97 Stepping 2, AuthenticAMD",
+      "ram_bytes": 16340418560,
+      "ffmpeg": "8.1.2",
+      "model": "SenseVoice INT8 CPU"
+    }
+  },
+  "warm_long": {
+    "capacity_bytes": 5000000000,
+    "snapshots": [
+      {
+        "phase": "before_conversion",
+        "capacity_bytes": 5000000000,
+        "used_bytes": 4930400078,
+        "reserved_bytes": 0,
+        "reclaimable_bytes": 100000000,
+        "protected_bytes": 4830400078,
+        "waiting": 0
+      },
+      {
+        "phase": "paused_after_confirmed_cleanup",
+        "capacity_bytes": 5000000000,
+        "used_bytes": 4830400078,
+        "reserved_bytes": 0,
+        "reclaimable_bytes": 0,
+        "protected_bytes": 4830400078,
+        "waiting": 1
+      },
+      {
+        "phase": "completed",
+        "capacity_bytes": 5000000000,
+        "used_bytes": 4460800156,
+        "reserved_bytes": 0,
+        "reclaimable_bytes": 0,
+        "protected_bytes": 4460800156,
+        "waiting": 0
+      }
+    ],
+    "fixture_kind": "real_written_bytes_not_audio",
+    "warm_cache_replay": true,
+    "fixtures": [
+      {
+        "id": "1111111111111111",
+        "bytes": 1000000000,
+        "state": "awaiting_review",
+        "pinned": false,
+        "leased": false
+      },
+      {
+        "id": "2222222222222222",
+        "bytes": 1000000000,
+        "state": "finalized",
+        "pinned": true,
+        "leased": false
+      },
+      {
+        "id": "3333333333333333",
+        "bytes": 1000000000,
+        "state": "finalized",
+        "pinned": false,
+        "leased": true
+      },
+      {
+        "id": "4444444444444444",
+        "bytes": 1000000000,
+        "state": "active",
+        "pinned": false,
+        "leased": false
+      },
+      {
+        "id": "5555555555555555",
+        "bytes": 600000000,
+        "state": "awaiting_review",
+        "pinned": false,
+        "leased": false
+      },
+      {
+        "id": "6666666666666666",
+        "bytes": 100000000,
+        "state": "finalized",
+        "pinned": false,
+        "leased": false
+      }
+    ],
+    "task_id": "b33db03eb1b9a504",
+    "duration": 7200.0,
+    "preparation_seconds": 2.14,
+    "total_seconds": 69.906,
+    "segments_reused": 779,
+    "segments": 779,
+    "peak": {
+      "physical_bytes": 4930400078,
+      "reserved_bytes": 230627072,
+      "combined_bytes": 4930400078,
+      "rss_bytes": 429342720,
+      "samples": 409
+    }
+  },
+  "source": {
+    "title": "E254 我的意外之财｜小酒馆故事会🍻",
+    "duration": "02:04:26",
+    "sha256": "683fc7c4fc0be3ba7a4824584dc250545a4953c8438d58b3173b07391f1fe714",
+    "bytes": 120743750,
+    "rss": "https://feed.xyzfm.space/j8yp8gxkmgqr"
+  },
+  "ffmpeg_version": "ffmpeg version 8.1.2-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers"
+}
