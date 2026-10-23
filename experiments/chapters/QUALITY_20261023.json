@@ -1,0 +1,20 @@
+[
+  {
+    "task_id": "8235b98d9f210623",
+    "candidate_locations": 10,
+    "sampling": "uniform head/middle/tail; not a semantic gold set",
+    "status": "pending human quality review"
+  },
+  {
+    "task_id": "b33db03eb1b9a504",
+    "candidate_locations": 10,
+    "sampling": "uniform head/middle/tail; not a semantic gold set",
+    "status": "pending human quality review"
+  },
+  {
+    "task_id": "34b3090a47421637",
+    "candidate_locations": 10,
+    "sampling": "uniform head/middle/tail; not a semantic gold set",
+    "status": "pending human quality review"
+  }
+]

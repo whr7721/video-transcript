@@ -137,3 +137,17 @@ class ChapterJobTests(unittest.TestCase):
         response=c.get(base+'/chapters/export/md');self.assertEqual(response.status_code,200)
         self.assertIn(view['source_hash'],response.text)
         self.assertEqual(documents.get(self.task)['content'],before['content'])
+
+    def test_imprecise_quote_is_flagged_location_not_verified_quote(self):
+        view=chapters.snapshot(self.task);window=jobs.windows(view)[0];first=window['core'][0]
+        sections=jobs.checked(window,{'sections':[{'start_id':first['id'],'title':'题','guide':'待核对导读','evidence_id':first['id'],'quote':'模型改写了原话'}]})
+        self.assertTrue(sections[0]['review_required'])
+        self.assertEqual(sections[0]['evidence'][0]['status'],'location_only')
+        self.assertIn(sections[0]['evidence'][0]['quote'],first['text'])
+
+    def test_unicode_chapter_offsets_are_code_points(self):
+        self.task['result']['segments']=[{'text':'🙂重复句。又一次🙂重复句。'}]
+        view=chapters.snapshot(self.task);plan=chapters.reading_sections(view);chapters.save(self.task,plan,0)
+        ctx=research.context(self.task,'chapter',1,None,'🙂重复句。',1,0,8)
+        self.assertEqual(ctx['selection_start'],8)
+        with self.assertRaises(ValueError):research.context(self.task,'chapter',1,None,'🙂重复句。',1,0,9)

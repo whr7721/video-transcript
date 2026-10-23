@@ -164,7 +164,7 @@ def call(job,system,user,max_tokens):
 def checked(window, value):
     rows=value.get('sections') if isinstance(value,dict) else None
     core=window['core'];positions={p['id']:i for i,p in enumerate(core)}
-    if not isinstance(rows,list) or not 1<=len(rows)<=8:raise ValueError('未返回有效章节')
+    if not isinstance(rows,list) or not 1<=len(rows)<=16:raise ValueError('未返回有效章节')
     aliases={}
     for part in core:aliases.setdefault(part['source_id'],[]).append(part['id'])
     def canonical(ident):

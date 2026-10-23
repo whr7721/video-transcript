@@ -72,7 +72,7 @@ def verify_manifest(directory):
 
 
 def build(output=None):
-    output = Path(output or ROOT/'runtime'/'r1').resolve()
+    output = Path(output or ROOT/'runtime'/'r2').resolve()
     output.mkdir(parents=True, exist_ok=True)
     # Fresh staging prevents an old output or accidental extra file being carried forward.
     with tempfile.TemporaryDirectory(prefix='core-package-') as temporary:
@@ -102,7 +102,7 @@ def build(output=None):
         (staging/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         count = verify(staging)
         verify_manifest(staging)
-        archive = output/'shiwen-core-r1.zip'
+        archive = output/'shiwen-core-r2.zip'
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
             for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()):
                 if p.is_file():

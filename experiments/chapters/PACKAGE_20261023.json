@@ -1,0 +1,7 @@
+{
+  "manifest_files": 69,
+  "same_input_zip_equal": true,
+  "clean_unpacked_no_key_chain": true,
+  "independent_machine": false,
+  "archive": "shiwen-core-r2.zip"
+}

@@ -57,7 +57,7 @@ for folder,ident in [('runtime/r1/core-data','8235b98d9f210623'),('runtime/v1-b/
         chapters.validate(chapters.snapshot(task),job['plan'])
         record['sections']=len(job['plan']['sections']);record['coverage_valid']=True
         current=chapters.get(task)
-        saved=chapters.save(task,job['plan'],current['revision']);record['revision']=saved['revision']
+        saved=current if current['sections']==job['plan']['sections'] else chapters.save(task,job['plan'],current['revision']);record['revision']=saved['revision']
         (out/(ident+'-directory.json')).write_text(json.dumps(job,ensure_ascii=False,indent=2),encoding='utf-8')
     results.append(record)
     print('Directory result',json.dumps(record,ensure_ascii=True),flush=True)

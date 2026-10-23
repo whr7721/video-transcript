@@ -15,7 +15,7 @@ export default function ChapterNavigation({taskId,onLocate,onResearch,documentRe
  const base=`/api/studio/documents/${taskId}`
  useEffect(()=>{let stopped=false;alive.current=true
  request<Plan>(`${base}/chapters`).then(v=>{if(!stopped)setPlan(v)}).catch(e=>{if(!stopped)setError(e.message)})
- request<Job[]>(`${base}/chapter-jobs`).then(v=>{if(!stopped&&Array.isArray(v)){setJobs(v);setJob(v.find(j=>['queued','running','paused'].includes(j.status))||v[0]||null)}}).catch(()=>{})
+ request<Job[]>(`${base}/chapter-jobs`).then(v=>{if(!stopped&&Array.isArray(v)){setJobs(v);setJob(v.find(j=>['queued','running'].includes(j.status))||v[0]||null)}}).catch(()=>{})
  return()=>{stopped=true;alive.current=false}
  },[base])
  useEffect(()=>{if(!job||!['queued','running'].includes(job.status))return;let stopped=false
