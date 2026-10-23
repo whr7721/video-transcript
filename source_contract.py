@@ -22,6 +22,7 @@ class PodcastSource(BaseModel):
     episode_title: str = Field(max_length=500)
     guid: str | None = Field(default=None,max_length=2000)
     audio_url: str | None = Field(default=None,max_length=4000)
+    chapters_url: str | None = Field(default=None,max_length=4000)
     transcript_url: str | None = Field(default=None,max_length=4000)
     ingest: Literal['local_asr','publisher_text']
     text_format: str | None = None

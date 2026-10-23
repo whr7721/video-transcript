@@ -193,7 +193,7 @@ def process(ident):
             suffix='.wav' if head[:4]==b'RIFF' else '.flac' if head[:4]==b'fLaC' else '.m4a' if head[4:8] in {b'ftyp',b'moov',b'mdat',b'wide',b'free'} else '.mp3'
             name='podcast'+suffix
         source=PodcastSource(original_name=name,feed_url=value['feed']['feed_url'],show_title=value['feed']['title'],
-            episode_title=episode['title'],guid=episode['guid'],audio_url=episode['audio_url'],
+            episode_title=episode['title'],guid=episode['guid'],audio_url=episode['audio_url'],chapters_url=episode.get('chapters_url'),
             transcript_url=response['url'] if selected else None,ingest='publisher_text' if selected else 'local_asr',
             text_format=selected['type'] if selected else None,sha256=hasher.hexdigest(),size_bytes=count,fetched_at=time.time()).model_dump()
         with files.LOCK:

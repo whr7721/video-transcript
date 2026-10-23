@@ -14,14 +14,14 @@ BACKEND = (
     'app_core.py', 'app_shared.py', 'source_contract.py', 'store.py', 'settings.py',
     'media_io.py', 'transcript_stage.py', 'transcribe.py', 'media_buffer.py',
     'local_files.py', 'local_media.py', 'core_instance.py', 'import_file.py',
-    'documents.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
+    'documents.py', 'chapters.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
     'research_api.py', 'studio_api.py', 'articles.py', 'article_api.py',
     'article_parser.py', 'article_fetch.py', 'requirements.lock.txt', 'requirements.txt',
     'setup_models.py', 'check_core.py',
     'podcast_feed.py','podcast_text.py','podcasts.py',
 )
 FRONTEND = (
-    'src/Studio.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
+    'src/Studio.tsx', 'src/ChapterNavigation.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
     'src/styles.css', 'src/articles.css', 'src/lib/utils.ts',
     'core/main.tsx', 'core/index.html', 'core/public/logo.svg',
     'core/FileCapture.tsx','core/files.css',

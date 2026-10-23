@@ -133,3 +133,59 @@ def generation(ident:str):
     value=documents.generation_get(ident)
     if not value: raise HTTPException(404,'整理任务不存在')
     return value
+
+# Chapter navigation is a derived view; these routes never write document drafts.
+class ChapterSave(BaseModel):
+    revision: int = Field(ge=0)
+    plan: dict
+
+
+@router.get('/documents/{ident}/chapters')
+def get_chapters(ident: str):
+    import chapters
+    try:
+        return chapters.get(task(ident))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@router.post('/documents/{ident}/chapters')
+def save_chapters(ident: str, body: ChapterSave):
+    import chapters
+    try:
+        clean = {k: body.plan[k] for k in ('source_hash', 'fragment_limit', 'sections') if k in body.plan}
+        clean['origin'] = 'manual'
+        return chapters.save(task(ident), clean, body.revision)
+    except chapters.Conflict as exc:
+        raise HTTPException(409, str(exc))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@router.get('/documents/{ident}/chapters/{index}/text')
+def chapter_text(ident: str, index: int):
+    import chapters
+    value = task(ident)
+    try:
+        return chapters.resolve(chapters.snapshot(value), chapters.get(value), index)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+
+
+@router.post('/documents/{ident}/official-chapters')
+def official_chapters(ident: str, body: ChapterSave):
+    import chapters
+    import article_fetch
+    import httpx
+    value = task(ident)
+    url = value.get('source', {}).get('chapters_url')
+    if not url:
+        raise HTTPException(400, '该来源没有保存官方章节地址；旧任务不会自动联网补充')
+    try:
+        data, _, _ = article_fetch.fetch(url, limit=1_000_000)
+        plan = chapters.official_plan(chapters.snapshot(value), data, value.get('duration'))
+        return chapters.save(value, plan, body.revision)
+    except chapters.Conflict as exc:
+        raise HTTPException(409, str(exc))
+    except (ValueError, OSError, httpx.HTTPError) as exc:
+        raise HTTPException(400, str(exc))

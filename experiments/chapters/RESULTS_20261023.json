@@ -1,0 +1,38 @@
+[
+  {
+    "task_id": "bc3efe5c8afcdc01",
+    "characters": 65811,
+    "source_hash": "d44306cc1323190c9f14c464f191ca52b9a39ba2685938aca83c3c6e6e08e851",
+    "sections": 12,
+    "segments": 1802,
+    "lossless": true,
+    "source_unchanged": true
+  },
+  {
+    "task_id": "34b3090a47421637",
+    "characters": 38495,
+    "source_hash": "43fe7844be7d028c9194b7f93386a2e045bac3fb9bdfb600caa5d2bc7d19ceda",
+    "sections": 7,
+    "segments": 1054,
+    "lossless": true,
+    "source_unchanged": true
+  },
+  {
+    "task_id": "8235b98d9f210623",
+    "characters": 30580,
+    "source_hash": "e5ab8a7b3927a6e9c67591e301d54ed62b6f36f786e2e9cc1ba86717ff6deddd",
+    "sections": 6,
+    "segments": 271,
+    "lossless": true,
+    "source_unchanged": true
+  },
+  {
+    "task_id": "b33db03eb1b9a504",
+    "characters": 36377,
+    "source_hash": "0c9e0c39ae5111f8e586376b6dfab01995f2ff9bf409a8858b4c291614cdfb9f",
+    "sections": 7,
+    "segments": 779,
+    "lossless": true,
+    "source_unchanged": true
+  }
+]

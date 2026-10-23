@@ -72,13 +72,19 @@ def parse(data, feed_url):
             kind = row.get('type', '').split(';')[0].strip().lower()
             if link and kind in {'text/plain', 'text/vtt'}:
                 transcripts.append({'url': link, 'type': kind})
+        chapter_url = None
+        if position < len(xml_items):
+            for node in xml_items[position]:
+                if node.tag in {'{https://podcastindex.org/namespace/1.0}chapters','{http://podcastindex.org/namespace/1.0}chapters'} and node.attrib.get('type') == 'application/json+chapters':
+                    chapter_url = safe_url(node.attrib.get('url'))
+                    break
         guid = str(item.get('id', ''))[:2000]
         identity = '\n'.join((feed_url, guid, media or '', str(item.get('title','')), str(item.get('published',''))))
         episodes.append({'id': hashlib.sha256(identity.encode()).hexdigest()[:24],
                          'guid': guid or None, 'title': str(item.get('title', '未命名单集'))[:500],
                          'published': str(item.get('published', ''))[:200],
                          'duration_seconds': duration(item.get('itunes_duration')),
-                         'audio_url': media, 'transcripts': transcripts,
+                         'audio_url': media, 'transcripts': transcripts, 'chapters_url': chapter_url,
                          'importable': bool(media or transcripts)})
     return {'schema_version': 1, 'feed_url': feed_url,
             'title': str(parsed.feed.get('title', '未命名节目'))[:500],
