@@ -10,9 +10,12 @@ router=APIRouter(prefix='/api/studio/research')
 
 
 class ResearchInput(BaseModel):
-    basis:Literal['original','draft','manuscript']='original'
+    basis:Literal['original','draft','manuscript','chapter']='original'
     revision:int=Field(default=1,ge=1)
     generation_id:str|None=Field(default=None,max_length=64)
+    chapter_revision:int|None=Field(default=None,ge=1)
+    chapter_index:int|None=Field(default=None,ge=0,le=499)
+    selection_start:int|None=Field(default=None,ge=0,le=200000)
     selection:str=Field(default='',max_length=4000)
     question:str=Field(default='',max_length=600)
     mode:Literal['explain','cases','limits','verify']='explain'

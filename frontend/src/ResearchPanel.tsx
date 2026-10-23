@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { BookOpen, ExternalLink, LoaderCircle, Search, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export type Passage = {taskId:string;basis:'original'|'draft'|'manuscript';revision:number;generation_id?:string;selection:string}
+export type Passage = {taskId:string;basis:'original'|'draft'|'manuscript'|'chapter';revision:number;generation_id?:string;chapter_revision?:number;chapter_index?:number;selection_start?:number;selection:string}
 type Citation={source_id:string;quote:string;relation?:string}
 type ResearchJob={id:string;task_id:string;question:string;mode:string;status:string;stage:string;online:boolean;error?:string;
  context:{selection:string;basis:string;version:string};warnings:string[];rejected?:number;open_questions?:string[];
@@ -31,7 +31,7 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
  const [topics,setTopics]=useState<Topic[]>([]),[notes,setNotes]=useState<Note[]>([]),[filter,setFilter]=useState(''),[editing,setEditing]=useState<Note|null>(null)
  const [editText,setEditText]=useState(''),[manualText,setManualText]=useState(''),[manualBusy,setManualBusy]=useState(false),[modelReady,setModelReady]=useState(true)
  const taskId=passage.taskId
- useEffect(()=>{setSelection(passage.selection);setSelectedBasis(passage)},[passage.selection,passage.basis,passage.revision,passage.generation_id])
+ useEffect(()=>{setSelection(passage.selection);setSelectedBasis(passage)},[passage.selection,passage.basis,passage.revision,passage.generation_id,passage.chapter_revision,passage.chapter_index,passage.selection_start])
  useEffect(()=>{let disposed=false
   Promise.all([api<ResearchJob[]>('/documents/'+taskId),api<Topic[]>('/topics'),api<Note[]>('/notes')]).then(([js,ts,ns])=>{if(!disposed){setJobs(js);setJob(js[0]||null);setTopics(ts);setNotes(ns)}}).catch(()=>setError('无法载入深入记录，请刷新页面重试。'))
   return()=>{disposed=true}
@@ -64,7 +64,7 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
   {error&&<p className="inline-error" role="alert">{error}</p>}{notice&&<p className="research-notice" role="status">{notice}</p>}
   {view==='research'?<>
    <p className="research-intro">选中文章中的一段，带着问题继续读。解释、案例和你的理解都可以留下。</p>
-   <label className="research-label" htmlFor="research-selection">本次选段 <small>{selectedBasis.basis==='original'?'识别原稿':selectedBasis.basis==='draft'?'编辑稿':'完整整理稿'}</small></label>
+   <label className="research-label" htmlFor="research-selection">本次选段 <small>{selectedBasis.basis==='chapter'?'章节精确原话':selectedBasis.basis==='original'?'识别原稿':selectedBasis.basis==='draft'?'编辑稿':'完整整理稿'}</small></label>
    <textarea id="research-selection" name="research_selection" value={selection} maxLength={4000} rows={4} onChange={e=>setSelection(e.target.value)} placeholder="先在左侧选中文字，再点“深入一下”…"/>
    <label className="research-label" htmlFor="research-question">想弄明白什么？</label><textarea id="research-question" name="research_question" value={question} maxLength={600} rows={2} onChange={e=>setQuestion(e.target.value)} placeholder="例如：这个观点有什么适用条件？"/>
    <fieldset className="research-modes"><legend>这次深入的方向</legend>{[['explain','解释概念'],['cases','找真实案例'],['limits','找局限与反例'],['verify','核实这段说法']].map(([value,label])=><label key={value}><input type="radio" name="research_mode" value={value} checked={mode===value} onChange={()=>{setMode(value);if(value!=='explain')setOnline(true)}}/>{label}</label>)}</fieldset>

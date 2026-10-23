@@ -64,8 +64,23 @@ def listing(task_id):
 def normalized(text): return re.sub(r'\s+','',text)
 
 
-def context(task,basis,revision,generation_id,selection):
+def context(task,basis,revision,generation_id,selection,chapter_revision=None,chapter_index=None,selection_start=None):
     doc=documents.get(task)
+    if basis=='chapter':
+        import chapters
+        if type(chapter_index) is not int or type(selection_start) is not int:
+            raise ValueError('缺少精确章节选区')
+        plan=chapters.version(task,chapter_revision)
+        view=chapters.snapshot(task)
+        selected=chapters.resolve(view,plan,chapter_index)
+        body=selected['text']
+        if selection_start > len(body) or body[selection_start:selection_start+len(selection)] != selection:
+            raise ValueError('选区与章节范围不一致，请重新选择')
+        return {'basis':'chapter','version':f'chapter-{chapter_revision}-{chapter_index}',
+                'selection':selection,'excerpt':body[max(0,selection_start-1000):selection_start+max(len(selection),1200)+1000],
+                'source_hash':view['source_hash'],'draft_revision':doc['revision'],
+                'chapter_revision':chapter_revision,'chapter_index':chapter_index,'selection_start':selection_start,
+                'source_ranges':selected['ranges']}
     if basis=='original':
         body='\n\n'.join(s['text'] for s in doc['sources']);version='original'
     elif basis=='draft':
@@ -89,7 +104,8 @@ def start(task,body):
     if body.online and not settings.search_key():raise ValueError('请在设置中配置 DeepSeek 官方搜索 Key，再开启联网。')
     if not settings.cloud_key():raise ValueError('请先配置硅基流动模型 Key。')
     if body.mode=='verify' and not body.selection.strip():raise ValueError('核实需要明确选段，请先选择要核实的原话。')
-    ctx=context(task,body.basis,body.revision,body.generation_id,body.selection.strip())
+    ctx=context(task,body.basis,body.revision,body.generation_id,body.selection.strip(),
+                getattr(body,'chapter_revision',None),getattr(body,'chapter_index',None),getattr(body,'selection_start',None))
     if not ctx['selection'] and not body.question.strip():raise ValueError('请先选择一段内容或输入想深入的问题。')
     fingerprint=json.dumps([task['id'],ctx,body.mode,body.online,body.question.strip(),organizer.MODEL,VERSION],ensure_ascii=False)
     ident=hashlib.sha256(fingerprint.encode()).hexdigest()[:16]
@@ -379,7 +395,8 @@ def update_note(ident,revision,personal):
 
 def manual_note(task,body):
     if not body.personal.strip():raise ValueError('请先写下自己的理解')
-    ctx=context(task,body.basis,body.revision,body.generation_id,body.selection.strip())
+    ctx=context(task,body.basis,body.revision,body.generation_id,body.selection.strip(),
+                getattr(body,'chapter_revision',None),getattr(body,'chapter_index',None),getattr(body,'selection_start',None))
     ident=uuid.uuid4().hex[:16]
     job={'id':ident,'task_id':task['id'],'title':task.get('title',''),'mode':'manual','online':False,
          'source':task.get('source',{}),
@@ -412,6 +429,11 @@ def export_note(ident):
             lines+=['','原文摘录 ['+c['source_id']+']：'+c['quote']]
             if c.get('relation') in {'supports','contradicts','partial'}:
                 lines+=['证据关系（AI建议）：'+{'supports':'支持','contradicts':'反驳','partial':'部分支持'}[c['relation']]]
+    if job['context'].get('basis')=='chapter':
+        ctx=job['context']
+        lines+=['','章节版本：'+ctx['version'],'原稿指纹：'+ctx['source_hash'],
+                '选段起点（Unicode字符）：'+str(ctx['selection_start']),
+                '来源范围：'+json.dumps([{k:r[k] for k in ('source_id','start_offset','end_offset')} for r in ctx['source_ranges']],ensure_ascii=False)]
     lines+=['','## 我的理解',note['personal'],'','## 来源']
     for src in job.get('sources',[]):lines+=['','- ['+src['id']+'] '+src['title']+' '+src.get('url','')]
     lines+=['','## 未决问题',*job.get('open_questions',[]),'','## 范围提示',*job.get('warnings',[])]

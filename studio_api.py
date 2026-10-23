@@ -189,3 +189,87 @@ def official_chapters(ident: str, body: ChapterSave):
         raise HTTPException(409, str(exc))
     except (ValueError, OSError, httpx.HTTPError) as exc:
         raise HTTPException(400, str(exc))
+
+class ChapterAction(BaseModel):
+    action: Literal['directory','clean'] = 'directory'
+    revision: int = Field(ge=0)
+    index: int = Field(default=0,ge=0,le=499)
+
+
+@router.post('/documents/{ident}/chapter-estimate')
+def chapter_estimate(ident:str,body:ChapterAction):
+    import chapter_jobs
+    try:return chapter_jobs.estimate(task(ident),body.action,body.revision,body.index)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.post('/documents/{ident}/chapter-jobs')
+def chapter_start(ident:str,body:ChapterAction):
+    import chapters,chapter_jobs
+    try:return chapter_jobs.start(task(ident),body.action,body.revision,body.index)
+    except chapters.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.get('/documents/{ident}/chapter-jobs')
+def chapter_listing(ident:str):
+    import chapter_jobs
+    task(ident)
+    return chapter_jobs.listing(ident)
+
+
+def find_chapter_job(ident,job_id):
+    import chapter_jobs
+    task(ident);value=chapter_jobs.get(job_id)
+    if not value or value['task_id']!=ident:raise HTTPException(404,'章节任务不存在')
+    return value
+
+
+@router.get('/documents/{ident}/chapter-jobs/{job_id}')
+def chapter_job(ident:str,job_id:str):return find_chapter_job(ident,job_id)
+
+
+@router.post('/documents/{ident}/chapter-jobs/{job_id}/cancel')
+def chapter_cancel(ident:str,job_id:str):
+    import chapter_jobs
+    find_chapter_job(ident,job_id)
+    return chapter_jobs.cancel(job_id)
+
+
+class ChapterApply(BaseModel):
+    revision:int=Field(ge=0)
+
+
+@router.post('/documents/{ident}/chapter-jobs/{job_id}/apply')
+def chapter_apply(ident:str,job_id:str,body:ChapterApply):
+    import chapters
+    job=find_chapter_job(ident,job_id)
+    if job['status']!='completed' or not job.get('plan'):raise HTTPException(400,'没有完整目录可采用')
+    try:return chapters.save(task(ident),job['plan'],body.revision)
+    except chapters.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.get('/documents/{ident}/chapters/export/md')
+def chapter_export(ident:str):
+    import chapters,chapter_jobs
+    value=task(ident);plan=chapters.get(value)
+    if plan.get('stale'):raise HTTPException(409,'目录已过期，请先更新')
+    text=['# '+value.get('title','文稿')+' · 阅读目录',
+          f"原稿指纹：{plan['source_hash']}；目录版本：{plan['revision']}；来源：{plan.get('origin','reading')}"]
+    for i,section in enumerate(plan['sections']):
+        text.extend(['\n## '+section['title'],section.get('guide',''),
+                     '原稿范围：'+', '.join(section['fragment_ids'])])
+        if section.get('review_required'):text.append('待核对：模型回查原话未精确匹配，仅保留原文位置参考。')
+        for evidence in section.get('evidence',[]):
+            text.extend(['原文位置 '+evidence['fragment_id']+'（'+evidence.get('status','verbatim')+'，不代表语义已核实）：',evidence['quote']])
+    jobs=chapter_jobs.listing(ident)
+    for job in jobs:
+        if job['status']=='completed' and job.get('content'):
+            text.extend(['\n## 整理预览：'+job.get('title','章节'),
+                         '仅为AI整理，未写入编辑稿；范围指纹：'+job['source_hash'],
+                         '精确范围：'+json.dumps([{k:p[k] for k in ('source_id','start_offset','end_offset')} for p in job['ranges']],ensure_ascii=False),
+                         documents.text(job['content'])])
+            for doubt in job.get('uncertainties',[]):text.append('待回听：'+doubt['original']+' → '+doubt['suggestion'])
+    return Response('\n\n'.join(text),media_type='text/markdown; charset=utf-8',
+        headers={'Content-Disposition':f'attachment; filename="shiwen-chapters-{ident}.md"'})

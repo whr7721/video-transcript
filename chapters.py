@@ -118,7 +118,7 @@ def save(task, plan, revision):
     validate(view, plan)
     if type(revision) is not int or revision < 0:
         raise ValueError('章节版本无效')
-    payload = {k: plan[k] for k in ('source_hash', 'fragment_limit', 'sections')}
+    payload = json.loads(json.dumps({k: plan[k] for k in ('source_hash', 'fragment_limit', 'sections')},ensure_ascii=False,allow_nan=False))
     payload.update(origin=plan.get('origin', 'manual'), created_at=time.time())
     for key in ('official_markers', 'warning'):
         if key in plan: payload[key] = plan[key]
@@ -186,4 +186,15 @@ def official_plan(view, data, duration):
             'origin': 'official', 'official_markers': rows,
             'warning': '时间按原始语音段近似映射；无对应文字的目录项不成为独立阅读章节。'}
     validate(view, plan)
+    return plan
+
+def version(task, revision):
+    if type(revision) is not int or revision < 1:
+        raise ValueError('请先保存章节目录')
+    with store.connect() as db:
+        init(db)
+        row=db.execute('SELECT payload FROM chapter_versions WHERE task_id=? AND revision=?',(task['id'],revision)).fetchone()
+    if not row:raise ValueError('章节版本不存在')
+    plan={**json.loads(row[0]),'revision':revision}
+    validate(snapshot(task),plan)
     return plan

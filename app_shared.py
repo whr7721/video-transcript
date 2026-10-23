@@ -36,3 +36,5 @@ def recover_shared():
     organizer.recover()
     research.recover()
     articles.recover()
+    import chapter_jobs
+    chapter_jobs.recover()
