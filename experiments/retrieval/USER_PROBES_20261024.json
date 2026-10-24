@@ -1,0 +1,70 @@
+[
+  {
+    "probe_id": "user-20261024-01",
+    "query_hash": "7c337f1356ede35a6cd764cd4574fe1dc281c020e85484b4a55787373ba47e5a",
+    "method": "bigram_bm25",
+    "candidate_count": 5,
+    "source_uids": [
+      "transcript:b33db03eb1b9a504",
+      "transcript:8235b98d9f210623",
+      "transcript:8235b98d9f210623",
+      "transcript:8235b98d9f210623",
+      "transcript:8235b98d9f210623"
+    ],
+    "evaluation_status": "unjudged, not counted in frozen baseline accuracy",
+    "author_diagnostic": "No verified AI-for-early-childhood evidence established; kindergarten employment is off-topic; early development alone is not AI education",
+    "known_candidate_source": null,
+    "known_candidate_source_rank50": null
+  },
+  {
+    "probe_id": "user-20261024-02",
+    "query_hash": "8a3eb3bb95dd37a0d7ea6d8893dd28ddfe3e2984c077b540c8974584006d6ecb",
+    "method": "bigram_bm25",
+    "candidate_count": 5,
+    "source_uids": [
+      "transcript:8235b98d9f210623",
+      "transcript:8235b98d9f210623",
+      "article:293354d7072f4a2b",
+      "transcript:36ea6f81362d47ff",
+      "transcript:8235b98d9f210623"
+    ],
+    "evaluation_status": "unjudged, not counted in frozen baseline accuracy",
+    "author_diagnostic": "Partial related tool-use example only; no verified revenue or payment evidence established",
+    "known_candidate_source": "transcript:1a4ce9bc1b5d386f",
+    "known_candidate_source_rank50": 32
+  },
+  {
+    "probe_id": "user-20261024-03",
+    "query_hash": "521fb07c822b4d2533ed002d7277ce5d24629895941bfcb3e3ee356da2ec349e",
+    "method": "bigram_bm25",
+    "candidate_count": 5,
+    "source_uids": [
+      "transcript:b33db03eb1b9a504",
+      "transcript:b33db03eb1b9a504",
+      "transcript:b33db03eb1b9a504",
+      "transcript:888eb3f5f7c9f8ad",
+      "article:158ea53511714a2a"
+    ],
+    "evaluation_status": "unjudged, not counted in frozen baseline accuracy",
+    "author_diagnostic": "Potentially relevant demand-discovery material; needs passage-level human labeling",
+    "known_candidate_source": "transcript:1a4ce9bc1b5d386f",
+    "known_candidate_source_rank50": 17
+  },
+  {
+    "probe_id": "user-20261024-04",
+    "query_hash": "d04ba2fe2a570b1a011e7d0651f44341c62f879c7fbcd355e990f65e407de9f9",
+    "method": "bigram_bm25",
+    "candidate_count": 5,
+    "source_uids": [
+      "transcript:888eb3f5f7c9f8ad",
+      "transcript:8235b98d9f210623",
+      "transcript:8235b98d9f210623",
+      "transcript:8235b98d9f210623",
+      "transcript:8235b98d9f210623"
+    ],
+    "evaluation_status": "unjudged, not counted in frozen baseline accuracy",
+    "author_diagnostic": "Potentially relevant AI learning/application loop; needs passage-level human labeling",
+    "known_candidate_source": "transcript:36ea6f81362d47ff",
+    "known_candidate_source_rank50": 31
+  }
+]

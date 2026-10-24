@@ -1,0 +1,721 @@
+{
+  "schema_version": 1,
+  "annotation": "author-prepared candidate labels, not user-reviewed gold",
+  "corpus_hash": "689a841ff687a8999b7c37a2621d2e0ac2d2ec2ec835bc8df01b63019dae0649",
+  "corpus": [
+    {
+      "uid": "transcript:52629a7fe41fa4d9",
+      "selected_payload_hash": "2ed8cf1d3afd51210dbef634161f810379693bbbd82111e4e0f34120e5857144",
+      "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+      "blocks": 19,
+      "characters": 2063,
+      "title_characters": 858,
+      "read_only": true
+    },
+    {
+      "uid": "transcript:36ea6f81362d47ff",
+      "selected_payload_hash": "fc00d4423f0c5f8b4bf4faadf09fcc218711e46d06f26be3cb4d162ec6eaa50e",
+      "source_hash": "4c7e186f6193c788805f801cad3bdd05015ec53c6dd7966ef22d2171ddf23db6",
+      "blocks": 14,
+      "characters": 1465,
+      "title_characters": 795,
+      "read_only": true
+    },
+    {
+      "uid": "transcript:1a4ce9bc1b5d386f",
+      "selected_payload_hash": "2ac3065dc8d03fe5fae638bea2770102a9c165376737da4a73f839f74433e1fc",
+      "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+      "blocks": 36,
+      "characters": 3504,
+      "title_characters": 862,
+      "read_only": true
+    },
+    {
+      "uid": "transcript:601bf25bf1ac2788",
+      "selected_payload_hash": "d3a12a6dc91cd5e087be25df5feaa1db774fe837d1b333ba6449e364ad0a1761",
+      "source_hash": "0f8bc80399469a3b675d2e615b02200c8ab49aa54e0e55918af012c87f21ad4c",
+      "blocks": 95,
+      "characters": 4441,
+      "title_characters": 912,
+      "read_only": true
+    },
+    {
+      "uid": "transcript:888eb3f5f7c9f8ad",
+      "selected_payload_hash": "b20d72a62ffd8cc23794c67fff2cf9f7a39d08ae95e8a7ca50ae060668a36036",
+      "source_hash": "bf723a5690e80fbe32243eba0d5dd8803f7063f864c8de72410e3fc0323e44a2",
+      "blocks": 48,
+      "characters": 2924,
+      "title_characters": 781,
+      "read_only": true
+    },
+    {
+      "uid": "transcript:dcc1120e99471935",
+      "selected_payload_hash": "5ea98f03c1b8e3b9308ac31042a9cc6dda09ebf3c447a6a5a105468c712a87c4",
+      "source_hash": "54e0f7799756d1d8bad250fc3cfd6bdc0993b2c751a2c087b493731d6c7d9b06",
+      "blocks": 57,
+      "characters": 3445,
+      "title_characters": 860,
+      "read_only": true
+    },
+    {
+      "uid": "article:158ea53511714a2a",
+      "selected_payload_hash": "0d52653864c9a24264c500a846a8323a478ca15214922e6a19914b80bc0c86b3",
+      "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+      "blocks": 106,
+      "characters": 6874,
+      "title_characters": 23,
+      "read_only": true
+    },
+    {
+      "uid": "article:293354d7072f4a2b",
+      "selected_payload_hash": "1167f367df52b0c3bc21a4259e19ee11e62b22326396c44cb3489d950dd60d53",
+      "source_hash": "fd025936893d2587da06475742cd4497697681deb01467639a6e7e249db58dbe",
+      "blocks": 40,
+      "characters": 2263,
+      "title_characters": 29,
+      "read_only": true
+    },
+    {
+      "uid": "transcript:8235b98d9f210623",
+      "selected_payload_hash": "e895d3f029b56d756ada6460e6b4dcfdb3b4fb952a287d6d4e44ef49fecd1f2f",
+      "source_hash": "e474646a24bd34c813e0245895f7d075bb364070ba7fc6aceb690a0b1a01bcf6",
+      "blocks": 271,
+      "characters": 30580,
+      "title_characters": 26,
+      "read_only": true
+    },
+    {
+      "uid": "transcript:b33db03eb1b9a504",
+      "selected_payload_hash": "c00db44d97f537d8b50053afce57c7953636eaddd1f7194a88572b2cf4da83ff",
+      "source_hash": "57d4550469a16abf167e60906e4b16423f9fd8d37b8333507b5322b754b5ce58",
+      "blocks": 779,
+      "characters": 36377,
+      "title_characters": 11,
+      "read_only": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "k1-01",
+      "query": "价值",
+      "category": "two_char",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-1",
+          "start": 5,
+          "end": 7,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        },
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-2",
+          "start": 8,
+          "end": 10,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        },
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-4",
+          "start": 61,
+          "end": 63,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        },
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-5",
+          "start": 72,
+          "end": 74,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        },
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-6",
+          "start": 36,
+          "end": 38,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        },
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-7",
+          "start": 12,
+          "end": 14,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        },
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-16",
+          "start": 90,
+          "end": 92,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        },
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-17",
+          "start": 47,
+          "end": 49,
+          "evidence_hash": "56911eadde27952035754be3f4ce034dcba1ba0d02a7f29333a70e5f9b2dd30c"
+        }
+      ]
+    },
+    {
+      "id": "k1-02",
+      "query": "复盘",
+      "category": "two_char",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:36ea6f81362d47ff",
+          "source_hash": "4c7e186f6193c788805f801cad3bdd05015ec53c6dd7966ef22d2171ddf23db6",
+          "block_id": "seg-10",
+          "start": 143,
+          "end": 145,
+          "evidence_hash": "e90ac10d1ac0b6bbeb12da224df657c4bf6cbfc54ade0ad4e9462c9c43ec6e73"
+        }
+      ]
+    },
+    {
+      "id": "k1-03",
+      "query": "标点",
+      "category": "two_char",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:293354d7072f4a2b",
+          "source_hash": "fd025936893d2587da06475742cd4497697681deb01467639a6e7e249db58dbe",
+          "block_id": "b11",
+          "start": 37,
+          "end": 39,
+          "evidence_hash": "82cb0b071e5ae9e2341b1720ad480361f9332dc81ada8ded29ae9277e60d05a0"
+        }
+      ]
+    },
+    {
+      "id": "k1-04",
+      "query": "显卡",
+      "category": "two_char",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b5",
+          "start": 23,
+          "end": 25,
+          "evidence_hash": "af6a8bdf3b1d7320a3df7591d5d9eea062ba6f53cf440ce5d270cc1e2f83cc2c"
+        }
+      ]
+    },
+    {
+      "id": "k1-05",
+      "query": "最后一公里",
+      "category": "exact_phrase",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:8235b98d9f210623",
+          "source_hash": "e474646a24bd34c813e0245895f7d075bb364070ba7fc6aceb690a0b1a01bcf6",
+          "block_id": "seg-173",
+          "start": 106,
+          "end": 111,
+          "evidence_hash": "d083ab3a3d73463eaba767a61e84a4e7f66be3c0a9744ccec109ba7d3fac635e"
+        }
+      ]
+    },
+    {
+      "id": "k1-06",
+      "query": "回应式照料",
+      "category": "exact_phrase",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:8235b98d9f210623",
+          "source_hash": "e474646a24bd34c813e0245895f7d075bb364070ba7fc6aceb690a0b1a01bcf6",
+          "block_id": "seg-198",
+          "start": 82,
+          "end": 87,
+          "evidence_hash": "23820ff38e64452ff62779a826eb3b47ba5d41a64d2ba70c4b87614f4fb99d62"
+        }
+      ]
+    },
+    {
+      "id": "k1-07",
+      "query": "高清修复",
+      "category": "exact_phrase",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b52",
+          "start": 12,
+          "end": 16,
+          "evidence_hash": "f13eaed5c70e3e7858575ec42cfc9eebb98b800f7f9f41a4819587b90af8efb6"
+        },
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b54",
+          "start": 25,
+          "end": 29,
+          "evidence_hash": "f13eaed5c70e3e7858575ec42cfc9eebb98b800f7f9f41a4819587b90af8efb6"
+        },
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b59",
+          "start": 23,
+          "end": 27,
+          "evidence_hash": "f13eaed5c70e3e7858575ec42cfc9eebb98b800f7f9f41a4819587b90af8efb6"
+        },
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b78",
+          "start": 10,
+          "end": 14,
+          "evidence_hash": "f13eaed5c70e3e7858575ec42cfc9eebb98b800f7f9f41a4819587b90af8efb6"
+        }
+      ]
+    },
+    {
+      "id": "k1-08",
+      "query": "社区通道",
+      "category": "exact_phrase",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:293354d7072f4a2b",
+          "source_hash": "fd025936893d2587da06475742cd4497697681deb01467639a6e7e249db58dbe",
+          "block_id": "b21",
+          "start": 39,
+          "end": 43,
+          "evidence_hash": "1da2c598b95fc978ce1d0e8037d2451cdab95fa7143cb3531506625f9ad3432f"
+        }
+      ]
+    },
+    {
+      "id": "k1-09",
+      "query": "怎样让潜在客户发现我能做什么",
+      "category": "paraphrase",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-4",
+          "start": 51,
+          "end": 57,
+          "evidence_hash": "9901a762dd8d5c44e134c9e5a271d1881ab978e9a9f631b1382398a7d3d6e2eb"
+        },
+        {
+          "source_uid": "transcript:1a4ce9bc1b5d386f",
+          "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+          "block_id": "seg-2",
+          "start": 17,
+          "end": 22,
+          "evidence_hash": "05215820bcae363286a89e279e4839d305622bed7dbe89c3d0f284e65f034e63"
+        },
+        {
+          "source_uid": "transcript:1a4ce9bc1b5d386f",
+          "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+          "block_id": "seg-3",
+          "start": 98,
+          "end": 103,
+          "evidence_hash": "05215820bcae363286a89e279e4839d305622bed7dbe89c3d0f284e65f034e63"
+        },
+        {
+          "source_uid": "transcript:1a4ce9bc1b5d386f",
+          "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+          "block_id": "seg-14",
+          "start": 133,
+          "end": 138,
+          "evidence_hash": "05215820bcae363286a89e279e4839d305622bed7dbe89c3d0f284e65f034e63"
+        },
+        {
+          "source_uid": "transcript:1a4ce9bc1b5d386f",
+          "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+          "block_id": "seg-18",
+          "start": 60,
+          "end": 65,
+          "evidence_hash": "05215820bcae363286a89e279e4839d305622bed7dbe89c3d0f284e65f034e63"
+        },
+        {
+          "source_uid": "transcript:1a4ce9bc1b5d386f",
+          "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+          "block_id": "seg-26",
+          "start": 132,
+          "end": 137,
+          "evidence_hash": "05215820bcae363286a89e279e4839d305622bed7dbe89c3d0f284e65f034e63"
+        },
+        {
+          "source_uid": "transcript:1a4ce9bc1b5d386f",
+          "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+          "block_id": "seg-31",
+          "start": 103,
+          "end": 108,
+          "evidence_hash": "05215820bcae363286a89e279e4839d305622bed7dbe89c3d0f284e65f034e63"
+        },
+        {
+          "source_uid": "transcript:1a4ce9bc1b5d386f",
+          "source_hash": "381688ec664820bb3e960e640f90c9627b81d56eca65cd3a62e03ba153e4e2eb",
+          "block_id": "seg-33",
+          "start": 72,
+          "end": 77,
+          "evidence_hash": "05215820bcae363286a89e279e4839d305622bed7dbe89c3d0f284e65f034e63"
+        }
+      ]
+    },
+    {
+      "id": "k1-10",
+      "query": "收藏很多文章却没法用到自己身上怎么办",
+      "category": "paraphrase",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:36ea6f81362d47ff",
+          "source_hash": "4c7e186f6193c788805f801cad3bdd05015ec53c6dd7966ef22d2171ddf23db6",
+          "block_id": "seg-9",
+          "start": 0,
+          "end": 8,
+          "evidence_hash": "233b823c35c449feee75b447fcb5ed6e847fc8f71b5a59dcc7bdc0bd858fad3f"
+        }
+      ]
+    },
+    {
+      "id": "k1-11",
+      "query": "只给农村医生AI工具就够了吗",
+      "category": "paraphrase",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:8235b98d9f210623",
+          "source_hash": "e474646a24bd34c813e0245895f7d075bb364070ba7fc6aceb690a0b1a01bcf6",
+          "block_id": "seg-172",
+          "start": 86,
+          "end": 91,
+          "evidence_hash": "8bc0ccd512667a9483da970e991ff8b40091459b4fec8845649723ac876b17ea"
+        }
+      ]
+    },
+    {
+      "id": "k1-12",
+      "query": "开头和结束两张照片一起做过渡",
+      "category": "paraphrase",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b86",
+          "start": 24,
+          "end": 32,
+          "evidence_hash": "1d573db4c33682e4af3a7265c6c6975e194fa7f39396133b51792e9d0b605292"
+        }
+      ]
+    },
+    {
+      "id": "k1-13",
+      "query": "怎么做一人公司",
+      "category": "asr",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": true,
+      "gold": [
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-0",
+          "start": 3,
+          "end": 7,
+          "evidence_hash": "81d6ba534dcd73d10d75100b8bca445402f7bcca4c1358c2ad68153d00fff3c4"
+        }
+      ]
+    },
+    {
+      "id": "k1-14",
+      "query": "幸运表面积",
+      "category": "asr",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": true,
+      "gold": [
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-5",
+          "start": 60,
+          "end": 65,
+          "evidence_hash": "f9218d0ceee6572d24d248c923a7ccf98fd000d7f07b28208725638cbb3c9ce3"
+        }
+      ]
+    },
+    {
+      "id": "k1-15",
+      "query": "CodeBuddy",
+      "category": "asr",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": true,
+      "gold": [
+        {
+          "source_uid": "transcript:36ea6f81362d47ff",
+          "source_hash": "4c7e186f6193c788805f801cad3bdd05015ec53c6dd7966ef22d2171ddf23db6",
+          "block_id": "seg-5",
+          "start": 33,
+          "end": 41,
+          "evidence_hash": "a5055f67174bcaed7065c1df2a3c97cd31598f4a5d13253e3b42511692d5d0cf"
+        }
+      ]
+    },
+    {
+      "id": "k1-16",
+      "query": "Claude Code",
+      "category": "asr",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": true,
+      "gold": [
+        {
+          "source_uid": "transcript:36ea6f81362d47ff",
+          "source_hash": "4c7e186f6193c788805f801cad3bdd05015ec53c6dd7966ef22d2171ddf23db6",
+          "block_id": "seg-2",
+          "start": 17,
+          "end": 27,
+          "evidence_hash": "b10603d86ebb5f0b13d3bc1349299092e754445471a38af188bac88d40069be7"
+        }
+      ]
+    },
+    {
+      "id": "k1-17",
+      "query": "教别人赚钱有什么前提",
+      "category": "conditions",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:52629a7fe41fa4d9",
+          "source_hash": "90bae6767d46b1cf986805fa36e1eea3f1101781b7eb93219883dced72c9dcae",
+          "block_id": "seg-13",
+          "start": 57,
+          "end": 61,
+          "evidence_hash": "360afc870b74a90491171c26d92e2674ed327a565aff60f3ce879c44f2a18c0a"
+        }
+      ]
+    },
+    {
+      "id": "k1-18",
+      "query": "AI是否能替代公益项目最后一公里的人力",
+      "category": "conditions",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:8235b98d9f210623",
+          "source_hash": "e474646a24bd34c813e0245895f7d075bb364070ba7fc6aceb690a0b1a01bcf6",
+          "block_id": "seg-173",
+          "start": 115,
+          "end": 124,
+          "evidence_hash": "ea4b2197bd34ca2924ae41f182956296f54eb814564ad1de3eef928dba6ac716"
+        }
+      ]
+    },
+    {
+      "id": "k1-19",
+      "query": "村医准确率提高到80%的条件",
+      "category": "conditions",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:8235b98d9f210623",
+          "source_hash": "e474646a24bd34c813e0245895f7d075bb364070ba7fc6aceb690a0b1a01bcf6",
+          "block_id": "seg-167",
+          "start": 22,
+          "end": 40,
+          "evidence_hash": "897ffc8731894a9fa7c340af7bc2d80c1a230cc2ffbbc33851ae6c3298091d2a"
+        }
+      ]
+    },
+    {
+      "id": "k1-20",
+      "query": "少数派的规范能权威评价其他平台文章吗",
+      "category": "conditions",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:293354d7072f4a2b",
+          "source_hash": "fd025936893d2587da06475742cd4497697681deb01467639a6e7e249db58dbe",
+          "block_id": "b13",
+          "start": 57,
+          "end": 73,
+          "evidence_hash": "4abe690d84b785c0158c2d1a0b210780d58036433ac2e33e39a3196df5dd809b"
+        }
+      ]
+    },
+    {
+      "id": "k1-21",
+      "query": "Wan2.2 图生视频 四步加速",
+      "category": "multiple_terms",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b67",
+          "start": 55,
+          "end": 72,
+          "evidence_hash": "ef0e37b1bfc428384eabc3192c2540a5e71d762fabef128c5aa8c12c6ed5ee43"
+        }
+      ]
+    },
+    {
+      "id": "k1-22",
+      "query": "ComfyUI Windows 便携版怎么启动",
+      "category": "multiple_terms",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:158ea53511714a2a",
+          "source_hash": "70ad96a20f67ad70462dbafd13cebc171c36cf7c5913e92003c428061217649f",
+          "block_id": "b17",
+          "start": 53,
+          "end": 67,
+          "evidence_hash": "8d1e095241f99bc70f10e686a5330eaedff8ae5011108ebdbaf76a28f5846501"
+        }
+      ]
+    },
+    {
+      "id": "k1-23",
+      "query": "0到3岁 早期发育 留守",
+      "category": "multiple_terms",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "transcript:8235b98d9f210623",
+          "source_hash": "e474646a24bd34c813e0245895f7d075bb364070ba7fc6aceb690a0b1a01bcf6",
+          "block_id": "seg-196",
+          "start": 61,
+          "end": 69,
+          "evidence_hash": "8bdff7b07a06f893994849c4816b68b5aab71f4efa4b033b522efe858d560738"
+        }
+      ]
+    },
+    {
+      "id": "k1-24",
+      "query": "MkDocs GitBook 为什么选静态站",
+      "category": "multiple_terms",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": [
+        {
+          "source_uid": "article:293354d7072f4a2b",
+          "source_hash": "fd025936893d2587da06475742cd4497697681deb01467639a6e7e249db58dbe",
+          "block_id": "b27",
+          "start": 49,
+          "end": 59,
+          "evidence_hash": "83862f5dc7439e43c8b6b82a4dfa28451fcad5422b00a78614186e5c01633b47"
+        }
+      ]
+    },
+    {
+      "id": "k1-25",
+      "query": "2028年欧洲央行基准利率",
+      "category": "no_answer",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": []
+    },
+    {
+      "id": "k1-26",
+      "query": "这篇ComfyUI说明提供作者银行账号吗",
+      "category": "no_answer",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": []
+    },
+    {
+      "id": "k1-27",
+      "query": "一人公司保证七天赚一百万吗",
+      "category": "no_answer",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": []
+    },
+    {
+      "id": "k1-28",
+      "query": "填报志愿AI的官方客服电话是多少",
+      "category": "no_answer",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": []
+    },
+    {
+      "id": "k1-29",
+      "query": "RTX 5090最新购买价格是多少",
+      "category": "no_answer",
+      "split": "dev",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": []
+    },
+    {
+      "id": "k1-30",
+      "query": "李白的出生年份",
+      "category": "no_answer",
+      "split": "heldout",
+      "annotation_status": "author_prepared_needs_user_review",
+      "asr_interpretation_pending": false,
+      "gold": []
+    }
+  ]
+}
