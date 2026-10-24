@@ -1,0 +1,17 @@
+{
+  "bm25": {
+    "median_ms": 0.10033571327637349,
+    "maximum_ms": 0.38155713783843176,
+    "note": "seven repeated runs per query averaged; constraint/lexical is extra rerank cost only"
+  },
+  "constraints": {
+    "median_ms": 0.09464285436219402,
+    "maximum_ms": 0.654542851927025,
+    "note": "seven repeated runs per query averaged; constraint/lexical is extra rerank cost only"
+  },
+  "lexical_rerank": {
+    "median_ms": 0.09027857699298433,
+    "maximum_ms": 0.6327571380617363,
+    "note": "seven repeated runs per query averaged; constraint/lexical is extra rerank cost only"
+  }
+}
