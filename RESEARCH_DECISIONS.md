@@ -233,3 +233,13 @@
 - paraphrase四题逐题：16/3/1/1 → 语义9/1/1/1，仍3/4；BM25失分paraphrase/ASR各1，未建立改写类集中失分，故不提升为优先候选或默认启用。小语义新增1个ASR定位失分；局部收益和退步均保留。详见PARAPHRASE_20261024.md。
 - 34输入977对评分约43.9秒，加载约0.92秒，CPU每题中位1.43秒；176后端测试及真实ONNX边界检查通过。模型约136MB、实验venv约244MB，非进程内存结论；无付费API调用。主环境没有新增模型依赖。
 - 下一步先补真实意图分级标注与证据充分性，必要时前后文/中文适配对照；本实验未赢不推论全部语义模型无用。来源不足与ASR错名分别处理，向量库/M2/K2仍暂缓。详见K1_RERANK_MILESTONE_20261024.md，R2业务代码及页面未改。
+
+## 2026-10-24 · faster-whisper / VoiceStudio 调研（未安装、未实测）
+
+- 来源：官方仓库 https://github.com/SYSTRAN/faster-whisper ，已读 README 与 faster_whisper/transcribe.py；VoiceStudio 按 https://github.com/debpalash/VoiceStudio 识别，已读 README_CN、pyproject.toml、LICENSE-NOTICE、Windows 安装文档、功能目录及 https://voicestudio.sh/docs/transcription 。同名工具若非此仓库需重新核对。
+- 本站实情：transcribe.py 使用 sherpa-onnx SenseVoice INT8、CPU四线程与 Silero VAD，输出语音段边界并逐段缓存；并非原版 Whisper。faster-whisper 的官方加速基线是 openai/whisper，不能据此断言比本站更快或中文更准。它是 CTranslate2 推理实现，需另下载 Whisper 权重；批处理吞吐提升可能增大内存/显存，VAD不能保证消除幻觉。
+- 候选：仅为中文夹英文术语、较难听辨段做同音频引擎对照，保留原稿并分开存候选。可选 large-v3-turbo / large-v3，实际速度、数字/专名错误、漏句、静音误报、内存与显存由本机实测决定；不先接整套软件，不承诺 GPU 可用。GPU依赖 CUDA/cuDNN/CTranslate2版本匹配，公开CPU基础包暂不增加依赖。MIT实现与具体权重条款分别核对。
+- VoiceStudio 是语音创作应用，包含转写、配音、有声书、听写、本地API/MCP等；pyproject 已列 WhisperX/faster-whisper 及 Torch 等依赖。因此整套接入不等于更好的识别引擎，且部署成本高于当前核心。可借鉴模型就绪状态、引擎选择与任务队列交互，不复制整套UI或后端。
+- 后续实际结合点：校对后文稿→试听/个人学习音频；确认有需求后，可让本站通过独立本地服务API调用语音生成并保存稿件版本与产物对应关系。固定服务集成优先HTTP API；MCP是智能体调用选项，不是必要前提。转写接口 verbose_json 声明支持分段和时间，但仍须核验具体引擎精度与本站原始时间轴映射。
+- 许可取舍：VoiceStudio应用AGPL-3.0-only，官方说明允许按条款商用，闭源嵌入有商业授权渠道；不能把“开源”直接等同于可任意复制进未来闭源网站。默认 OmniVoice 权重在其许可说明中记录为 CC-BY-NC，模型与应用授权独立，付费应用许可不自动覆盖模型。未来选TTS需逐模型确认。
+- 当前决定：faster-whisper列为ASR对照候选；VoiceStudio列为后续声音输出与产品交互参考，不进入核心依赖。没有安装/下载模型/付费调用，也没有运行时或业务代码变更。以上除本地源码现状外均为文档/源码核对与方案判断，非效果验收，不改变K1路线。
