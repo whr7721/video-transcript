@@ -13,6 +13,8 @@ beforeEach(()=>{
   let body:any
   if(path==='/api/tasks')body=[task]
   else if(path==='/api/settings')body={search_key_configured:false,key_configured:true}
+  else if(path.endsWith('/chapters'))body={revision:0,kind:'reading',sections:[],warnings:[],source_hash:'fixture'}
+  else if(path.endsWith('/chapter-jobs'))body=[]
   else if(path.startsWith('/api/studio/research/'))body=[]
   else if(path==='/api/studio/buffer')body={used_bytes:0,capacity_bytes:5e9,reclaimable_bytes:0,waiting:0}
   else if(path.endsWith('/generate')&&JSON.parse(String(options?.body)).action==='manuscript')body={id:'test-full',action:'manuscript',status:'completed',base_revision:revision,content:{type:'doc',content:[{type:'heading',attrs:{level:2},content:[{type:'text',text:'完整文章标题'}]},{type:'paragraph',content:[{type:'text',text:'完整整理稿保留具体例子，先预览后采用。'}]}]},essence_content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'精华回顾文字。'}]}]}}
@@ -22,7 +24,29 @@ beforeEach(()=>{
   return {ok:true,json:async()=>body}
  }))
 })
-afterEach(()=>{cleanup();vi.unstubAllGlobals()})
+afterEach(()=>{cleanup();vi.unstubAllGlobals();history.replaceState(null,'','/')})
+
+test('search deep link validates the actual source range before locating',async()=>{
+ const original=fetch
+ history.replaceState(null,'','/?task='+task.id+'&search_topic=t&search_hit='+('a'.repeat(32))+'&search_hash='+('b'.repeat(64)))
+ vi.stubGlobal('fetch',vi.fn(async(path:string,options?:RequestInit)=>{
+  if(path.endsWith('/search/context'))return {ok:true,json:async()=>({task_id:task.id,category:'original',text:source,ranges:[{block_id:'seg-0',start:0,end:Array.from(source).length}]})}
+  return original(path,options)
+ }))
+ render(<App/>);await waitFor(()=>expect(screen.getByRole('tab',{name:'识别原稿'}).getAttribute('data-state')).toBe('active'))
+ expect(document.getElementById('source-seg-0')?.className).toContain('active')
+})
+
+test('search deep link never guesses a position when source content differs',async()=>{
+ const original=fetch
+ history.replaceState(null,'','/?task='+task.id+'&search_topic=t&search_hit='+('a'.repeat(32))+'&search_hash='+('b'.repeat(64)))
+ vi.stubGlobal('fetch',vi.fn(async(path:string,options?:RequestInit)=>{
+  if(path.endsWith('/search/context'))return {ok:true,json:async()=>({task_id:task.id,category:'original',text:'其他版本',ranges:[{block_id:'seg-0',start:0,end:4}]})}
+  return original(path,options)
+ }))
+ render(<App/>);await screen.findByText('来源位置与当前原稿不一致，请重新搜索。')
+ expect(screen.getByRole('tab',{name:'编辑稿'}).getAttribute('data-state')).toBe('active')
+})
 
 test('mounts actual editor with saved source and keeps draft separate',async()=>{
  render(<App/> )

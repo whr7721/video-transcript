@@ -43,3 +43,12 @@ test('stale locations display server error rather than a guessed passage',async(
  mount();await find();fetchMock.mockResolvedValueOnce({ok:false,json:async()=>({detail:'内容已有变化，请重新搜索；未跳转到其他位置。'})})
  fireEvent.click(screen.getByText('查看原文位置与上下文'));await screen.findByRole('alert');expect(screen.queryByText('来源位置与相邻文字')).toBeNull()
 })
+
+test('title-only match opens the source beginning without claiming body evidence',async()=>{
+ fetchMock.mockResolvedValueOnce({ok:true,json:async()=>({...result,items:[],candidate_count:0,title_matches:[hit]})})
+ mount();fireEvent.change(screen.getByLabelText('关键词或问题'),{target:{value:'真实交付'}});fireEvent.click(screen.getByRole('button',{name:'搜索'}))
+ await screen.findByText('另有标题匹配（不代表正文命中）')
+ screen.getByText('另有标题匹配（不代表正文命中）').closest('details')!.open=true
+ fireEvent.click(screen.getByText('查看来源开头（仅标题匹配）'));await screen.findByText('以下为来源开头，未标为查询命中的正文。')
+ expect(screen.getByText(hit.text).querySelector('mark')).toBeNull()
+})

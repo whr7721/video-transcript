@@ -15,14 +15,14 @@ BACKEND = (
     'media_io.py', 'transcript_stage.py', 'transcribe.py', 'media_buffer.py',
     'local_files.py', 'local_media.py', 'core_instance.py', 'import_file.py',
     'documents.py', 'chapters.py', 'chapter_jobs.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
-    'research_api.py', 'studio_api.py', 'articles.py', 'article_api.py',
+    'research_api.py', 'topic_search.py', 'studio_api.py', 'articles.py', 'article_api.py',
     'article_parser.py', 'article_fetch.py', 'requirements.lock.txt', 'requirements.txt',
     'setup_models.py', 'check_core.py',
     'podcast_feed.py','podcast_text.py','podcasts.py',
 )
 FRONTEND = (
     'src/Studio.tsx', 'src/ChapterNavigation.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
-    'src/styles.css', 'src/articles.css', 'src/lib/utils.ts',
+    'src/styles.css', 'src/articles.css', 'src/TopicSearch.tsx', 'src/topic-search.css', 'src/lib/utils.ts',
     'core/main.tsx', 'core/index.html', 'core/public/logo.svg',
     'core/FileCapture.tsx','core/files.css',
     'core/PodcastCapture.tsx','core/Capture.tsx','core/podcasts.css',
@@ -72,7 +72,7 @@ def verify_manifest(directory):
 
 
 def build(output=None):
-    output = Path(output or ROOT/'runtime'/'r2').resolve()
+    output = Path(output or ROOT/'runtime'/'k1-production'/'package').resolve()
     output.mkdir(parents=True, exist_ok=True)
     # Fresh staging prevents an old output or accidental extra file being carried forward.
     with tempfile.TemporaryDirectory(prefix='core-package-') as temporary:
@@ -102,7 +102,7 @@ def build(output=None):
         (staging/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         count = verify(staging)
         verify_manifest(staging)
-        archive = output/'shiwen-core-r2.zip'
+        archive = output/'shiwen-core-k1.zip'
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
             for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()):
                 if p.is_file():

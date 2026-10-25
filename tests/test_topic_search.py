@@ -106,6 +106,8 @@ class TopicSearchTests(unittest.TestCase):
         result = search.search('one', '案例')
         self.assertTrue(result['title_matches'])
         self.assertFalse(result['items'])
+        title=result['title_matches'][0]
+        self.assertEqual(search.context('one',title['hit_id'],title['source_hash'])['uid'],title['uid'])
         with self.assertRaises(ValueError):search.search('one', ' ')
         with self.assertRaises(LookupError):search.search('unknown', '交付')
 

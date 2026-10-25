@@ -166,8 +166,13 @@ def search(topic_id, query, category='all', offset=0, limit=10):
         visible = pool[offset:offset+limit]
         for item in visible:
             item['highlights'] = marks(item['text'], tokens or ([literal] if single else []))
-        title_hits = [{k: r[k] for k in ('uid', 'category', 'title', 'version')} for r in records
-                      if (category == 'all' or r['category'] == category) and literal in normalize(r['title'])][:10]
+        title_hits = []
+        for record in records:
+            if (category == 'all' or record['category'] == category) and literal in normalize(record['title']):
+                first = passages([record])[0]
+                title_hits.append({k: first[k] for k in ('uid', 'category', 'title', 'version', 'hit_id', 'source_hash')})
+                if len(title_hits) == 10:
+                    break
         return {'topic': {'id': topic['id'], 'title': topic['title']}, 'query': query, 'category': category,
                 'method': 'literal_single' if single else 'bigram_bm25', 'items': visible,
                 'offset': offset, 'has_more': offset+limit < len(pool), 'candidate_count': len(pool),
