@@ -1,5 +1,5 @@
 from typing import Literal
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 import documents
@@ -87,6 +87,31 @@ def confirm_claims(ident:str,body:ConfirmClaims):
 
 @router.get('/topics')
 def topics():return research.topics()
+
+
+@router.get('/topics/{ident}/search')
+def search_topic(ident:str,q:str=Query(min_length=1,max_length=200),
+                 category:Literal['all','personal','selection','original']='all',
+                 offset:int=Query(default=0,ge=0,le=40)):
+    import sqlite3
+    import topic_search
+    try:return topic_search.search(ident,q,category,offset)
+    except LookupError as exc:raise HTTPException(404,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+    except sqlite3.Error:raise HTTPException(503,'本地索引暂不可用，请稍后重新搜索；没有返回旧结果。')
+
+
+class SearchLocation(BaseModel):
+    hit_id:str=Field(pattern=r'^[a-f0-9]{32}$')
+    source_hash:str=Field(pattern=r'^[a-f0-9]{64}$')
+
+
+@router.post('/topics/{ident}/search/context')
+def search_context(ident:str,body:SearchLocation):
+    import topic_search
+    try:return topic_search.context(ident,body.hit_id,body.source_hash)
+    except LookupError as exc:raise HTTPException(404,str(exc))
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
 
 
 @router.get('/notes')
