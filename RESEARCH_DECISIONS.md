@@ -244,7 +244,9 @@
 - 许可取舍：VoiceStudio应用AGPL-3.0-only，官方说明允许按条款商用，闭源嵌入有商业授权渠道；不能把“开源”直接等同于可任意复制进未来闭源网站。默认 OmniVoice 权重在其许可说明中记录为 CC-BY-NC，模型与应用授权独立，付费应用许可不自动覆盖模型。未来选TTS需逐模型确认。
 - 当前决定：faster-whisper列为ASR对照候选；VoiceStudio列为后续声音输出与产品交互参考，不进入核心依赖。没有安装/下载模型/付费调用，也没有运行时或业务代码变更。以上除本地源码现状外均为文档/源码核对与方案判断，非效果验收，不改变K1路线。
 
-## 2026-10-25 · K1-P 专题内搜索生产化（待独立审查）
+## 2026-10-25 · K1-P 专题内搜索生产化（统一审查通过，K1收官）
+
+- 用户转达统一审查通过、无发现；接受共享FTS的BM25统计漂移，记录不处理，不自动形成新任务。人工点验等既有挂账不由代码审查替代。
 
 - 用户转达E1无发现并批准生产化方案。采用现有FastAPI/Python SQLite FTS5 + 已测中文双字/ASCII BM25；不引入向量库、语义模型或外部依赖，E1升级条件维持。参考SQLite官方 https://www.sqlite.org/fts5.html 与Datasette搜索 https://datasette.io/for/search / 查询处理源码 https://github.com/simonw/datasette/blob/main/datasette/utils/__init__.py ，不复制代码或引入其服务。中文拼音扩展 https://github.com/wangfenjin/simple 当前无需求收益，暂缓。
 - 实际结合点：research_notes→research_jobs→tasks解析专题成员；个人理解、保存选段、去重原稿，读取全部笔记而非旧列表200条；不把未关联的文章/其他专题/AI结果混入。没有独立文章专题关系，此边界已在开工更新中说明。历史编辑/整理选段按来源标签显示。
@@ -253,3 +255,10 @@
 - 验证：原30题Top5来源/范围逐题与旧BM25相同；paraphrase单列仍3/4，22/24只表示已知范围定位。4条真实查询在隔离8份转写专题通过HTTP与前5条上下文回查；前列仍有明显不相关，生产化不包装成问答质量改善。人工相关性检查不是用户确认真值，详情experiments/topic_search/QUALITY_20261025.md。
 - 合成1万原稿片段：首次建索引+查询约2.58秒、25次热查询中位约154ms/P95约159ms，数据库约80MiB；不能推论所有机器/语料。冻结10源原库只读且前后快照一致；文章夹具仅用于算法回归，不冒称文章专题产品已接入。
 - 184后端/46前端测试、私有与核心构建通过；白名单候选包确定ZIP复建、全目录门、解压后无Key搜索/修改/过期引用/重启通过。未付费调用、未下载模型、未改原用户内容、未对外发布。M2/K2仍未启动。详见K1_PRODUCTION_MILESTONE_20261025.md。
+
+## 2026-10-25 · 产品梳理与面试证据（仅文档）
+
+- 用户反馈后续迭代缺少产品理解。新增USER_GUIDE.md讲清功能、实际操作、不同数据环境和未贯通处；PROJECT_INTERVIEW_GUIDE.md把已实现、实验、未实现技术分开。README首页历史路线过时，已改为指向当前指南。未修改运行代码、未迁移数据、未重新打包或公开发布。
+- 刚检查仅8775监听，为无Key/无音轨的夹具预览，不是全部历史资料的日常环境。建议先确认日常入口并走通实际素材，不把新增框架作为解决入口割裂的办法；未来带引用专题问答仍需单独确定。
+- 技术概念核对官方：MCP https://modelcontextprotocol.io/docs/getting-started/intro （工具/系统连接），LangGraph https://docs.langchain.com/oss/python/langgraph/overview （有状态编排、持久化与人工介入），工作流和Agent区分 https://www.anthropic.com/research/building-effective-agents 。当前产品使用Python/SQLite有界工作流，未采用LangGraph/MCP服务或运行时Skill路由；开发工具使用不冒充产品实现。
+- 简历建议侧重现有可复现的评测/失败分析、长上下文与恢复、来源约束和人工采用。30条候选标签非独立真值、22/24非答案准确率、合成性能非线上SLA，均保留限定。下一步路线为建议，非本轮新功能开工授权。
