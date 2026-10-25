@@ -163,12 +163,13 @@ def search(topic_id, query, category='all', offset=0, limit=10):
             rows = []
             warnings.append('请输入中文词语或英文名称；标点不能用于检索。')
         pool = [json.loads(r['payload']) for r in rows[:50]]
-        for item in pool:
+        visible = pool[offset:offset+limit]
+        for item in visible:
             item['highlights'] = marks(item['text'], tokens or ([literal] if single else []))
         title_hits = [{k: r[k] for k in ('uid', 'category', 'title', 'version')} for r in records
                       if (category == 'all' or r['category'] == category) and literal in normalize(r['title'])][:10]
         return {'topic': {'id': topic['id'], 'title': topic['title']}, 'query': query, 'category': category,
-                'method': 'literal_single' if single else 'bigram_bm25', 'items': pool[offset:offset+limit],
+                'method': 'literal_single' if single else 'bigram_bm25', 'items': visible,
                 'offset': offset, 'has_more': offset+limit < len(pool), 'candidate_count': len(pool),
                 'truncated': len(rows) > 50, 'title_matches': title_hits, 'warnings': warnings,
                 'scope': {c: sum(r['category'] == c for r in records) for c in CATEGORIES-{'all'}}}

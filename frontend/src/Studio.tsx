@@ -112,6 +112,14 @@ export function App({sourceUI}:{sourceUI:SourceUI}){
   const timer=setInterval(async()=>{try{const results=await Promise.all(pending.map(g=>api<Generation>(`/api/studio/generations/${g.id}`)));setDoc(old=>{if(!old||old.task_id!==doc.task_id)return old;const next={...old,generations:old.generations.map(g=>results.find(r=>r.id===g.id)||g)};docRef.current=next;return next})}catch{}},2000);return()=>clearInterval(timer)
  },[doc?.task_id,doc?.generations.map(g=>g.status).join(',')])
  useEffect(()=>{if(tab==='original'&&activeSource)document.getElementById(`source-${activeSource}`)?.scrollIntoView({block:'nearest',behavior:'smooth'})},[activeSource,tab])
+ useEffect(()=>{if(!doc)return;const params=new URLSearchParams(location.search),topic=params.get('search_topic'),hit=params.get('search_hit'),hash=params.get('search_hash')
+  if(!topic||!hit||!hash)return;let stopped=false
+  api<{task_id?:string;category:string;text:string;ranges:{block_id:string;start:number;end:number}[]}>(`/api/studio/research/topics/${encodeURIComponent(topic)}/search/context`,{method:'POST',body:JSON.stringify({hit_id:hit,source_hash:hash})}).then(value=>{
+   if(stopped)return;const exact=value.ranges.map(r=>{const s=doc.sources.find(s=>s.id===r.block_id);return s?Array.from(s.text).slice(r.start,r.end).join(''):null})
+   if(value.task_id!==doc.task_id||value.category!=='original'||exact.includes(null)||exact.join('\n\n')!==value.text){notify('来源位置与当前原稿不一致，请重新搜索。');return}
+   setTab('original');setRightOpen(true);setRightTab('source');setActiveSource(value.ranges[0].block_id)
+  }).catch(e=>{if(!stopped)notify((e as Error).message)});return()=>{stopped=true}
+ },[doc?.task_id])
  useEffect(()=>{if(audio.current&&pendingSeek.current!==null){audio.current.currentTime=pendingSeek.current;pendingSeek.current=null;audio.current.play().catch(()=>notify('请点击播放器开始回听。'))}},[rightOpen,rightTab,doc?.task_id])
  useEffect(()=>{const shortcut=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();saveFn.current?.().catch(err=>notify(err.message))}};window.addEventListener('keydown',shortcut);return()=>window.removeEventListener('keydown',shortcut)},[])
  const filtered=tasks.filter(t=>`${t.title} ${t.author}`.toLowerCase().includes(search.toLowerCase()))

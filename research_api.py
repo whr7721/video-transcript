@@ -118,6 +118,13 @@ def search_context(ident:str,body:SearchLocation):
 def notes(topic_id:str|None=None):return research.note_list(topic_id)
 
 
+@router.get('/notes/{ident}')
+def get_note(ident:str):
+    note=research.get_note(ident)
+    if not note:raise HTTPException(404,'笔记不存在。')
+    return note
+
+
 @router.post('/notes')
 def save_note(body:NoteInput):
     try:return research.save_note(body.job_id,body.topic_title,body.personal)

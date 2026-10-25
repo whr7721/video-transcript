@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, ExternalLink, LoaderCircle, Search, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import TopicSearch from './TopicSearch'
 
 export type Passage = {taskId:string;basis:'original'|'draft'|'manuscript'|'chapter';revision:number;generation_id?:string;chapter_revision?:number;chapter_index?:number;selection_start?:number;selection:string}
 type Citation={source_id:string;quote:string;relation?:string}
@@ -62,6 +63,7 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
   {!modelReady&&<p className="research-hint">AI整理与深入需要硅基流动 Key。<button className="text-link" onClick={onSettings}>配置文本模型 Key</button> 手动笔记不受影响。</p>}
   <div className="research-navigation"><Button size="sm" variant={view==='research'?'default':'ghost'} aria-pressed={view==='research'} onClick={()=>setView('research')}><Search size={14} aria-hidden="true"/>深入一下</Button><Button size="sm" variant={view==='notes'?'default':'ghost'} aria-pressed={view==='notes'} onClick={()=>setView('notes')}><BookOpen size={14} aria-hidden="true"/>专题笔记</Button></div>
   {error&&<p className="inline-error" role="alert">{error}</p>}{notice&&<p className="research-notice" role="status">{notice}</p>}
+  <div hidden={view!=='notes'}><TopicSearch topics={topics} topicId={filter} onTopic={setFilter} onNotesChanged={refreshNotes} onResearch={id=>{api<ResearchJob>('/jobs/'+id).then(value=>{setJob(value);setJobs(old=>[value,...old.filter(x=>x.id!==value.id)]);setView('research')}).catch(e=>setError(e.message))}}/></div>
   {view==='research'?<>
    <p className="research-intro">选中文章中的一段，带着问题继续读。解释、案例和你的理解都可以留下。</p>
    <label className="research-label" htmlFor="research-selection">本次选段 <small>{selectedBasis.basis==='chapter'?'章节精确原话':selectedBasis.basis==='original'?'识别原稿':selectedBasis.basis==='draft'?'编辑稿':'完整整理稿'}</small></label>
