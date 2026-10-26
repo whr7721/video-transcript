@@ -18,6 +18,7 @@ import store
 if store.DATA != CORE_DATA:
     raise RuntimeError('请在独立进程启动核心入口，不能与其他入口共用模块状态')
 import settings
+import public_quota
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -109,11 +110,13 @@ class SettingsInput(BaseModel):
 
 @app.get('/api/settings')
 def get_settings():
+    public_quota.settings_guard()
     return settings.public()
 
 
 @app.post('/api/settings')
 def set_settings(body: SettingsInput):
+    public_quota.settings_guard()
     if body.provider not in {'local', 'cloud'}:
         raise HTTPException(400, '未知识别方式')
     settings.save(body.provider, body.api_key, body.deepseek_key)

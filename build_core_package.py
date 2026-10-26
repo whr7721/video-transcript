@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 FORBIDDEN = (b'douyin', b'mediacrawler')
 BACKEND = (
-    'app_core.py', 'app_shared.py', 'source_contract.py', 'store.py', 'settings.py',
+    'app_core.py', 'app_shared.py', 'public_quota.py', 'source_contract.py', 'store.py', 'settings.py',
     'media_io.py', 'transcript_stage.py', 'transcribe.py', 'media_buffer.py',
     'local_files.py', 'local_media.py', 'core_instance.py', 'import_file.py',
     'documents.py', 'chapters.py', 'chapter_jobs.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
@@ -95,7 +95,7 @@ def build(output=None):
         (staging/'frontend/package.json').write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding='utf-8')
         copy(ROOT/'distribution/README.md', staging/'README.md')
         copy(ROOT/'distribution/start-core.ps1', staging/'start-core.ps1')
-        for name in ('DEPLOYMENT_ACCEPTANCE.md','THIRD_PARTY_NOTICES.md','THIRD_PARTY_LICENSES.txt','RELEASE_CHECKLIST.md'):
+        for name in ('DEPLOYMENT_ACCEPTANCE.md','THIRD_PARTY_NOTICES.md','THIRD_PARTY_LICENSES.txt','RELEASE_CHECKLIST.md','PUBLIC_QUOTA.md'):
             copy(ROOT/'distribution'/name, staging/name)
         verify(staging)
         manifest = {p.relative_to(staging).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()

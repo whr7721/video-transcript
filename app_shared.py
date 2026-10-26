@@ -20,10 +20,15 @@ async def local_security(request: Request, call_next):
 
 
 def install_shared(app):
+    import os
     from studio_api import router as studio
     from research_api import router as research
     from article_api import router as articles
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"])
+    if os.environ.get('SHIWEN_PUBLIC') == '1':
+        allowed = [h.strip() for h in os.environ.get('SHIWEN_ALLOWED_HOSTS', '*').split(',') if h.strip()]
+    else:
+        allowed = ['localhost', '127.0.0.1', 'testserver']
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed)
     app.middleware("http")(local_security)
     for router in (studio, research, articles):
         app.include_router(router)

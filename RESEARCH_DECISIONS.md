@@ -379,3 +379,11 @@
 - 用户明确分工：实现交Codex（额度充足），本会话只负责调研与方案。此前动手的半成品（public_quota.py及三处接线）已全部回滚，仓库回到321e697干净状态；参考实现全文保留进 CODEX_TASK_PUBLIC_QUOTA_20261026.md。
 - 任务单内容：SHIWEN_PUBLIC=1开关设计（私有版零影响为最优先验收项）、四挂点（editorial/classify/question/research）与settings守卫、TrustedHost公开分支（现白名单仅localhost，公网内测会400，必须改）、前端X-Device-Id注入、build_core_package BACKEND白名单补public_quota.py（Codex最易漏）、测试覆盖点、Windows验收命令与审查请求模板。
 - 设计要点：配额库独立SQLite不碰store schema；设备限被拒不消耗IP池；X-Forwarded-For可伪造风险写入部署注意（Nginx层覆盖头缓解）；云转写暂不挂、留到§3-⑤接线时一并。
+
+## 2026-10-26 · Codex按任务单完成公开配额接线（待独立审查）
+
+- 用户授权执行CODEX_TASK_PUBLIC_QUOTA_20261026.md第3节①—⑨，并转达前轮审查无问题。本轮复用参考实现、FastAPI依赖、SQLite与现有核心入口，不引入限流服务。原始依据：https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-in-path-operation-decorators/ 、https://www.sqlite.org/lang_transaction.html 、https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_set_header 。
+- 采用SHIWEN_PUBLIC=1模块开关、四接口设备/IP自然日配额、核心设置守卫与Host公开分支；配额独立public_quota.db，BEGIN IMMEDIATE确保检查/双扣原子性，设备拒绝不消耗IP。核心fetch保留Request头/显式设备头，只向本站API注入UUID；模块与部署注意均进入核心包。
+- 未设开关的全量pytest228项通过，前端57项及核心构建通过；真实隔离HTTP验证公开设置GET/POST403、设备第4次429、IP累计10次后429、公开Host200；移除开关重启后设置200、12次请求无429、原Host白名单恢复。88文件候选包验证通过，未部署公网/未付费调用/未改用户数据。
+- 任务示例D:/tmp无权限，实际隔离在runtime/public-quota-smoke/data-core；pytest8.4.2仅装入忽略的runtime/public-quota-tools，生产依赖未变。外部HANDOVER_20261026.md未动。
+- 真实风险明确保留：XFF须反代覆盖且禁止后端直连；任务只列四挂点，studio generate/chapter-jobs/verification confirm等其他付费路由并未保护，云转写与多用户隔离仍未接，不据此称全站可公开。公网真机与Nginx实测未做。验收命令及范围见PUBLIC_QUOTA_MILESTONE_20261026.md。

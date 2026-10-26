@@ -1,16 +1,17 @@
 from pathlib import Path
 from typing import Literal
-from fastapi import APIRouter,HTTPException,Request
+from fastapi import APIRouter,Depends,HTTPException,Request
 from fastapi.responses import FileResponse,Response
 from pydantic import BaseModel,Field
 import articles
 import documents
 import store
+import public_quota
 
 router=APIRouter(prefix='/api/library')
 
 
-@router.post('/image-items/{ident}/editorial')
+@router.post('/image-items/{ident}/editorial',dependencies=[Depends(public_quota.require_quota('editorial'))])
 def image_editorial_start(ident:str):
     import image_editorial
     try:return image_editorial.start(ident)
@@ -61,7 +62,7 @@ def reading_override(ident:str,block_id:str,body:ReadingEdit):
     except ValueError as exc:raise HTTPException(400,str(exc))
 
 
-@router.post('/image-items/{ident}/classify')
+@router.post('/image-items/{ident}/classify',dependencies=[Depends(public_quota.require_quota('classify'))])
 def classify_regions(ident:str):
     import ocr_classification
     try:return ocr_classification.start(ident)
@@ -163,7 +164,7 @@ def note(ident:str,body:NoteInput):
     except documents.Conflict as exc:raise HTTPException(409,str(exc))
     except ValueError as exc:raise HTTPException(400,str(exc))
 
-@router.post('/items/{ident}/question')
+@router.post('/items/{ident}/question',dependencies=[Depends(public_quota.require_quota('question'))])
 def question(ident:str,body:QuestionInput):
     import ocr_reading
     try:return ocr_reading.view(articles.ask(ident,body.question.strip(),body.image_page))

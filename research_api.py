@@ -1,9 +1,10 @@
 from typing import Literal
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 import documents
 import research
+import public_quota
 from studio_api import task
 
 router=APIRouter(prefix='/api/studio/research')
@@ -45,7 +46,7 @@ def manual_note(ident:str,body:ManualNote):
     except ValueError as exc:raise HTTPException(400,str(exc))
 
 
-@router.post('/documents/{ident}')
+@router.post('/documents/{ident}',dependencies=[Depends(public_quota.require_quota('research'))])
 def start(ident:str,body:ResearchInput):
     try:return research.start(task(ident),body)
     except documents.Conflict as exc:raise HTTPException(409,str(exc))
