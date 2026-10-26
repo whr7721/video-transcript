@@ -4,6 +4,7 @@ import ImageReader from '../src/ImageReader'
 import ImageImport from '../src/ImageImport'
 import ArticleLibrary from '../src/ArticleLibrary'
 import PrivateImageCapture from '../src/PrivateImageCapture'
+import OcrEvaluation from '../src/OcrEvaluation'
 const blocks=[{id:'image-1',type:'image',text:'',page:1,asset_status:'saved',asset_name:'one.jpg',width:100,height:200},
  {id:'image-1-r1',type:'ocr',text:'Agent上下文原话',source_image_id:'image-1',region_id:'r1',revision:1,bbox:[1,2,80,30],score:.8},
  {id:'image-2',type:'image',text:'',page:2,asset_status:'missing',asset_error:'下载失败'}]
@@ -64,4 +65,17 @@ test('clean reading defaults to original text and low-score regions stay folded'
  fireEvent.click(screen.getByText('展开本页 1 处识别存疑'));expect(screen.getByText('疑难词')).toBeTruthy()
  fireEvent.click(screen.getByText('查看本页原图与区域'));expect(screen.getByRole('complementary',{name:'第1页原始OCR对照'})).toBeTruthy()
  fireEvent.click(screen.getByText('关闭对照'));expect(screen.queryByAltText('第1张原图')).toBeNull()
+})
+
+test('human evaluation does not prefill a model category or save until explicitly confirmed',async()=>{
+ const metric={human_confirmed:0,pending:1,splits:{holdout:{n:0,body_exclusion_rate:null,body_fold_rate:null,noise_removal_rate:null}}}
+ const report={rows:[{id:'r1',item_id:'one',title:'样本',page:1,text:'OCR原字',source_key:'source',split:'holdout',width:100,height:500,bbox:[1,150,90,170],asset_name:'one.jpg'}],stale_samples:0,comparisons:{all:metric,rules:metric,ai:metric}}
+ const calls:any[]=[];vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{calls.push([url,options]);return{ok:true,json:async()=>report}}))
+ render(<OcrEvaluation notify={()=>{}}/>);await screen.findByText('OCR原字')
+ expect((screen.getByLabelText('人工判断') as HTMLSelectElement).value).toBe('')
+ expect(calls.length).toBe(1)
+ fireEvent.change(screen.getByLabelText('人工判断'),{target:{value:'body'}})
+ expect(calls.length).toBe(1)
+ fireEvent.click(screen.getByText('确认标签并继续'));await waitFor(()=>expect(calls.length).toBe(2))
+ expect(JSON.parse(calls[1][1].body)).toMatchObject({category:'body',revision:0,source_key:'source'})
 })

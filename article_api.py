@@ -47,6 +47,19 @@ def reading_override(ident:str,block_id:str,body:ReadingEdit):
     except ValueError as exc:raise HTTPException(400,str(exc))
 
 
+@router.post('/image-items/{ident}/classify')
+def classify_regions(ident:str):
+    import ocr_classification
+    try:return ocr_classification.start(ident)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.get('/ocr-classification-budget')
+def classification_budget():
+    import ocr_classification
+    return ocr_classification.budget()
+
+
 class ImageCreate(BaseModel):
     title:str=Field(default='',max_length=300)
     count:int=Field(ge=1,le=64)
@@ -115,7 +128,7 @@ class QuestionInput(BaseModel):
 
 @router.get('/items')
 def listing():
-    return [{k:v for k,v in i.items() if k not in {'blocks','artifacts','note','fingerprint'}} for i in articles.listing()]
+    return [{k:v for k,v in i.items() if k not in {'blocks','artifacts','note','fingerprint','reading_selection'}} for i in articles.listing()]
 
 @router.post('/items')
 def create(body:ImportInput):
@@ -131,18 +144,20 @@ def get(ident:str):
 
 @router.put('/items/{ident}/note')
 def note(ident:str,body:NoteInput):
-    try:return articles.note(ident,body.revision,body.text)
+    import ocr_reading
+    try:return ocr_reading.view(articles.note(ident,body.revision,body.text))
     except documents.Conflict as exc:raise HTTPException(409,str(exc))
     except ValueError as exc:raise HTTPException(400,str(exc))
 
 @router.post('/items/{ident}/question')
 def question(ident:str,body:QuestionInput):
-    try:return articles.ask(ident,body.question.strip(),body.image_page)
+    import ocr_reading
+    try:return ocr_reading.view(articles.ask(ident,body.question.strip(),body.image_page))
     except ValueError as exc:raise HTTPException(400,str(exc))
 
 @router.get('/items/{ident}/export')
-def export(ident:str):
-    try:return Response(articles.export(ident),media_type='text/markdown; charset=utf-8',headers={'Content-Disposition':'attachment; filename="article.md"'})
+def export(ident:str,reading_mode:Literal['clean','original']='clean'):
+    try:return Response(articles.export(ident,reading_mode),media_type='text/markdown; charset=utf-8',headers={'Content-Disposition':'attachment; filename="article.md"'})
     except ValueError as exc:raise HTTPException(404,str(exc))
 
 @router.get('/items/{ident}/assets/{name}')

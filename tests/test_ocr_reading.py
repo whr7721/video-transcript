@@ -69,7 +69,7 @@ class ReadingIntegrationTests(unittest.TestCase):
         self.patches = [patch.object(store, 'DATA', root), patch.object(store, 'DB', root/'test.sqlite3')]
         for p in self.patches: p.start()
         store.init()
-        self.item = {**fixture(), 'status': 'ready', 'note': '', 'note_revision': 0}
+        self.item = {**fixture(), 'status': 'ready', 'note': '', 'note_revision': 0, 'warnings': [], 'artifacts': []}
         articles.save(self.item)
 
     def tearDown(self):
@@ -97,3 +97,55 @@ class ReadingIntegrationTests(unittest.TestCase):
         original_report = result['comparisons']['ai']
         reading.override('sample', row['id'], row['source_key'], 0, 'interface', 'exclude')
         self.assertEqual(evaluation.report()['comparisons']['ai'], original_report)
+
+    def test_classification_cache_budget_and_original_integrity(self):
+        import ocr_classification as classifier
+        # An edge URL is semantically undecided, not an automatically deleted footer.
+        self.item['blocks'][0]['ocr_original']['b']['text'] = 'https://gist.github.com'
+        articles.save(self.item)
+        before = copy.deepcopy(articles.get('sample')['blocks'])
+        candidate = reading.rules(self.item)[1]
+        answer = {'decisions': [{'id': candidate['id'], 'category': 'body'}]}
+        with patch.object(organizer_module(), 'request_json', return_value=(answer, {'prompt_tokens': 100, 'completion_tokens': 20})) as call:
+            classifier.run('sample'); self.assertEqual(call.call_count, 1)
+            classifier.run('sample'); self.assertEqual(call.call_count, 1)
+        self.assertEqual(classifier.budget()['calls'], 1)
+        self.assertEqual(articles.get('sample')['blocks'], before)
+        self.assertEqual(articles.get('sample')['reading_status'], 'completed')
+
+    def test_invalid_ai_falls_back_and_failure_is_accounted(self):
+        import ocr_classification as classifier
+        self.item['blocks'][0]['ocr_original']['b']['text'] = '页眉待判'
+        articles.save(self.item)
+        before = reading.selection(self.item)
+        with patch.object(organizer_module(), 'request_json', return_value=({'decisions': [{'id': 'image-1-b', 'category': 'body', 'text': '改写'}]}, {})):
+            classifier.run('sample')
+        self.assertEqual(articles.get('sample')['reading_status'], 'failed')
+        self.assertEqual(reading.selection(articles.get('sample')), before)
+        self.assertEqual(classifier.budget()['reserved_cny'], .1)
+
+    def test_budget_refuses_before_model_and_recovery_never_autoretries(self):
+        import ocr_classification as classifier
+        with store.connect() as db:
+            classifier.init(db)
+            db.execute('INSERT INTO ocr_filter_calls(reserved,status,created) VALUES (10,\'reserved\',0)')
+        with self.assertRaises(RuntimeError): classifier.reserve()
+        self.item['reading_status'] = 'running'; articles.save(self.item)
+        with patch.object(organizer_module(), 'request_json') as call:
+            articles.recover(); self.assertFalse(call.called)
+        self.assertEqual(articles.get('sample')['reading_status'], 'failed')
+
+    def test_clean_export_uses_machine_original_and_preserves_full_export(self):
+        clean = articles.export('sample', 'clean')
+        full = articles.export('sample', 'original')
+        self.assertIn('原始OCR错宇', clean)
+        self.assertNotIn('人工校对正确字', clean)
+        self.assertNotIn('12:33', clean)
+        self.assertNotIn('MCP', clean)
+        self.assertIn('人工校对正确字', full)
+        self.assertIn('12:33', full)
+
+
+def organizer_module():
+    import organizer
+    return organizer

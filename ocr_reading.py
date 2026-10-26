@@ -117,7 +117,7 @@ def checked_ai(value, candidates):
         if not isinstance(decision, dict) or set(decision) != {'id', 'category'}:
             raise ValueError('AI只能返回区域ID和类别；维持规则版')
         ident, category = decision['id'], decision['category']
-        if not isinstance(ident, str) or ident not in allowed or ident in decisions or category not in CATEGORIES:
+        if not isinstance(ident, str) or ident not in allowed or ident in decisions or not isinstance(category, str) or category not in CATEGORIES:
             raise ValueError('分类引用无效；维持规则版')
         decisions[ident] = {'category': category, 'source_key': allowed[ident]['source_key']}
     if set(decisions) != set(allowed):

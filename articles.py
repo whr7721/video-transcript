@@ -123,6 +123,7 @@ def recover():
             if item.get('kind')=='images' and item.get('image_status') in {'queued','running','uploading','fetching'}:
                 item.update(status='ready',image_status='failed',completeness='partial',error='服务曾中断；原图和识别缓存保留，可明确重试。');changed=True
             if item.get('question_status') in {'queued','running'}:item.update(question_status='failed',question_error='服务曾中断，可重新提问。');changed=True
+            if item.get('reading_status') in {'queued','running'}:item.update(reading_status='failed',reading_error='服务中断；规则与已成功分类保留，未自动重试付费调用');changed=True
             if changed:save(item)
 
 
@@ -198,11 +199,16 @@ def answer(ident,question,image_page=None):
             current=get(ident);current.update(question_status='failed',question_error=str(exc) if isinstance(exc,(ValueError,RuntimeError)) else '本次整理未完成，原文与笔记未改动。');save(current)
 
 
-def export(ident):
+def export(ident,reading_mode='original'):
     item=get(ident)
     if not item:raise ValueError('素材不存在。')
     lines=['# '+item['title'],'', '原文：'+item.get('source_url','手动导入'),'作者：'+item.get('author','未提供'),'', '## 导入范围',*item['warnings'],'','## 原文']
-    for b in item['blocks']:
+    source_blocks=item['blocks']
+    if item.get('kind')=='images' and reading_mode=='clean':
+        import ocr_reading
+        source_blocks=[{**b,'type':'ocr','region_id':b['id']} for b in ocr_reading.blocks(item)]
+        lines+=['','净化范围：仅保留区域的机器原文；折叠及排除区域未收入本节，原稿另行保留。']
+    for b in source_blocks:
         text=b['text'];kind=b['type']
         if kind=='code':lines+=['','````',text,'````']
         elif kind=='image':lines+=['','[图片'+('已保存' if b.get('asset_status')=='saved' else '未保存')+'] '+text+' '+b.get('url','')]
