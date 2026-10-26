@@ -367,3 +367,9 @@
 - 上线前四件必改（生死排序）：防刷与额度（自有Key暴露公网=被刷烧钱，每设备每日3份/同IP每日10份，settings接口公开构建禁用）、多用户隔离（store全链路无user概念，需加device_id强制过滤）、内容安全（词表+协议/隐私/投诉三页）、任务排队（复用chapter_jobs，全局并发1）。合计约4天，均在Codex能力内；setup_models.py需改为ASR模型可选下载。
 - 部署形态：现成app_core.py+dist-core静态托管+systemd+Nginx+certbot；备案前用IP:8766内测不阻塞。
 - 获客打磨循环：北极星=每周整理份数；每周3篇素材（对比图/痛点文/实战文/身份文，均有真实数据可引）+1个功能点；微信群做反馈通道。与LAUNCH_PLAN备案时间线并行。
+
+## 2026-10-26 · 云ASR链路核对与MVP范围修正（仅文档）
+
+- 用户指出工作台有云ASR路径且测试过。核对代码：transcribe.py:119 cloud_transcribe 完整（180秒切片→ffmpeg 64k mp3→api.siliconflow.cn/v1/audio/transcriptions，FunAudioLLM/SenseVoiceSmall，3次重试+分片缓存），CLI链路（cli.py --provider cloud）实测成立；但网页上传路径未接通：local_files.py:171 硬编码 provider=local，:280 调 finish_transcription 未传 cloud_key（默认空，cloud 分支会报缺Key）。settings.cloud_key() 优先读 SILICONFLOW_API_KEY 环境变量，Linux 部署天然兼容 DPAPI 分支（windll 仅在 protect() 函数体内，公开版禁用 /api/settings POST 后不会触达）。
+- 修正 CLEAN_PUBLIC_MVP_20261026.md：音视频从"第一版不上"改为"第一版可上（云模式）"，新增 §3-⑤ 接线任务单：provider入参化+公开构建强制cloud、run_task补传cloud_key、服务器装ffmpeg、公开版配额（单文件200MB/30分钟、media_buffer缓冲改2GB、处理完即清）、定价前置实测（10分钟与60分钟各一次，官方价格页语音区未能抓取，不以估算定价，对外=实测成本×3起）。改造总量修正为4-5天。
+- 验收标准：网页上传10分钟音频出全文、账单金额可查、同文件重跑零新增费用（缓存生效）。无代码改动。
