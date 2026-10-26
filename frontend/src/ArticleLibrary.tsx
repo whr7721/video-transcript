@@ -4,12 +4,12 @@ import {Button} from '@/components/ui/button'
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from '@/components/ui/dialog'
 import './articles.css'
 import ImageImport from './ImageImport'
-import ImageReader,{type ImageBlock} from './ImageReader'
+import ImageReader,{type ImageBlock,type Reading} from './ImageReader'
 
 type Block=ImageBlock&{level?:number;rows?:string[][];url?:string}
 type Section={heading:string;text:string;quote:string;block_id:string}
 type Artifact={id:string;question:string;sections:Section[];gaps:string[];rejected:number;source_hash?:string;image_page?:number}
-type Item={id:string;kind?:string;image_status?:string;expected_images?:number;ocr_completed?:number;source_share?:string;content_hash?:string;title:string;author?:string;status:string;error?:string;source_url?:string;warnings:string[];completeness?:string;blocks:Block[];note:string;note_revision:number;artifacts:Artifact[];question_status:string;question_error?:string}
+type Item={reading?:Reading;reading_status?:string;reading_error?:string;id:string;kind?:string;image_status?:string;expected_images?:number;ocr_completed?:number;source_share?:string;content_hash?:string;title:string;author?:string;status:string;error?:string;source_url?:string;warnings:string[];completeness?:string;blocks:Block[];note:string;note_revision:number;artifacts:Artifact[];question_status:string;question_error?:string}
 async function api<T>(path:string,init?:RequestInit):Promise<T>{
  const r=await fetch('/api/library'+path,{...init,headers:{'Content-Type':'application/json'}})
  if(!r.ok){const v=await r.json();throw new Error(typeof v.detail==='string'?v.detail:'输入格式有误，请检查后重试。')}
@@ -36,22 +36,22 @@ export default function ArticleLibrary({extraNavigation,imageCapture:PrivateCapt
  }
  useEffect(()=>{refreshList().catch(e=>setMessage(e.message));const id=new URLSearchParams(location.search).get('item');if(id)load(id,true).catch(e=>setMessage(e.message))},[])
  useEffect(()=>{if(!item)return;const params=new URLSearchParams(location.search),topic=params.get('search_topic'),hit=params.get('search_hit'),hash=params.get('search_hash');if(!topic||!hit||!hash)return;let stopped=false
-  fetch(`/api/studio/research/topics/${encodeURIComponent(topic)}/search/context`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hit_id:hit,source_hash:hash})}).then(async r=>{const value=await r.json();if(!r.ok)throw Error(value.detail||'来源位置已变化');return value}).then(value=>{
-   if(stopped)return;const exact=value.ranges.map((r:{block_id:string;start:number;end:number})=>{const b=item.blocks.find(b=>b.id===r.block_id);return b?Array.from(b.text).slice(r.start,r.end).join(''):null})
+  fetch(`/api/studio/research/topics/${encodeURIComponent(topic)}/search/context`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hit_id:hit,source_hash:hash,include_hidden:params.get('search_hidden')==='true'})}).then(async r=>{const value=await r.json();if(!r.ok)throw Error(value.detail||'来源位置已变化');return value}).then(value=>{
+   if(stopped)return;const exact=value.ranges.map((r:{block_id:string;start:number;end:number})=>{const b=(item.kind==='images'?item.reading?.regions||[]:item.blocks).find(b=>b.id===r.block_id);return b?Array.from(b.text).slice(r.start,r.end).join(''):null})
    if(value.article_id!==item.id||exact.includes(null)||exact.join('\n\n')!==value.text)throw Error('图文位置与当前版本不一致，请重新搜索')
    go(value.ranges[0].block_id)
   }).catch(e=>{if(!stopped)setMessage(e.message)});return()=>{stopped=true}
  },[item?.id])
  useEffect(()=>{
   const id=item?.id
-  if(!id||(!['queued','running'].includes(item.status)&&!['queued','running'].includes(item.question_status)))return
+  if(!id||(!['queued','running'].includes(item.status)&&!['queued','running'].includes(item.question_status)&&!['queued','running'].includes(item.reading_status||'')))return
   const timer=setInterval(async()=>{try{
    const next=await api<Item>('/items/'+id)
    if(current.current!==id)return
    setItem(next);await refreshList()
   }catch(e){setMessage((e as Error).message)}},3000)
   return()=>clearInterval(timer)
- },[item?.id,item?.status,item?.question_status])
+ },[item?.id,item?.status,item?.question_status,item?.reading_status])
  useEffect(()=>{if(item){try{localStorage.setItem('shiwen-article-note-'+item.id,note)}catch{setMessage('浏览器暂存空间不可用，请点击保存笔记；当前输入仍保留。')}}},[item?.id,note])
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty.current){e.preventDefault();e.returnValue=''}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[])
  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage('');try{
@@ -91,7 +91,7 @@ export default function ArticleLibrary({extraNavigation,imageCapture:PrivateCapt
      {item.source_url&&<a className="article-origin" href={item.source_url} target="_blank" rel="noreferrer">打开来源页面<ArrowUpRight size={15}/></a>}
      {item.kind==='images'&&<div className="image-pipeline-status" role="status">{({fetching:'正在获取原图',uploading:'等待图片上传完成',queued:'等待识别',running:'正在本地识字',completed:'图片文字已提取，待核对',partial:'部分图片未完成识别',failed:'需要重试'} as Record<string,string>)[item.image_status||'']||'图片资料'} · {item.expected_images??'未知'} 张，已识别 {item.ocr_completed||0} 张{item.error&&<p>{item.error}</p>}{!['fetching','queued','running'].includes(item.image_status||'')&&<div><Button variant="outline" size="sm" onClick={recognize}>重新识别已保存图片</Button>{item.image_status==='uploading'&&<Button variant="ghost" size="sm" onClick={async()=>{try{setItem(await api<Item>(`/image-items/${item.id}/stop-upload`,{method:'POST'}))}catch(e){setMessage((e as Error).message)}}}>结束上传并保留已收图片</Button>}{PrivateCapture&&item.source_share&&<Button variant="ghost" size="sm" onClick={refetch}>重取缺失图片</Button>}</div>}</div>}
      {item.status==='ready'&&<details className="article-scope" open={item.completeness==='partial'}><summary>查看导入范围与缺失提示</summary><ul>{item.warnings.map(w=><li key={w}>{w}</li>)}</ul><p>{item.kind==='images'?'识别文字保留原图与区域位置，可能有错字或错序。':'本材料配图尚未进行文字识别。'} 导出包含文字与来源标记，不包含图片文件。</p></details>}
-     {item.kind==='images'?<><p className="article-help">原图保留。先逐页阅读，再按需要提炼学习重点或补自己的理解。</p>{item.blocks.filter(b=>b.id==='caption').map(b=><p key={b.id} id="article-caption" tabIndex={-1} className="article-help">{b.text}</p>)}<ImageReader id={item.id} blocks={item.blocks} activeBlock={activeBlock} onLocate={go} onPageChange={setImagePage} onUpdate={value=>{if(current.current===value.id)setItem(value)}} notify={setMessage}/></>:item.status==='failed'?<div className="article-failure" role="alert"><p>{item.error}</p><Button variant="outline" onClick={()=>setDialog(true)}>换一种方式导入</Button></div>:item.status!=='ready'?<p role="status"><LoaderCircle size={18}/>正在读取正文与图片，图片较多时需要更久。你可以先切换到其他材料。</p>:item.blocks.map(b=><div key={b.id} id={'article-'+b.id} className="article-block" tabIndex={-1}>
+     {item.kind==='images'?<><p className="article-help">默认显示净化阅读版，按页展开原图与全部区域。筛选不修正错字，人工校对另存。</p>{item.blocks.filter(b=>b.id==='caption').map(b=><p key={b.id} id="article-caption" tabIndex={-1} className="article-help">{b.text}</p>)}<ImageReader id={item.id} blocks={item.blocks} reading={item.reading} readingStatus={item.reading_status} readingError={item.reading_error} activeBlock={activeBlock} onLocate={go} onPageChange={setImagePage} onUpdate={value=>{if(current.current===value.id)setItem(value)}} notify={setMessage}/></>:item.status==='failed'?<div className="article-failure" role="alert"><p>{item.error}</p><Button variant="outline" onClick={()=>setDialog(true)}>换一种方式导入</Button></div>:item.status!=='ready'?<p role="status"><LoaderCircle size={18}/>正在读取正文与图片，图片较多时需要更久。你可以先切换到其他材料。</p>:item.blocks.map(b=><div key={b.id} id={'article-'+b.id} className="article-block" tabIndex={-1}>
       {b.type==='image'?<figure>{b.asset_status==='saved'?<img loading="lazy" width={b.width||960} height={b.height||640} src={'/api/library/items/'+item.id+'/assets/'+b.asset_name} alt={b.text||'原文配图'}/>:<div className="article-image-missing">图片未保存：{b.asset_error||'超过本次图片数量限制'}</div>}{b.text&&<figcaption>{b.text}</figcaption>}{b.url&&<a href={b.url} target="_blank" rel="noreferrer">查看原图来源</a>}</figure>:
        b.type==='code'?<pre><code>{b.text}</code></pre>:b.type==='table'?<div className="article-table-wrap"><table><tbody>{b.rows?.map((r,n)=><tr key={n}>{r.map((c,m)=><td key={m}>{c}</td>)}</tr>)}</tbody></table></div>:
        b.type==='heading'?<h3>{b.text}</h3>:b.type==='quote'?<blockquote>{b.text}</blockquote>:b.type==='link'?<a className="article-source-link" href={b.url} target="_blank" rel="noreferrer"><Link size={13}/>{b.text}</a>:<p>{b.text}</p>}

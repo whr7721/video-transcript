@@ -15,7 +15,7 @@ BACKEND = (
     'media_io.py', 'transcript_stage.py', 'transcribe.py', 'media_buffer.py',
     'local_files.py', 'local_media.py', 'core_instance.py', 'import_file.py',
     'documents.py', 'chapters.py', 'chapter_jobs.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
-    'research_api.py', 'topic_search.py', 'studio_api.py', 'articles.py', 'article_api.py', 'image_documents.py', 'ocr_worker.py',
+    'research_api.py', 'topic_search.py', 'studio_api.py', 'articles.py', 'article_api.py', 'image_documents.py', 'ocr_worker.py', 'ocr_reading.py', 'ocr_evaluation.py',
     'article_parser.py', 'article_fetch.py', 'requirements.lock.txt', 'requirements.txt', 'requirements-ocr.lock.txt',
     'setup_models.py', 'check_core.py',
     'podcast_feed.py','podcast_text.py','podcasts.py',
@@ -23,7 +23,7 @@ BACKEND = (
 FRONTEND = (
     'src/Studio.tsx', 'src/ChapterNavigation.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
     'src/styles.css', 'src/articles.css', 'src/TopicSearch.tsx', 'src/topic-search.css', 'src/lib/utils.ts',
-    'src/TopicLibrary.tsx', 'src/ImageImport.tsx', 'src/ImageReader.tsx', 'src/image-reader.css',
+    'src/TopicLibrary.tsx', 'src/ImageImport.tsx', 'src/ImageReader.tsx', 'src/OcrEvaluation.tsx', 'src/image-reader.css',
     'core/main.tsx', 'core/index.html', 'core/public/logo.svg',
     'core/FileCapture.tsx','core/files.css',
     'core/PodcastCapture.tsx','core/Capture.tsx','core/podcasts.css',

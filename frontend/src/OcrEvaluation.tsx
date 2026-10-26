@@ -1,0 +1,18 @@
+import {useEffect,useState} from 'react'
+const names:Record<string,string>={body:'正文',watermark:'水印',furniture:'页眉页脚',interface:'界面杂讯',unknown:'无法确定'}
+type Row={id:string;item_id:string;title:string;page:number;text:string;source_key:string;asset_name?:string;bbox?:number[];width?:number;height?:number;split:string;label?:{category:string;revision:number}}
+type Metric={human_confirmed:number;pending:number;splits:Record<string,{n:number;body_exclusion_rate:number|null;body_fold_rate:number|null;noise_removal_rate:number|null}>}
+type Report={rows:Row[];stale_samples:number;comparisons:Record<string,Metric>}
+export default function OcrEvaluation({notify}:{notify:(text:string)=>void}){
+ const [report,setReport]=useState<Report|null>(null),[index,setIndex]=useState(0),[category,setCategory]=useState(''),[busy,setBusy]=useState(false)
+ const row=report?.rows[index]
+ useEffect(()=>{let live=true;fetch('/api/library/ocr-evaluation').then(async r=>{if(!r.ok)throw Error('评测样本读取失败');return r.json()}).then(v=>{if(live)setReport(v)}).catch(e=>notify(e.message));return()=>{live=false}},[])
+ useEffect(()=>setCategory(row?.label?.category||''),[row?.id,row?.item_id,row?.label?.revision])
+ async function save(){if(!row||!category)return;setBusy(true);try{const r=await fetch('/api/library/ocr-evaluation/labels',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:row.item_id,region_id:row.id,source_key:row.source_key,category,revision:row.label?.revision||0})});const v=await r.json();if(!r.ok)throw Error(v.detail||'标签保存失败');setReport(v);if(index<v.rows.length-1)setIndex(index+1)}catch(e){notify((e as Error).message)}finally{setBusy(false)}}
+ const percent=(v:number|null)=>v===null?'样本不足':(v*100).toFixed(1)+'%'
+ if(!report)return <p role="status">正在准备人工标注样本…</p>
+ return <section className="ocr-evaluation" aria-label="人工标签与净化评测"><h3>小样本评测</h3><p>对照红框区域，选择它实际属于什么。确认只作为评测标签，不改变阅读筛选；无法确定可跳过。</p><p>已人工确认 {report.comparisons.rules.human_confirmed} / {report.rows.length}；失效样本 {report.stale_samples}。按页隔离调试与留出，不用模型标签冒充人工。</p>
+  {row&&<><div className="evaluation-nav"><button disabled={!index||busy} onClick={()=>setIndex(index-1)}>前一个样本</button><span>{index+1} / {report.rows.length} · 第{row.page}页</span><button disabled={index===report.rows.length-1||busy} onClick={()=>setIndex(index+1)}>跳过 / 下一个</button></div><p>{row.title}</p><div className="evaluation-original">{row.asset_name&&<div className="image-coordinate-surface"><img src={`/api/library/items/${row.item_id}/assets/${row.asset_name}`} alt={`标注样本第${row.page}页原图`}/>{row.width&&row.height&&row.bbox&&<svg viewBox={`0 0 ${row.width} ${row.height}`} aria-hidden="true"><rect x={row.bbox[0]} y={row.bbox[1]} width={row.bbox[2]-row.bbox[0]} height={row.bbox[3]-row.bbox[1]}/></svg>}</div>}</div><blockquote>{row.text}</blockquote><label>人工判断<select value={category} disabled={busy} onChange={e=>setCategory(e.target.value)}><option value="">请选择；不预填机器类别</option>{Object.entries(names).map(([key,name])=><option value={key} key={key}>{name}</option>)}</select></label><button disabled={!category||busy} onClick={save}>确认标签并继续</button></>}
+  <div className="evaluation-table"><table><caption>留出集结果；暂无标签时不显示准确率</caption><thead><tr><th>方法</th><th>已确认数</th><th>正文误排除</th><th>正文折叠</th><th>杂讯排除</th></tr></thead><tbody>{Object.entries(report.comparisons).map(([key,value])=>{const m=value.splits.holdout;return <tr key={key}><th>{({all:'全部显示',rules:'仅规则',ai:'规则＋AI'} as Record<string,string>)[key]}</th><td>{m.n}</td><td>{percent(m.body_exclusion_rate)}</td><td>{percent(m.body_fold_rate)}</td><td>{percent(m.noise_removal_rate)}</td></tr>})}</tbody></table></div>
+ </section>
+}

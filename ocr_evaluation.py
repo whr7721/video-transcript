@@ -51,3 +51,66 @@ def metrics(rows, labels, decisions):
             'noise_removal_rate': sum(state(r) == 'exclude' for r, _ in noise)/len(noise) if noise else None,
             'confusion': [{'actual': a, 'predicted': p, 'n': n} for (a, p), n in sorted(confusion.items())]}
     return result
+
+
+def prepared():
+    import articles
+    import store
+    path = store.DATA/'ocr-evaluation-sample.json'
+    if path.exists():
+        import json
+        return json.loads(path.read_text(encoding='utf-8'))
+    rows = sample(articles.listing())
+    # No transient model labels are stored as human truth.
+    if rows:
+        store.atomic_json(path, rows)
+    return rows
+
+
+def label(item_id, region_id, source_key, category, revision):
+    import articles
+    import documents
+    import store
+    with articles.LOCK, store.connect() as db:
+        init(db)
+        row = next((r for r in prepared() if r['item_id'] == item_id and r['id'] == region_id), None)
+        item = articles.get(item_id)
+        current = next((r for r in reading.originals(item or {}) if r['id'] == region_id), None)
+        if not row or not current or current['source_key'] != source_key or row['source_key'] != source_key:
+            raise documents.Conflict('样本原文已变化，未记录标签')
+        key = item_id+':'+region_id
+        old = db.execute('SELECT revision FROM ocr_human_labels WHERE id=?', (key,)).fetchone()
+        if (old[0] if old else 0) != revision:
+            raise documents.Conflict('人工标签已更新，请刷新')
+        if category not in reading.CATEGORIES:
+            raise ValueError('标签类别无效')
+        db.execute('INSERT OR REPLACE INTO ocr_human_labels VALUES (?,?,?,?,?)', (key, source_key, category, revision+1, 1))
+    return report()
+
+
+def init(db):
+    db.execute('CREATE TABLE IF NOT EXISTS ocr_human_labels (id TEXT PRIMARY KEY, source_key TEXT, category TEXT, revision INTEGER, confirmed INTEGER)')
+
+
+def report():
+    import articles
+    import store
+    with articles.LOCK, store.connect() as db:
+        rows = prepared(); init(db)
+        labels = {r['id']: dict(r) for r in db.execute('SELECT * FROM ocr_human_labels')}
+        for label in labels.values():
+            label['confirmed'] = bool(label['confirmed'])
+        items = {r['item_id']: articles.get(r['item_id']) for r in rows}
+        # Exclude stale/deleted originals from the denominator, and expose their count.
+        valid = {i: {r['id']: r['source_key'] for r in reading.originals(item)} for i, item in items.items() if item}
+        active = [r for r in rows if valid.get(r['item_id'], {}).get(r['id']) == r['source_key']]
+        comparisons = {}
+        for mode in ('all', 'rules', 'ai'):
+            decisions = {}
+            for ident, item in items.items():
+                if not item: continue
+                for row in reading.selection(item, 'rules' if mode == 'rules' else 'ai'):
+                    decisions[ident+':'+row['id']] = {**row, 'state': 'keep', 'category': 'body'} if mode == 'all' else row
+            comparisons[mode] = metrics(active, labels, decisions)
+        return {'rows': [{**r, 'label': labels.get(r['item_id']+':'+r['id'])} for r in active],
+                'stale_samples': len(rows)-len(active), 'comparisons': comparisons}

@@ -73,6 +73,8 @@ def selection(item, mode='effective'):
     for row in rules(item):
         if mode != 'rules':
             for origin, field in [('ai', 'ai'), ('human', 'manual')]:
+                if mode == 'ai' and origin == 'human':
+                    continue
                 decision = saved.get(field, {}).get(row['id'])
                 if not decision or decision.get('source_key') != row['source_key']:
                     continue
@@ -121,3 +123,26 @@ def checked_ai(value, candidates):
     if set(decisions) != set(allowed):
         raise ValueError('分类结果遗漏区域；维持规则版')
     return decisions
+
+
+def override(ident, block_id, source_key, revision, category, state):
+    import articles
+    import documents
+    with articles.LOCK:
+        item = articles.get(ident)
+        if not item or item.get('kind') != 'images' or item.get('status') != 'ready':
+            raise ValueError('请等待图片材料就绪')
+        saved = item.setdefault('reading_selection', {})
+        row = next((r for r in originals(item) if r['id'] == block_id), None)
+        if not row or row['source_key'] != source_key or saved.get('revision', 0) != revision:
+            raise documents.Conflict('原文或筛选已有更新，请刷新；未覆盖其他筛选')
+        manual = saved.setdefault('manual', {})
+        if category is None and state is None:
+            manual.pop(block_id, None)
+        elif category in CATEGORIES and state in STATES:
+            manual[block_id] = {'source_key': source_key, 'category': category, 'state': state}
+        else:
+            raise ValueError('筛选类别或显示状态无效')
+        saved['revision'] = revision+1
+        articles.save(item)
+        return view(item)

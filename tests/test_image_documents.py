@@ -87,6 +87,7 @@ class ImageDocumentsTests(unittest.TestCase):
 
     def test_explicit_topic_membership_and_stale_image_reference(self):
         item=self.complete(self.item(1))
+        item['blocks'][0]['ocr_original']['r1']['score']=.99;articles.save(item)
         topic=research.attach_material(item['id'],'Agent学习')['topic_id']
         research.attach_material(item['id'],'Agent学习')
         self.assertEqual(research.topics()[0]['materials_count'],1)
@@ -97,6 +98,10 @@ class ImageDocumentsTests(unittest.TestCase):
         self.assertEqual(context['blocks'][0]['source_image_id'],'image-1')
         self.assertEqual(articles.get(item['id']),before)
         images.correct(item['id'],'image-1-r1',1,'新内容')
+        self.assertEqual(topic_search.context(topic,hit['hit_id'],hit['source_hash'])['text'],hit['text'])
+        import ocr_reading
+        row=ocr_reading.selection(articles.get(item['id']))[0]
+        ocr_reading.override(item['id'],row['id'],row['source_key'],0,'body','exclude')
         with self.assertRaises(documents.Conflict):topic_search.context(topic,hit['hit_id'],hit['source_hash'])
 
     def test_api_upload_region_edit_source_and_no_key_requirement(self):

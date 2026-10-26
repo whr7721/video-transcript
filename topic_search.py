@@ -36,7 +36,7 @@ def init(db):
     db.execute('CREATE VIRTUAL TABLE IF NOT EXISTS topic_search_fts USING fts5(tokens)')
 
 
-def projection(db, topic_id):
+def projection(db, topic_id, include_hidden=False):
     topic = db.execute('SELECT * FROM research_topics WHERE id=?', (topic_id,)).fetchone()
     if not topic:
         raise LookupError('专题不存在。')
@@ -81,8 +81,12 @@ def projection(db, topic_id):
         item=json.loads(row[0]) if row else None
         if not item or item.get('status')!='ready':
             warnings.append('部分专题图文尚未就绪或已不存在。');continue
-        blocks=[{k:b[k] for k in ('id','text','source_image_id','bbox') if k in b} for b in item.get('blocks',[]) if b.get('type')!='image' and b.get('text','').strip()]
-        add('article:'+item['id'],'original',item.get('title',''),blocks,version='original',basis='original',article_id=item['id'])
+        if item.get('kind')=='images':
+            import ocr_reading
+            blocks=ocr_reading.blocks(item,include_hidden)
+        else:
+            blocks=[{k:b[k] for k in ('id','text','source_image_id','bbox') if k in b} for b in item.get('blocks',[]) if b.get('type')!='image' and b.get('text','').strip()]
+        add('article:'+item['id'],'original',item.get('title',''),blocks,version='ocr-all' if include_hidden and item.get('kind')=='images' else 'ocr-clean' if item.get('kind')=='images' else 'original',basis='original',article_id=item['id'])
         add('article-note:'+item['id'],'personal',item.get('title',''),[{'id':'personal','text':item.get('note','')}],
             version='article-note-'+str(item.get('note_revision',0)),basis='personal',article_id=item['id'])
         if item.get('completeness')=='partial':warnings.append('部分图文来源不完整；缺页和识别失败信息请回到图文核对。')
@@ -151,7 +155,7 @@ def marks(text, tokens):
     return merged
 
 
-def search(topic_id, query, category='all', offset=0, limit=10):
+def search(topic_id, query, category='all', offset=0, limit=10, include_hidden=False):
     if not isinstance(query, str) or not query.strip() or len(query) > 200:
         raise ValueError('请输入1—200字的查询。')
     if category not in CATEGORIES or type(offset) is not int or not 0 <= offset <= 40 or type(limit) is not int or not 1 <= limit <= 10:
@@ -162,7 +166,8 @@ def search(topic_id, query, category='all', offset=0, limit=10):
     with store.connect() as db:
         research.init(db); init(db)
         db.execute('BEGIN IMMEDIATE')
-        topic, records, warnings = projection(db, topic_id)
+        topic, records, warnings = projection(db, topic_id, include_hidden)
+        if include_hidden: warnings.append('本次包含折叠和排除的OCR区域，可能存在杂讯。')
         sync(db, topic_id, records)
         args = [topic_id, category, category]
         if tokens:
@@ -192,11 +197,11 @@ def search(topic_id, query, category='all', offset=0, limit=10):
                 'scope': {c: sum(r['category'] == c for r in records) for c in CATEGORIES-{'all'}}}
 
 
-def context(topic_id, hit_id, source_hash):
+def context(topic_id, hit_id, source_hash, include_hidden=False):
     with store.connect() as db:
         research.init(db)
         db.execute('BEGIN')
-        _, records, _ = projection(db, topic_id)
+        _, records, _ = projection(db, topic_id, include_hidden)
         # Resolve against fresh source snapshots, never against a stale index row.
         for record in records:
             for passage in passages([record]):

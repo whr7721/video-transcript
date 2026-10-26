@@ -103,10 +103,10 @@ def add_material(body:MaterialInput):
 @router.get('/topics/{ident}/search')
 def search_topic(ident:str,q:str=Query(min_length=1,max_length=200),
                  category:Literal['all','personal','selection','original']='all',
-                 offset:int=Query(default=0,ge=0,le=40)):
+                 offset:int=Query(default=0,ge=0,le=40),include_hidden:bool=False):
     import sqlite3
     import topic_search
-    try:return topic_search.search(ident,q,category,offset)
+    try:return topic_search.search(ident,q,category,offset,include_hidden=include_hidden)
     except LookupError as exc:raise HTTPException(404,str(exc))
     except ValueError as exc:raise HTTPException(400,str(exc))
     except sqlite3.Error:raise HTTPException(503,'本地索引暂不可用，请稍后重新搜索；没有返回旧结果。')
@@ -115,12 +115,13 @@ def search_topic(ident:str,q:str=Query(min_length=1,max_length=200),
 class SearchLocation(BaseModel):
     hit_id:str=Field(pattern=r'^[a-f0-9]{32}$')
     source_hash:str=Field(pattern=r'^[a-f0-9]{64}$')
+    include_hidden:bool=False
 
 
 @router.post('/topics/{ident}/search/context')
 def search_context(ident:str,body:SearchLocation):
     import topic_search
-    try:return topic_search.context(ident,body.hit_id,body.source_hash)
+    try:return topic_search.context(ident,body.hit_id,body.source_hash,body.include_hidden)
     except LookupError as exc:raise HTTPException(404,str(exc))
     except documents.Conflict as exc:raise HTTPException(409,str(exc))
 

@@ -1,5 +1,13 @@
 import copy
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+import articles
+import documents
+import research
+import store
+import topic_search
 import ocr_reading as reading
 import ocr_evaluation as evaluation
 
@@ -52,3 +60,40 @@ class ReadingTests(unittest.TestCase):
         item = fixture(); row = reading.rules(item)[2]
         item['reading_selection'] = {'ai': {row['id']: {'category': 'interface', 'source_key': row['source_key']}}}
         self.assertEqual(reading.selection(item)[2]['state'], 'fold')
+
+
+class ReadingIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        self.patches = [patch.object(store, 'DATA', root), patch.object(store, 'DB', root/'test.sqlite3')]
+        for p in self.patches: p.start()
+        store.init()
+        self.item = {**fixture(), 'status': 'ready', 'note': '', 'note_revision': 0}
+        articles.save(self.item)
+
+    def tearDown(self):
+        for p in reversed(self.patches): p.stop()
+        self.tmp.cleanup()
+
+    def test_topic_default_hidden_and_stale_projection(self):
+        topic = research.attach_material('sample', 'test')['topic_id']
+        self.assertEqual(topic_search.search(topic, 'MCP')['items'], [])
+        hidden = topic_search.search(topic, 'MCP', include_hidden=True)['items'][0]
+        self.assertIn('MCP', topic_search.context(topic, hidden['hit_id'], hidden['source_hash'], True)['text'])
+        with self.assertRaises(documents.Conflict): topic_search.context(topic, hidden['hit_id'], hidden['source_hash'])
+        row = reading.selection(self.item)[2]
+        reading.override('sample', row['id'], row['source_key'], 0, 'body', 'keep')
+        self.assertTrue(topic_search.search(topic, 'MCP')['items'])
+        with self.assertRaises(documents.Conflict): reading.override('sample', row['id'], row['source_key'], 0, 'body', 'exclude')
+        self.assertEqual(articles.get('sample')['blocks'], self.item['blocks'])
+
+    def test_human_labels_do_not_change_selection_or_use_manual_as_model_quality(self):
+        rows = evaluation.prepared(); row = rows[0]
+        result = evaluation.label('sample', row['id'], row['source_key'], 'body', 0)
+        self.assertEqual(result['comparisons']['rules']['human_confirmed'], 1)
+        self.assertEqual(articles.get('sample'), self.item)
+        with self.assertRaises(documents.Conflict): evaluation.label('sample', row['id'], row['source_key'], 'body', 0)
+        original_report = result['comparisons']['ai']
+        reading.override('sample', row['id'], row['source_key'], 0, 'interface', 'exclude')
+        self.assertEqual(evaluation.report()['comparisons']['ai'], original_report)

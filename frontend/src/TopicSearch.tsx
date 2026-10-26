@@ -30,7 +30,7 @@ export default function TopicSearch({topics,topicId,onTopic,onResearch,onNotesCh
  const [query,setQuery]=useState(''),[category,setCategory]=useState('all'),[result,setResult]=useState<Result|null>(null)
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[context,setContext]=useState<Context|null>(null),[opening,setOpening]=useState(false)
  const [expanded,setExpanded]=useState<string[]>([]),[note,setNote]=useState<Note|null>(null),[draft,setDraft]=useState(''),[saving,setSaving]=useState(false)
- const [titleContext,setTitleContext]=useState(false)
+ const [titleContext,setTitleContext]=useState(false),[includeHidden,setIncludeHidden]=useState(false)
  const request=useRef(0),locationRequest=useRef(0),abort=useRef<AbortController|null>(null),composing=useRef(false)
  const heading=useRef<HTMLHeadingElement>(null),contextHeading=useRef<HTMLHeadingElement>(null)
  const dirty=!!note&&note.personal!==draft
@@ -40,14 +40,14 @@ export default function TopicSearch({topics,topicId,onTopic,onResearch,onNotesCh
   if(!topicId||!query.trim()||dirty||saving)return
   const id=++request.current;locationRequest.current++;abort.current?.abort();const controller=new AbortController();abort.current=controller
   setBusy(true);setError('');setContext(null);setNote(null);setOpening(false)
-  try{const value=await api<Result>(`/topics/${encodeURIComponent(topicId)}/search?`+new URLSearchParams({q:query,category,offset:String(offset)}),{signal:controller.signal})
+  try{const value=await api<Result>(`/topics/${encodeURIComponent(topicId)}/search?`+new URLSearchParams({q:query,category,offset:String(offset),include_hidden:String(includeHidden)}),{signal:controller.signal})
    if(id!==request.current)return;setResult(value);setExpanded([]);heading.current?.focus()
   }catch(e){if(id!==request.current)return;setResult(null);setError((e as Error).message)}finally{if(id===request.current)setBusy(false)}
  }
  async function open(hit:Pick<Hit,'hit_id'|'source_hash'>,titleOnly=false){
   if(dirty||saving){setError('请先保存或取消正在修改的理解。');return}
   const id=++locationRequest.current;setOpening(true);setContext(null);setNote(null);setError('')
-  try{const value=await api<Context>(`/topics/${encodeURIComponent(topicId)}/search/context`,{method:'POST',body:JSON.stringify({hit_id:hit.hit_id,source_hash:hit.source_hash})})
+  try{const value=await api<Context>(`/topics/${encodeURIComponent(topicId)}/search/context`,{method:'POST',body:JSON.stringify({hit_id:hit.hit_id,source_hash:hit.source_hash,include_hidden:includeHidden})})
    if(id!==locationRequest.current)return;setContext(value);setTitleContext(titleOnly)
    // Run after React has mounted the context heading.
    setTimeout(()=>{if(id===locationRequest.current)contextHeading.current?.focus()},0)
@@ -72,6 +72,7 @@ export default function TopicSearch({topics,topicId,onTopic,onResearch,onNotesCh
   <form onSubmit={e=>{e.preventDefault();if(!composing.current)void run()}}>
    <label htmlFor="topic-query">关键词或问题</label><div className="topic-query-row"><input id="topic-query" type="search" maxLength={200} value={query} disabled={dirty||saving} autoComplete="off" placeholder="例如：客户、AI工具、公开过程" onCompositionStart={()=>{composing.current=true}} onCompositionEnd={()=>{composing.current=false}} onKeyDown={e=>{if(e.key==='Enter'&&(composing.current||e.nativeEvent.isComposing))e.preventDefault()}} onChange={e=>{invalidate();setQuery(e.target.value)}}/><Button type="submit" disabled={!topicId||!query.trim()||busy||dirty||saving}>{busy?<LoaderCircle className="spin" size={15} aria-hidden="true"/>:<Search size={15} aria-hidden="true"/>}搜索</Button></div>
    <label htmlFor="topic-category">查找范围</label><select id="topic-category" value={category} disabled={dirty||saving} onChange={e=>{invalidate();setCategory(e.target.value)}}><option value="all">全部文字</option>{Object.entries(labels).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>
+   <label className="topic-hidden-toggle"><input type="checkbox" checked={includeHidden} disabled={dirty||saving} onChange={e=>{invalidate();setIncludeHidden(e.target.checked)}}/>包含折叠和排除的图片文字</label>
   </form>
   {!topicId&&<p className="topic-search-hint">先选一个专题。没有专题时，可先选取原文并保存一条来源笔记。</p>}
   {error&&<p role="alert" className="topic-search-feedback">{error}</p>}
@@ -90,7 +91,7 @@ export default function TopicSearch({topics,topicId,onTopic,onResearch,onNotesCh
    {titleContext&&<p className="topic-search-feedback">以下为来源开头，未标为查询命中的正文。</p>}
    {context.blocks.map(b=><blockquote key={b.id}><small>{b.id} · 字符位置 {b.offset}{b.start!=null?' · '+Math.floor(b.start/60)+':'+String(Math.floor(b.start%60)).padStart(2,'0'):''}</small><p><Highlight text={b.text} ranges={titleContext?[]:b.highlights}/></p>{b.clipped&&<small>仅展示附近文字</small>}</blockquote>)}
    <p className="topic-search-hint">高亮用于定位，不代表已核实观点。音频时间为语音段边界。</p>
-   <div className="topic-context-actions">{context.task_id&&<a href={'/studio/?'+new URLSearchParams({task:context.task_id,search_topic:topicId,search_hit:context.hit_id,search_hash:context.source_hash})} target="_blank" rel="noreferrer">打开原稿位置 <ArrowUpRight size={13} aria-hidden="true"/></a>}{context.article_id&&<a href={'/studio/?'+new URLSearchParams({view:'library',item:context.article_id,search_topic:topicId,search_hit:context.hit_id,search_hash:context.source_hash})} target="_blank" rel="noreferrer">打开图文位置 <ArrowUpRight size={13} aria-hidden="true"/></a>}{context.job_id&&<button disabled={dirty||saving} onClick={()=>onResearch(context.job_id!)}>回看深入与来源</button>}{context.note_id&&<button disabled={opening||saving||!!note} onClick={()=>void edit()}>补充自己的理解</button>}</div>
+   <div className="topic-context-actions">{context.task_id&&<a href={'/studio/?'+new URLSearchParams({task:context.task_id,search_topic:topicId,search_hit:context.hit_id,search_hash:context.source_hash,search_hidden:String(includeHidden)})} target="_blank" rel="noreferrer">打开原稿位置 <ArrowUpRight size={13} aria-hidden="true"/></a>}{context.article_id&&<a href={'/studio/?'+new URLSearchParams({view:'library',item:context.article_id,search_topic:topicId,search_hit:context.hit_id,search_hash:context.source_hash,search_hidden:String(includeHidden)})} target="_blank" rel="noreferrer">打开图文位置 <ArrowUpRight size={13} aria-hidden="true"/></a>}{context.job_id&&<button disabled={dirty||saving} onClick={()=>onResearch(context.job_id!)}>回看深入与来源</button>}{context.note_id&&<button disabled={opening||saving||!!note} onClick={()=>void edit()}>补充自己的理解</button>}</div>
    {note&&<div className="topic-note-editor"><label htmlFor="topic-note-edit">修改自己的理解</label><textarea id="topic-note-edit" rows={5} maxLength={12000} disabled={saving} value={draft} onChange={e=>{setDraft(e.target.value);try{localStorage.setItem(backupKey(note.id),JSON.stringify({personal:e.target.value,revision:note.revision}))}catch{setError('浏览器备份失败，请先复制保留输入内容再离开。')}}}/><Button size="sm" disabled={saving} onClick={()=>void save()}>保存理解</Button><Button size="sm" variant="ghost" disabled={saving} onClick={()=>{localStorage.removeItem(backupKey(note.id));setNote(null);setDraft('')}}>取消修改</Button>{dirty&&<p className="topic-search-hint">有未保存修改；保存或取消后再切换搜索。浏览器备份可在重新打开此笔记时恢复。</p>}</div>}
   </section>}
  </section>

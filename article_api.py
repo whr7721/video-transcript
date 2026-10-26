@@ -10,6 +10,43 @@ import store
 router=APIRouter(prefix='/api/library')
 
 
+@router.get('/ocr-evaluation')
+def ocr_evaluation_report():
+    import ocr_evaluation
+    return ocr_evaluation.report()
+
+
+class HumanLabel(BaseModel):
+    item_id:str=Field(max_length=64)
+    region_id:str=Field(max_length=100)
+    source_key:str=Field(pattern=r'^[a-f0-9]{64}$')
+    category:Literal['body','watermark','furniture','interface','unknown']
+    revision:int=Field(ge=0)
+
+
+@router.put('/ocr-evaluation/labels')
+def human_label(body:HumanLabel):
+    import ocr_evaluation
+    try:return ocr_evaluation.label(**body.model_dump())
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+class ReadingEdit(BaseModel):
+    source_key:str=Field(pattern=r'^[a-f0-9]{64}$')
+    revision:int=Field(ge=0)
+    category:Literal['body','watermark','furniture','interface','unknown']|None=None
+    state:Literal['keep','exclude','fold']|None=None
+
+
+@router.put('/image-items/{ident}/selection/{block_id}')
+def reading_override(ident:str,block_id:str,body:ReadingEdit):
+    import ocr_reading
+    try:return ocr_reading.override(ident,block_id,**body.model_dump())
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
 class ImageCreate(BaseModel):
     title:str=Field(default='',max_length=300)
     count:int=Field(ge=1,le=64)
@@ -57,7 +94,8 @@ class RegionEdit(BaseModel):
 @router.put('/image-items/{ident}/regions/{block_id}')
 def correct_region(ident:str,block_id:str,body:RegionEdit):
     import image_documents
-    try:return image_documents.correct(ident,block_id,body.revision,body.text)
+    import ocr_reading
+    try:return ocr_reading.view(image_documents.correct(ident,block_id,body.revision,body.text))
     except documents.Conflict as exc:raise HTTPException(409,str(exc))
     except ValueError as exc:raise HTTPException(400,str(exc))
 
@@ -88,7 +126,8 @@ def create(body:ImportInput):
 def get(ident:str):
     item=articles.get(ident)
     if not item:raise HTTPException(404,'素材不存在。')
-    return item
+    import ocr_reading
+    return ocr_reading.view(item)
 
 @router.put('/items/{ident}/note')
 def note(ident:str,body:NoteInput):
