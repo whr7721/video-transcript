@@ -70,8 +70,8 @@ def daily_call_limit(day):
     return None if day=='2026-10-20' else 30
 
 
-def request_json(system, user, max_tokens=1400):
-    # Shared request limit includes all article and essence stages.
+def reserve_daily_call():
+    # Shared request limit includes text and image reading stages.
     with LOCK, store.connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS organizer_calls (day TEXT PRIMARY KEY, count INTEGER NOT NULL)')
         day = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
@@ -80,6 +80,10 @@ def request_json(system, user, max_tokens=1400):
         if limit is not None and db.execute('SELECT count FROM organizer_calls WHERE day=?', (day,)).fetchone()[0] >= limit:
             raise RuntimeError(f'今日文本整理已达{limit}次请求上限；已有文稿和结果不受影响。')
         db.execute('UPDATE organizer_calls SET count=count+1 WHERE day=?', (day,))
+
+
+def request_json(system, user, max_tokens=1400):
+    reserve_daily_call()
     try:
         with httpx.Client(trust_env=False, timeout=httpx.Timeout(180, connect=15)) as client:
             response = client.post('https://api.siliconflow.cn/v1/chat/completions', headers={'Authorization':'Bearer '+settings.cloud_key()}, json={'model':MODEL,'messages':[{'role':'system','content':system},{'role':'user','content':user}], 'temperature':0.1,'enable_thinking':False,'max_tokens':max_tokens,'response_format':{'type':'json_object'}})

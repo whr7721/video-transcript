@@ -66,8 +66,8 @@ def reserve(amount=RESERVATION):
         return db.execute('INSERT INTO ocr_filter_calls(reserved,status,created) VALUES (?,?,?)',(amount,'reserved',time.time())).lastrowid
 
 
-def account(call_id, usage, status):
-    cost=(usage.get('prompt_tokens',0)*INPUT_RATE+usage.get('completion_tokens',0)*OUTPUT_RATE)/1_000_000 if usage else None
+def account(call_id, usage, status, input_rate=INPUT_RATE, output_rate=OUTPUT_RATE):
+    cost=(usage.get('prompt_tokens',0)*input_rate+usage.get('completion_tokens',0)*output_rate)/1_000_000 if usage else None
     with store.connect() as db:
         db.execute('UPDATE ocr_filter_calls SET estimated=?,status=? WHERE id=?',(cost,status,call_id))
 
@@ -76,7 +76,7 @@ def budget():
     with store.connect() as db:
         init(db);row=db.execute('SELECT COUNT(*),COALESCE(SUM(reserved),0),COALESCE(SUM(estimated),0) FROM ocr_filter_calls').fetchone()
     return {'calls':row[0],'reserved_cny':round(row[1],4),'estimated_cny':round(row[2],6),'limit_cny':DEVELOPMENT_BUDGET,
-            'pricing_basis':'2026-10-26 provider peak input2/output8 CNY per million; not billing receipt'}
+            'pricing_basis':'2026-10-26 per-call model rates; legacy text2/8, GLM4.5V1/6, Qwen3.5 0.4/3.2 or long-context1.6/12.8 CNY per million; not billing receipt'}
 
 
 def start(ident):
