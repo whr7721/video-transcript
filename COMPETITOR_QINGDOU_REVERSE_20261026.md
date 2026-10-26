@@ -42,6 +42,18 @@ h5: https://h5.qingdou.vip       // H5 兜底
 
 细节：轮询间隔由服务端下发（`queryTime`、`needSec`），前端 `setTimeout` 递归；去水印遇到 `70001` 用 300ms 重试。**进度与等待时间都由后端控制**，不是前端写死。
 
+### 2.2.1 "链接转文字"的完整客户端链路（补记）
+
+从包内代码可以还原出五步，全部在客户端可见：
+
+1. **剪贴板自动检测**：`wx.getClipboardData()` 取剪贴板，与 `GET /miniApp/waterMark/getVideoDoMain` 返回的域名列表比对；命中即弹"检测到链接，是否去水印？"。本地用 `waterMarkLink` 数组去重，同一条链接不重复弹。
+2. **平台列表服务端下发**：输入框 `placeholder` 来自 `GET /miniApp/waterMark/getValidPlatform` 返回的数组，渲染成"支持 XX、XX 等～"。支持哪些平台不写死在客户端。
+3. **提交前来源分流**：`POST /common/video/url/source/check {url}` 返回 `needJump`、`sourceType`、`miniAppId`、`videoExtractMiniAppPath`、`popupText`。命中它不做的来源时，`navigateToMiniProgram` 直接跳合作小程序处理——**它不硬做所有平台，而是把做不了的转出去**。
+4. **带参进任务页**：`/pages/videoTextExtractNew/videoTextExtractNew?url=<encodeURIComponent(url)>`；PC 端（`platform` 为 `windows`/`mac`）弹窗引导去电脑。
+5. **轮询取结果**：`GET /miniApp/video_extract/getTaskStatusV2?taskId=`；`status` 0 处理中 / 1 完成 / -1 失败，另有 `percentage`、`queryTime`、`needSec`。完成弹"您的文案已提取完成"，非会员先走激励视频。
+
+服务端部分在包外，按字段与接口推断：解析作品 ID → 取播放地址 → 下载并转存 COS（去水印链路的 `tencentUrl` 可证）→ ASR → 文案入库 → 状态推进。**提交任务的具体接口名没有在包内以字面量出现**（页面逻辑里只有轮询与来源检查），此处不做断言。
+
 ### 2.3 存储与转存
 
 去水印结果字段名是 `tencentUrl`，变量里有 `needTencent` —— 说明拿到源地址后转存到腾讯云 COS，再给小程序一个自家可控的临时地址。这类地址会过期，包内对应文案是"视频链接已过期，请重新提文案"。
