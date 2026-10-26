@@ -373,3 +373,9 @@
 - 用户指出工作台有云ASR路径且测试过。核对代码：transcribe.py:119 cloud_transcribe 完整（180秒切片→ffmpeg 64k mp3→api.siliconflow.cn/v1/audio/transcriptions，FunAudioLLM/SenseVoiceSmall，3次重试+分片缓存），CLI链路（cli.py --provider cloud）实测成立；但网页上传路径未接通：local_files.py:171 硬编码 provider=local，:280 调 finish_transcription 未传 cloud_key（默认空，cloud 分支会报缺Key）。settings.cloud_key() 优先读 SILICONFLOW_API_KEY 环境变量，Linux 部署天然兼容 DPAPI 分支（windll 仅在 protect() 函数体内，公开版禁用 /api/settings POST 后不会触达）。
 - 修正 CLEAN_PUBLIC_MVP_20261026.md：音视频从"第一版不上"改为"第一版可上（云模式）"，新增 §3-⑤ 接线任务单：provider入参化+公开构建强制cloud、run_task补传cloud_key、服务器装ffmpeg、公开版配额（单文件200MB/30分钟、media_buffer缓冲改2GB、处理完即清）、定价前置实测（10分钟与60分钟各一次，官方价格页语音区未能抓取，不以估算定价，对外=实测成本×3起）。改造总量修正为4-5天。
 - 验收标准：网页上传10分钟音频出全文、账单金额可查、同文件重跑零新增费用（缓存生效）。无代码改动。
+
+## 2026-10-26 · 防刷任务单交接（文档，代码已回滚）
+
+- 用户明确分工：实现交Codex（额度充足），本会话只负责调研与方案。此前动手的半成品（public_quota.py及三处接线）已全部回滚，仓库回到321e697干净状态；参考实现全文保留进 CODEX_TASK_PUBLIC_QUOTA_20261026.md。
+- 任务单内容：SHIWEN_PUBLIC=1开关设计（私有版零影响为最优先验收项）、四挂点（editorial/classify/question/research）与settings守卫、TrustedHost公开分支（现白名单仅localhost，公网内测会400，必须改）、前端X-Device-Id注入、build_core_package BACKEND白名单补public_quota.py（Codex最易漏）、测试覆盖点、Windows验收命令与审查请求模板。
+- 设计要点：配额库独立SQLite不碰store schema；设备限被拒不消耗IP池；X-Forwarded-For可伪造风险写入部署注意（Nginx层覆盖头缓解）；云转写暂不挂、留到§3-⑤接线时一并。
