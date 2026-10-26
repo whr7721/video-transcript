@@ -320,3 +320,14 @@
 - 硬约束（需按官方文档与真机复核，本文不代替结论）：请求域名须HTTPS并在小程序后台配置；小程序端不能跑SenseVoice/RapidOCR，重任务留worker；iOS虚拟支付政策需分端设计；微信内打开抖音/小红书链接的可用性随平台策略变化，须实测。
 - 未验证项：竞品真实质量与限额触发、订阅消息触达率、微信聊天文件大小与长图压缩后OCR质量、单份成本分布（当前仅2份图文样本，定"1份=多少点"需≥20份记录）。
 - 本轮无付费调用、无新依赖、无构建影响；纯文档提交，不宣称任何小程序能力已实现。
+
+## 2026-10-26 · 轻抖小程序逆向与商用边界（仅文档）
+
+- 用户指出轻抖（appid wx7869c97260909c66，本地缓存版本106）与自己产品重叠，要求分析其商用做法，并处理"借助非商用部分不能上线"的问题。本轮只读本机微信小程序缓存包，静态解包阅读 app-config.json 与 app-service.js；未登录、未调用其接口、未抓包、未破鉴权、未复制其代码或素材进项目。新增 COMPETITOR_QINGDOU_REVERSE_20261026.md。
+- 观察：域名 api.qingdou.vip / gateway.aipie.top / h5.qingdou.vip；客户端零模型、零ffmpeg，解析与转写全在服务端；去水印走 /api/v1/tinker/video/upload + getResult 返回腾讯云地址；文案提取走 /miniApp/video_extract/getTaskStatus(V2) 轮询，间隔由服务端 queryTime/needSec 下发；错误码4001=视频超时长→升级会员，9527=停机开关，21001=内容违规。
+- 观察：会员购买跳转到另一小程序 appId wxea1b9bfeca2c2cc1 完成，并提示复制 qingdou.vip 去浏览器；去水印页原文声明"完全免费、不进行任何商业性目的使用、用户自行承担法律责任"；首页原文"因近期频繁有用户恶意消耗资源，现每天须看一次视频广告，当天即可免费使用"。收入结构为广告/会员/带货佣金/课程/增值工具五层，工具仅作入口。
+- 本站事实核对：extractor.py 第1-4行自述受 MediaCrawler 非商业许可约束，且直接 import media_platform.douyin.client；pipeline.py、discovery.py、session.py 依赖其 venv 与 browser_data。build_core_package.py 已把 douyin/mediacrawler 列为禁词，核心包已剥离，私有版仍依赖。
+- 许可证核实（官方原文）：MediaCrawler = NON-COMMERCIAL LEARNING LICENSE 1.1，条件3"未经书面同意不得用于任何商业用途"；SenseVoice 代码 MIT；Silero VAD MIT；RapidOCR Apache-2.0；sherpa-onnx Apache-2.0。结论：非商用只集中在 MediaCrawler 一个依赖，ASR/OCR/模型链路可商用；Silero 模型文件与 SenseVoice 权重发布页仍需按下载页复核。
+- 判断：不能带着 MediaCrawler 上线；但"链接转文字"功能本身不是非商用，需替换实现。平台条款风险（抓抖音页面/去水印）与开源许可证是两件独立的事，换实现不消除平台风险，轻抖用免费+免责话术降低叙事风险而非消除风险。
+- 建议（未实施，待用户决定）：先做"用户上传音视频/图片/文件"版本上线（无许可证与平台条款问题）；收费点放整理稿/精华/自测题/专题检索，不卖转文字；链接解析降级为灰度能力，用自研最小解析或商用解析API，不走 MediaCrawler；主体先解决个体工商户与类目。四道成本闸门（提交前校验/时长上限/每日次数/广告解锁）可直接借鉴。
+- 未验证：未取到会员价格（服务端下发）；未确认其抖音数据来自开放平台还是页面解析；未做真机交互与视觉记录。本文件仅供内部判断，不随核心包分发，不复制其代码/素材/文案。
