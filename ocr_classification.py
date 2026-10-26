@@ -57,13 +57,13 @@ def init(db):
     db.execute('CREATE TABLE IF NOT EXISTS ocr_filter_calls (id INTEGER PRIMARY KEY, reserved REAL NOT NULL, estimated REAL, status TEXT NOT NULL, created REAL NOT NULL)')
 
 
-def reserve():
+def reserve(amount=RESERVATION):
     with organizer.LOCK,store.connect() as db:
         init(db); db.execute('BEGIN IMMEDIATE')
         total=db.execute('SELECT COALESCE(SUM(reserved),0) FROM ocr_filter_calls').fetchone()[0]
-        if total+RESERVATION>DEVELOPMENT_BUDGET+1e-8:
+        if not 0<amount<=DEVELOPMENT_BUDGET or total+amount>DEVELOPMENT_BUDGET+1e-8:
             raise RuntimeError('本阶段10元开发调用预算已用完；规则版和原文仍可使用')
-        return db.execute('INSERT INTO ocr_filter_calls(reserved,status,created) VALUES (?,?,?)',(RESERVATION,'reserved',time.time())).lastrowid
+        return db.execute('INSERT INTO ocr_filter_calls(reserved,status,created) VALUES (?,?,?)',(amount,'reserved',time.time())).lastrowid
 
 
 def account(call_id, usage, status):

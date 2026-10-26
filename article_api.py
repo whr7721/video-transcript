@@ -10,6 +10,20 @@ import store
 router=APIRouter(prefix='/api/library')
 
 
+@router.post('/image-items/{ident}/editorial')
+def image_editorial_start(ident:str):
+    import image_editorial
+    try:return image_editorial.start(ident)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.get('/image-items/{ident}/editorial/export')
+def image_editorial_export(ident:str):
+    import image_editorial
+    try:return Response(image_editorial.export(ident),media_type='text/markdown; charset=utf-8',headers={'Content-Disposition':'attachment; filename="reading.md"'})
+    except ValueError as exc:raise HTTPException(404,str(exc))
+
+
 @router.get('/ocr-evaluation')
 def ocr_evaluation_report():
     import ocr_evaluation
@@ -128,7 +142,7 @@ class QuestionInput(BaseModel):
 
 @router.get('/items')
 def listing():
-    return [{k:v for k,v in i.items() if k not in {'blocks','artifacts','note','fingerprint','reading_selection'}} for i in articles.listing()]
+    return [{k:v for k,v in i.items() if k not in {'blocks','artifacts','note','fingerprint','reading_selection','editorial'}} for i in articles.listing()]
 
 @router.post('/items')
 def create(body:ImportInput):

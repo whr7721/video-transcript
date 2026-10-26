@@ -124,6 +124,7 @@ def recover():
                 item.update(status='ready',image_status='failed',completeness='partial',error='服务曾中断；原图和识别缓存保留，可明确重试。');changed=True
             if item.get('question_status') in {'queued','running'}:item.update(question_status='failed',question_error='服务曾中断，可重新提问。');changed=True
             if item.get('reading_status') in {'queued','running'}:item.update(reading_status='failed',reading_error='服务中断；规则与已成功分类保留，未自动重试付费调用');changed=True
+            if item.get('editorial',{}).get('status') in {'queued','running'}:item['editorial'].update(status='failed',error='服务重启中断整理；已有阅读稿保留，未自动付费重试');changed=True
             if changed:save(item)
 
 

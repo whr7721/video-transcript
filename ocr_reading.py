@@ -102,9 +102,15 @@ def view(item):
     if item.get('kind') != 'images':
         return item
     rows = selection(item)
-    return {**item, 'reading': {'version': VERSION, 'source_hash': source_hash(item),
+    value = {**item, 'reading': {'version': VERSION, 'source_hash': source_hash(item),
             'revision': item.get('reading_selection', {}).get('revision', 0), 'regions': rows,
             'counts': dict(Counter(r['state'] for r in rows))}}
+    if item.get('editorial',{}).get('content'):
+        import image_editorial
+        try: stale=image_editorial.source(item)[2]!=item['editorial'].get('source_hash')
+        except ValueError: stale=True
+        value['editorial']={**item['editorial'],'stale':stale}
+    return value
 
 
 def checked_ai(value, candidates):

@@ -5,6 +5,7 @@ import ImageImport from '../src/ImageImport'
 import ArticleLibrary from '../src/ArticleLibrary'
 import PrivateImageCapture from '../src/PrivateImageCapture'
 import OcrEvaluation from '../src/OcrEvaluation'
+import ImageEditorial from '../src/ImageEditorial'
 const blocks=[{id:'image-1',type:'image',text:'',page:1,asset_status:'saved',asset_name:'one.jpg',width:100,height:200},
  {id:'image-1-r1',type:'ocr',text:'Agent上下文原话',source_image_id:'image-1',region_id:'r1',revision:1,bbox:[1,2,80,30],score:.8},
  {id:'image-2',type:'image',text:'',page:2,asset_status:'missing',asset_error:'下载失败'}]
@@ -50,6 +51,8 @@ test('image material adds to topic, exposes search and keeps full image source v
  vi.stubGlobal('fetch',vi.fn(async(url:string)=>({ok:true,json:async()=>url.endsWith('/items')?[item]:url.endsWith('/materials')?{topic_id:'topic'}:item})))
  render(<ArticleLibrary/>);await screen.findByText('面试资料',{selector:'h2'})
  expect(screen.queryByAltText('第1张原图')).toBeNull()
+ expect(screen.getByRole('button',{name:'完整整理稿'}).getAttribute('aria-pressed')).toBe('true')
+ fireEvent.click(screen.getByRole('button',{name:'原图与识别稿'}))
  fireEvent.click(screen.getByText('查看本页原图与区域'));expect(screen.getByAltText('第1张原图')).toBeTruthy()
  fireEvent.change(screen.getByLabelText('专题名称'),{target:{value:'Agent学习'}});fireEvent.click(screen.getByText('把这份材料加入专题'))
  await screen.findByText('在专题里搜索这份材料')
@@ -78,4 +81,21 @@ test('human evaluation does not prefill a model category or save until explicitl
  expect(calls.length).toBe(1)
  fireEvent.click(screen.getByText('确认标签并继续'));await waitFor(()=>expect(calls.length).toBe(2))
  expect(JSON.parse(calls[1][1].body)).toMatchObject({category:'body',revision:0,source_key:'source'})
+})
+
+test('editorial reading never charges on mount and an explicit click generates the whole document',async()=>{
+ const update=vi.fn(),fetcher=vi.fn(async()=>({ok:true,json:async()=>({id:'one',editorial:{status:'queued'}})}));vi.stubGlobal('fetch',fetcher)
+ render(<ImageEditorial id="one" mode="article" onUpdate={update} onSource={()=>{}} notify={()=>{}}/>)
+ expect(fetcher).not.toHaveBeenCalled()
+ fireEvent.click(screen.getByText('生成完整整理稿与精华'));await waitFor(()=>expect(update).toHaveBeenCalled())
+ expect(fetcher.mock.calls[0][0]).toBe('/api/library/image-items/one/editorial')
+})
+
+test('full article and essence are distinct readable outputs with original access',()=>{
+ const source=vi.fn(),value={status:'completed',source_pages:45,content:{content:[{type:'paragraph',content:[{text:'完整稿包含例子和做法'}]}]},essence_content:{content:[{type:'paragraph',content:[{text:'精华版'}]}]}}
+ const result=render(<ImageEditorial id="one" value={value} mode="article" onUpdate={()=>{}} onSource={source} notify={()=>{}}/>)
+ expect(screen.getByText('完整稿包含例子和做法')).toBeTruthy();expect(screen.queryByText('精华版')).toBeNull()
+ fireEvent.click(screen.getByText('查看原图与识别稿'));expect(source).toHaveBeenCalled()
+ result.rerender(<ImageEditorial id="one" value={value} mode="essence" onUpdate={()=>{}} onSource={source} notify={()=>{}}/>)
+ expect(screen.getByText('精华版')).toBeTruthy()
 })
