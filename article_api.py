@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Literal
-from fastapi import APIRouter,HTTPException
+from fastapi import APIRouter,HTTPException,Request
 from fastapi.responses import FileResponse,Response
 from pydantic import BaseModel,Field
 import articles
@@ -8,6 +8,58 @@ import documents
 import store
 
 router=APIRouter(prefix='/api/library')
+
+
+class ImageCreate(BaseModel):
+    title:str=Field(default='',max_length=300)
+    count:int=Field(ge=1,le=64)
+
+
+@router.post('/image-items')
+def create_images(body:ImageCreate):
+    import image_documents
+    try:return image_documents.create(body.title,body.count)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.put('/image-items/{ident}/{index}')
+async def upload_image(ident:str,index:int,request:Request):
+    import image_documents
+    data=bytearray()
+    async for chunk in request.stream():
+        if len(data)+len(chunk)>image_documents.MAX_IMAGE_BYTES:raise HTTPException(413,'图片超过8MB上限')
+        data.extend(chunk)
+    try:return image_documents.put_image(ident,index,bytes(data))
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.post('/image-items/{ident}/recognize')
+def recognize_images(ident:str):
+    import image_documents
+    try:return image_documents.start_ocr(ident)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
+@router.post('/image-items/{ident}/stop-upload')
+def stop_image_upload(ident:str):
+    import image_documents
+    with articles.LOCK:
+        item=articles.get(ident)
+        if not item or item.get('image_status')!='uploading':raise HTTPException(409,'当前没有待结束的上传')
+        return image_documents.update(ident,status='ready',image_status='failed',completeness='partial',error='上传已结束；已保存图片保留，未上传页仍标记缺失。')
+
+
+class RegionEdit(BaseModel):
+    revision:int=Field(ge=1)
+    text:str=Field(max_length=4000)
+
+
+@router.put('/image-items/{ident}/regions/{block_id}')
+def correct_region(ident:str,block_id:str,body:RegionEdit):
+    import image_documents
+    try:return image_documents.correct(ident,block_id,body.revision,body.text)
+    except documents.Conflict as exc:raise HTTPException(409,str(exc))
+    except ValueError as exc:raise HTTPException(400,str(exc))
 
 class ImportInput(BaseModel):
     kind:Literal['url','text','html']
@@ -21,6 +73,7 @@ class NoteInput(BaseModel):
 
 class QuestionInput(BaseModel):
     question:str=Field(min_length=2,max_length=1000)
+    image_page:int|None=Field(default=None,ge=1,le=64)
 
 @router.get('/items')
 def listing():
@@ -45,7 +98,7 @@ def note(ident:str,body:NoteInput):
 
 @router.post('/items/{ident}/question')
 def question(ident:str,body:QuestionInput):
-    try:return articles.ask(ident,body.question.strip())
+    try:return articles.ask(ident,body.question.strip(),body.image_page)
     except ValueError as exc:raise HTTPException(400,str(exc))
 
 @router.get('/items/{ident}/export')

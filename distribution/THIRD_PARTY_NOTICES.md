@@ -17,6 +17,8 @@ FastAPI（MIT）、Starlette（BSD-3-Clause）、Uvicorn（BSD-3-Clause）、HTT
 
 ## 前端
 
+可选图片识别使用单独requirements-ocr.lock.txt：RapidOCR 3.9.2及其PaddleOCR衍生模型（官方MODEL_LICENSES.md记录Apache-2.0来源）、ONNX Runtime 1.23.2、Pillow 12.0.0等。依赖和模型不直接随本ZIP分发，按固定wheel安装，保留wheel内LICENSE/NOTICE；本段不替代各传递依赖条款。来源：https://github.com/RapidAI/RapidOCR 、https://github.com/microsoft/onnxruntime 、https://github.com/python-pillow/Pillow 。实际引擎参数和模型指纹见ocr_worker.py。
+
 shadcn/ui 组件来自官方 registry，Copyright (c) 2023 shadcn，MIT。Tiptap core/StarterKit/UniqueID/Markdown 为 MIT，Copyright Tiptap GmbH。Radix Primitives、React、react-resizable-panels、Vite、Tailwind CSS 为 MIT，TypeScript 为 Apache-2.0，jsdiff 为 BSD-3-Clause；Lucide 为 ISC，继承图标还保留其 MIT 声明。未使用付费编辑器扩展或托管协作服务。
 
 版本和传递依赖见 frontend/package-lock.json。随包 THIRD_PARTY_LICENSES.txt 收录构建环境中前端包自带的许可/NOTICE 文本，保留上游版权声明；构建工具本身不随应用安装。新增或升级依赖后应重新生成并核对该清单。

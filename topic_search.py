@@ -74,6 +74,18 @@ def projection(db, topic_id):
             continue
         add('transcript:'+task_id, 'original', task.get('title', title),
             documents.sources(task), version='original', basis='original', task_id=task_id)
+    members=db.execute('SELECT item_id FROM topic_materials WHERE topic_id=? ORDER BY item_id',(topic_id,)).fetchall()
+    has_articles=db.execute("SELECT 1 FROM sqlite_master WHERE name='article_items'").fetchone()
+    for member in members:
+        row=db.execute('SELECT payload FROM article_items WHERE id=?',(member['item_id'],)).fetchone() if has_articles else None
+        item=json.loads(row[0]) if row else None
+        if not item or item.get('status')!='ready':
+            warnings.append('部分专题图文尚未就绪或已不存在。');continue
+        blocks=[{k:b[k] for k in ('id','text','source_image_id','bbox') if k in b} for b in item.get('blocks',[]) if b.get('type')!='image' and b.get('text','').strip()]
+        add('article:'+item['id'],'original',item.get('title',''),blocks,version='original',basis='original',article_id=item['id'])
+        add('article-note:'+item['id'],'personal',item.get('title',''),[{'id':'personal','text':item.get('note','')}],
+            version='article-note-'+str(item.get('note_revision',0)),basis='personal',article_id=item['id'])
+        if item.get('completeness')=='partial':warnings.append('部分图文来源不完整；缺页和识别失败信息请回到图文核对。')
     return dict(topic), records, list(dict.fromkeys(warnings))
 
 

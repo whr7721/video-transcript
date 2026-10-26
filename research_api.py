@@ -89,6 +89,17 @@ def confirm_claims(ident:str,body:ConfirmClaims):
 def topics():return research.topics()
 
 
+class MaterialInput(BaseModel):
+    item_id:str=Field(min_length=1,max_length=64)
+    topic_title:str=Field(min_length=1,max_length=100)
+
+
+@router.post('/materials')
+def add_material(body:MaterialInput):
+    try:return research.attach_material(body.item_id,body.topic_title)
+    except ValueError as exc:raise HTTPException(400,str(exc))
+
+
 @router.get('/topics/{ident}/search')
 def search_topic(ident:str,q:str=Query(min_length=1,max_length=200),
                  category:Literal['all','personal','selection','original']='all',

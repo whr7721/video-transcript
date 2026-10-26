@@ -325,6 +325,8 @@ def login():
 
 
 app.include_router(discovery_router)
+from private_images import router as private_images_router
+app.include_router(private_images_router)
 
 
 @app.post('/api/studio/buffer/resume')

@@ -2,6 +2,7 @@ import React,{useState} from 'react'
 import {ArrowUpRight,LoaderCircle,Plus} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import type {SourceUI} from './source-ui'
+import PrivateImageCapture from './PrivateImageCapture'
 async function api<T>(path:string,init?:RequestInit):Promise<T>{const r=await fetch(path,{...init,headers:{'Content-Type':'application/json'}});const v=await r.json();if(!r.ok)throw Error(typeof v.detail==='string'?v.detail:'提交失败');return v}
 function Capture({onCreated,notify}:{onCreated:(id:string)=>Promise<void>;notify:(message:string)=>void}){
  const [share,setShare]=useState(''),[mode,setMode]=useState('single'),[limit,setLimit]=useState('10'),[duration,setDuration]=useState('600'),[submitting,setSubmitting]=useState(false)
@@ -12,6 +13,7 @@ export const sourceUI:SourceUI={
  empty:'从一个抖音链接开始。', description:'粘贴抖音分享文字，使用本地识别。',
  introduction:'选择左侧已有文稿，或粘贴一个链接。\n原稿、整理、编辑和来源，在这里连起来。',
  Capture,
+ ImageCapture:PrivateImageCapture,
  Navigation:()=> <a className="text-link" style={{padding:'12px 8px'}} href="/studio/?view=discovery">抖音话题发现<ArrowUpRight size={13}/></a>,
  Management:()=> <a href="/">转写与批量管理<ArrowUpRight size={13}/></a>,
  SettingsLink:()=> <a className="text-link" href="/">抖音登录与完整转写设置<ArrowUpRight size={14}/></a>,

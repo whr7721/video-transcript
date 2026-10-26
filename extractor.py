@@ -142,7 +142,7 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
 
             page.on("response", on_response)
             try:
-                await page.goto(f"https://www.douyin.com/video/{video_id}",
+                await page.goto(f"https://www.douyin.com/{'note' if action == 'images' else 'video'}/{video_id}",
                                 wait_until="domcontentloaded", timeout=45000)
             except Exception:
                 pass  # A page timeout doesn't imply its authenticated API failed.
@@ -170,6 +170,14 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
                     raise RuntimeError(f"抖音详情获取失败（{type(exc).__name__}），请检查登录状态后重试。") from None
             if not item or str(item.get("aweme_id")) != video_id:
                 raise RuntimeError("未取得该作品详情。请检查视频是否可访问，或重新登录抖音。")
+            if action == 'images':
+                images = item.get('images') or []
+                if not isinstance(images, list) or not images:
+                    raise RuntimeError('该作品未返回图集图片，请确认是图文作品。')
+                return {'status':'ok','id':video_id,'title':item.get('desc',''),
+                        'author':item.get('author',{}).get('nickname',''),
+                        'images':[{'index':i,'urls':[u for u in (image.get('url_list') or []) if isinstance(u,str)]}
+                                  for i,image in enumerate(images)],'total':len(images)}
             from media_platform.douyin.media import extract_video_urls
             urls = extract_video_urls(item)
             if not urls:
@@ -181,14 +189,15 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["extract", "login", "creator"])
+    parser.add_argument("action", choices=["extract", "images", "login", "creator"])
     parser.add_argument("--id", default="")
     parser.add_argument("--sec-uid", default="")
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--max-duration-sec", type=int, choices=[600, 1200, 1800], default=600)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    if args.action == "extract" and not re.fullmatch(r"\d{15,22}", args.id):
+    args.output = str(Path(args.output).resolve())
+    if args.action in {"extract", "images"} and not re.fullmatch(r"\d{15,22}", args.id):
         sys.exit("无效作品 ID")
     if args.action == "creator" and (not re.fullmatch(r"[A-Za-z0-9_-]{10,200}", args.sec_uid) or not 1 <= args.limit <= 100):
         sys.exit("无效博主 ID 或批次数量")

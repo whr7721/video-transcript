@@ -3,12 +3,12 @@ import {ArrowUpRight,BookOpen,LoaderCircle,Search} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import './topic-search.css'
 
-type Topic={id:string;title:string;notes_count:number}
-type Hit={hit_id:string;uid:string;category:string;title:string;text:string;source_hash:string;version:string;basis:string;highlights:number[][];task_id?:string;note_id?:string;job_id?:string;ranges:{block_id:string;start:number;end:number}[]}
+type Topic={id:string;title:string;notes_count:number;materials_count?:number}
+type Hit={hit_id:string;uid:string;category:string;title:string;text:string;source_hash:string;version:string;basis:string;highlights:number[][];task_id?:string;article_id?:string;note_id?:string;job_id?:string;ranges:{block_id:string;start:number;end:number}[]}
 type Result={items:Hit[];offset:number;has_more:boolean;candidate_count:number;truncated:boolean;warnings:string[];title_matches:Pick<Hit,'uid'|'title'|'category'|'hit_id'|'source_hash'>[];scope:Record<string,number>;method:string}
 type Context=Hit&{blocks:{id:string;text:string;offset:number;highlights:number[][];start?:number;end?:number;clipped:boolean}[]}
 type Note={id:string;personal:string;revision:number}
-const labels:Record<string,string>={personal:'我的笔记',selection:'保存选段',original:'来源原稿'}
+const labels:Record<string,string>={personal:'我的笔记',selection:'保存选段',original:'来源正文'}
 const basisLabels:Record<string,string>={original:'原稿选段',chapter:'章节原话',draft:'编辑稿选段',manuscript:'AI整理稿选段',unknown:'来源类型未记录'}
 const backupKey=(id:string)=>'shiwen-topic-note-draft:'+id
 
@@ -68,7 +68,7 @@ export default function TopicSearch({topics,topicId,onTopic,onResearch,onNotesCh
  const groups=new Map<string,Hit[]>();for(const hit of result?.items||[])groups.set(hit.uid,[...(groups.get(hit.uid)||[]),hit])
  return <section className="topic-search" aria-label="专题内搜索">
   <div className="topic-search-heading"><div><h3>在专题里找回资料</h3><p>搜索自己的理解、保存选段和关联原稿。全程在本机处理。</p></div><BookOpen size={20} aria-hidden="true"/></div>
-  <label htmlFor="search-topic">搜索专题</label><select id="search-topic" value={topicId} disabled={dirty||saving} onChange={e=>onTopic(e.target.value)}><option value="">请选择一个专题</option>{topics.map(t=><option key={t.id} value={t.id}>{t.title}（{t.notes_count}）</option>)}</select>
+  <label htmlFor="search-topic">搜索专题</label><select id="search-topic" value={topicId} disabled={dirty||saving} onChange={e=>onTopic(e.target.value)}><option value="">请选择一个专题</option>{topics.map(t=><option key={t.id} value={t.id}>{t.title}（{t.notes_count}条笔记{t.materials_count?'，'+t.materials_count+'份图文':''}）</option>)}</select>
   <form onSubmit={e=>{e.preventDefault();if(!composing.current)void run()}}>
    <label htmlFor="topic-query">关键词或问题</label><div className="topic-query-row"><input id="topic-query" type="search" maxLength={200} value={query} disabled={dirty||saving} autoComplete="off" placeholder="例如：客户、AI工具、公开过程" onCompositionStart={()=>{composing.current=true}} onCompositionEnd={()=>{composing.current=false}} onKeyDown={e=>{if(e.key==='Enter'&&(composing.current||e.nativeEvent.isComposing))e.preventDefault()}} onChange={e=>{invalidate();setQuery(e.target.value)}}/><Button type="submit" disabled={!topicId||!query.trim()||busy||dirty||saving}>{busy?<LoaderCircle className="spin" size={15} aria-hidden="true"/>:<Search size={15} aria-hidden="true"/>}搜索</Button></div>
    <label htmlFor="topic-category">查找范围</label><select id="topic-category" value={category} disabled={dirty||saving} onChange={e=>{invalidate();setCategory(e.target.value)}}><option value="all">全部文字</option>{Object.entries(labels).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>
@@ -90,7 +90,7 @@ export default function TopicSearch({topics,topicId,onTopic,onResearch,onNotesCh
    {titleContext&&<p className="topic-search-feedback">以下为来源开头，未标为查询命中的正文。</p>}
    {context.blocks.map(b=><blockquote key={b.id}><small>{b.id} · 字符位置 {b.offset}{b.start!=null?' · '+Math.floor(b.start/60)+':'+String(Math.floor(b.start%60)).padStart(2,'0'):''}</small><p><Highlight text={b.text} ranges={titleContext?[]:b.highlights}/></p>{b.clipped&&<small>仅展示附近文字</small>}</blockquote>)}
    <p className="topic-search-hint">高亮用于定位，不代表已核实观点。音频时间为语音段边界。</p>
-   <div className="topic-context-actions">{context.task_id&&<a href={'/studio/?'+new URLSearchParams({task:context.task_id,search_topic:topicId,search_hit:context.hit_id,search_hash:context.source_hash})} target="_blank" rel="noreferrer">打开原稿位置 <ArrowUpRight size={13} aria-hidden="true"/></a>}{context.job_id&&<button disabled={dirty||saving} onClick={()=>onResearch(context.job_id!)}>回看深入与来源</button>}{context.note_id&&<button disabled={opening||saving||!!note} onClick={()=>void edit()}>补充自己的理解</button>}</div>
+   <div className="topic-context-actions">{context.task_id&&<a href={'/studio/?'+new URLSearchParams({task:context.task_id,search_topic:topicId,search_hit:context.hit_id,search_hash:context.source_hash})} target="_blank" rel="noreferrer">打开原稿位置 <ArrowUpRight size={13} aria-hidden="true"/></a>}{context.article_id&&<a href={'/studio/?'+new URLSearchParams({view:'library',item:context.article_id,search_topic:topicId,search_hit:context.hit_id,search_hash:context.source_hash})} target="_blank" rel="noreferrer">打开图文位置 <ArrowUpRight size={13} aria-hidden="true"/></a>}{context.job_id&&<button disabled={dirty||saving} onClick={()=>onResearch(context.job_id!)}>回看深入与来源</button>}{context.note_id&&<button disabled={opening||saving||!!note} onClick={()=>void edit()}>补充自己的理解</button>}</div>
    {note&&<div className="topic-note-editor"><label htmlFor="topic-note-edit">修改自己的理解</label><textarea id="topic-note-edit" rows={5} maxLength={12000} disabled={saving} value={draft} onChange={e=>{setDraft(e.target.value);try{localStorage.setItem(backupKey(note.id),JSON.stringify({personal:e.target.value,revision:note.revision}))}catch{setError('浏览器备份失败，请先复制保留输入内容再离开。')}}}/><Button size="sm" disabled={saving} onClick={()=>void save()}>保存理解</Button><Button size="sm" variant="ghost" disabled={saving} onClick={()=>{localStorage.removeItem(backupKey(note.id));setNote(null);setDraft('')}}>取消修改</Button>{dirty&&<p className="topic-search-hint">有未保存修改；保存或取消后再切换搜索。浏览器备份可在重新打开此笔记时恢复。</p>}</div>}
   </section>}
  </section>

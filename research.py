@@ -32,6 +32,7 @@ def init(db):
     db.execute('CREATE TABLE IF NOT EXISTS research_topics (id TEXT PRIMARY KEY,title TEXT UNIQUE NOT NULL,created REAL NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS research_notes (id TEXT PRIMARY KEY,topic_id TEXT NOT NULL,job_id TEXT NOT NULL,personal TEXT NOT NULL,revision INTEGER NOT NULL,created REAL NOT NULL,updated REAL NOT NULL,UNIQUE(topic_id,job_id))')
     db.execute('CREATE TABLE IF NOT EXISTS research_billing (id TEXT PRIMARY KEY,day TEXT NOT NULL,kind TEXT NOT NULL,status TEXT NOT NULL,estimate REAL NOT NULL)')
+    db.execute('CREATE TABLE IF NOT EXISTS topic_materials (topic_id TEXT NOT NULL,item_id TEXT NOT NULL,created REAL NOT NULL,PRIMARY KEY(topic_id,item_id))')
 
 
 def get(ident):
@@ -354,7 +355,21 @@ def recover():
 def topics():
     with store.connect() as db:
         init(db)
-        return [dict(r) for r in db.execute('SELECT t.*,count(n.id) AS notes_count FROM research_topics t LEFT JOIN research_notes n ON n.topic_id=t.id GROUP BY t.id ORDER BY t.created DESC')]
+        return [dict(r) for r in db.execute('SELECT t.*,(SELECT count(*) FROM research_notes n WHERE n.topic_id=t.id) AS notes_count,(SELECT count(*) FROM topic_materials m WHERE m.topic_id=t.id) AS materials_count FROM research_topics t ORDER BY t.created DESC')]
+
+
+def attach_material(item_id,title):
+    import articles
+    item=articles.get(item_id)
+    if not item or item.get('status')!='ready':raise ValueError('请等待资料导入结束后加入专题')
+    title=title.strip()
+    if not title or len(title)>100:raise ValueError('请填写100字以内的专题名称')
+    topic=hashlib.sha256(title.encode()).hexdigest()[:16]
+    with LOCK,store.connect() as db:
+        init(db)
+        db.execute('INSERT OR IGNORE INTO research_topics VALUES (?,?,?)',(topic,title,time.time()))
+        db.execute('INSERT OR IGNORE INTO topic_materials VALUES (?,?,?)',(topic,item_id,time.time()))
+    return {'topic_id':topic,'item_id':item_id}
 
 
 def note_list(topic_id=None):
