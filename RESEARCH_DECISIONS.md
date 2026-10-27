@@ -392,3 +392,11 @@
 采用本地 Markmap 只读树，复用现有 organizer/generations，评估并修正 DSH 备份而不直接套 patch。对比 [Markmap](https://github.com/markmap/markmap)、[G6](https://github.com/antvis/G6)、[simple-mind-map](https://github.com/wanglin2/mind-map)：本轮无需编辑协作，后两者的集成范围更大，暂缓。使用 [Markmap view 文档](https://markmap.js.org/docs/packages--markmap-view) 的实例控制和本地 npm 锁版，保留现有蓝白界面、可读大纲与键盘入口。许可证及依赖已随核心包补齐，无 CDN。
 
 真实长合集的提示词约束两轮未稳定满足边界，最终采用结构化 schema 限定分支，再做独立验证；无自动付费重试。236 后端、62 前端、双构建及 95 文件核心包校验通过。模型成功只证明生成链路与结构，不证明语义完整；单篇长音频质量未验证。人工验收挂账见 AGENTS.md，用户本轮自行点验。完整实测、失败记录、预算与预览见 MINDMAP_MILESTONE_20261027.md。
+
+## 2026-10-27 · 云端需求验证版（可部署，未上线）
+
+- 用户授权自主推进，随后明确尚无Cloudflare/Supabase账号，先交付可部署版本。采用独立cloud/目录、Pages/Worker、Supabase Auth/RLS，保留本地产品与真实数据。复用现有提示思路、结构化有界树和本地Markmap，不套用备份Worker/SQL。
+- W3C规范明确MediaRecorder timeslice的单块不保证独立可播放，因此改用Web Audio解码、30秒独立PCM WAV；服务端按固定头和PCM字节验证时间，不按客户端声明或文件大小猜时长。暂缓ffmpeg.wasm、视频、R2、支付与章节，减少移动端依赖和部署面。来源：https://www.w3.org/TR/mediastream-recording/ 、https://ffmpegwasm.netlify.app/docs/faq/ 。
+- 原Worker无鉴权、无真实时长检查、整块spread转base64可能栈溢出；原SQL允许客户端改写生成物、没有额度和分享。本版补服务端用户认证、service-only事务RPC、浏览器只读RLS、幂等和有限重试、账号/IP/全站额度及可撤销分享。实际模型同时兼容transcription_info.text与text结构，依据：https://developers.cloudflare.com/workers-ai/models/whisper-large-v3-turbo/ 。
+- 每日Cron访问真实Supabase数据库并记成功时间；低活跃免费项目可能暂停，不能保证保活即永不暂停。默认邮件不适合公开注册，需要SMTP或OAuth。免费基础设施不等于文本调用/域名/邮件全部零成本。来源：https://supabase.com/docs/guides/deployment/going-into-prod 、https://supabase.com/docs/guides/auth/auth-smtp 、https://developers.cloudflare.com/workers-ai/platform/pricing/ 。
+- 最终26项前后端流程测试、原生PostgreSQL16权限/事务/失败边界及8路并发、双端打包和部署准备脚本通过；npm audit 0漏洞。首轮Wrangler依赖漏洞已更新4.153.0；Windows运行中二进制导致npm ci文件锁，停本轮开发进程后完整重跑成功。真实云端与手机验收挂账见AGENTS.md，完整证据见cloud/MILESTONE_20261027.md。

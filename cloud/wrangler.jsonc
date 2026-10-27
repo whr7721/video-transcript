@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shiwen-cloud-api",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-27",
+  "ai": {"binding":"AI"},
+  "vars": {"WEB_ORIGIN":"http://localhost:5173,http://127.0.0.1:5173","DAILY_AUDIO_SECONDS":"1200","TEXT_MODEL":"deepseek-ai/DeepSeek-V4.1-Flash"},
+  "triggers": {"crons":["17 2 * * *"]},
+  "observability": {"enabled":true,"head_sampling_rate":0.1}
+}
