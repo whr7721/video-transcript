@@ -387,3 +387,8 @@
 - 未设开关的全量pytest228项通过，前端57项及核心构建通过；真实隔离HTTP验证公开设置GET/POST403、设备第4次429、IP累计10次后429、公开Host200；移除开关重启后设置200、12次请求无429、原Host白名单恢复。88文件候选包验证通过，未部署公网/未付费调用/未改用户数据。
 - 任务示例D:/tmp无权限，实际隔离在runtime/public-quota-smoke/data-core；pytest8.4.2仅装入忽略的runtime/public-quota-tools，生产依赖未变。外部HANDOVER_20261026.md未动。
 - 真实风险明确保留：XFF须反代覆盖且禁止后端直连；任务只列四挂点，studio generate/chapter-jobs/verification confirm等其他付费路由并未保护，云转写与多用户隔离仍未接，不据此称全站可公开。公网真机与Nginx实测未做。验收命令及范围见PUBLIC_QUOTA_MILESTONE_20261026.md。
+# 2026-10-27 · 思维导图采用决策
+
+采用本地 Markmap 只读树，复用现有 organizer/generations，评估并修正 DSH 备份而不直接套 patch。对比 [Markmap](https://github.com/markmap/markmap)、[G6](https://github.com/antvis/G6)、[simple-mind-map](https://github.com/wanglin2/mind-map)：本轮无需编辑协作，后两者的集成范围更大，暂缓。使用 [Markmap view 文档](https://markmap.js.org/docs/packages--markmap-view) 的实例控制和本地 npm 锁版，保留现有蓝白界面、可读大纲与键盘入口。许可证及依赖已随核心包补齐，无 CDN。
+
+真实长合集的提示词约束两轮未稳定满足边界，最终采用结构化 schema 限定分支，再做独立验证；无自动付费重试。236 后端、62 前端、双构建及 95 文件核心包校验通过。模型成功只证明生成链路与结构，不证明语义完整；单篇长音频质量未验证。人工验收挂账见 AGENTS.md，用户本轮自行点验。完整实测、失败记录、预算与预览见 MINDMAP_MILESTONE_20261027.md。

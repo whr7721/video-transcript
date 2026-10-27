@@ -55,6 +55,7 @@ class MindmapTests(unittest.TestCase):
         for value in bad:
             with self.subTest(value=value),self.assertRaises(ValueError):mindmap.validate(value)
         self.assertEqual(mindmap.validate(TREE)['children'][1]['children'][0]['text'],'区别')
+        self.assertIn('&lt;',mindmap.to_markdown({'text':'x < 5','children':[]}))
 
     def test_full_source_limits_are_not_summary_chunk_limits(self):
         task={**self.task,'result':{'text':'长'*24000}}
@@ -72,6 +73,7 @@ class MindmapTests(unittest.TestCase):
         doc=documents.get(self.task)
         with patch.object(organizer,'request_json',return_value=(TREE,{'total_tokens':100})) as request:
             job=organizer.start(self.task,'mindmap',doc['revision'])
+            self.assertEqual(request.call_args.kwargs['schema'],mindmap.SCHEMA)
             changed=documents.save(self.task,1,{'type':'doc','content':[{'type':'paragraph','content':[{'type':'text','text':'我的编辑'}]}]})
             again=organizer.start(self.task,'mindmap',changed['revision'])
             self.assertEqual(again['id'],job['id']);self.assertEqual(request.call_count,1)
@@ -114,5 +116,11 @@ class MindmapTests(unittest.TestCase):
         result=mindmap.to_markdown({'text':'[标签](javascript:alert(1))','children':[]})
         self.assertIn(r'\[标签\]',result)
         self.assertNotIn('[标签](',result)
+
+    def test_publisher_source_is_identified_without_inventing_asr(self):
+        task={**self.task,'source':{'ingest':'publisher_text'}};job={}
+        mindmap.run(job,task,lambda *args:(TREE,{'total_tokens':5}))
+        self.assertEqual(job['source_basis'],'immutable_publisher')
+        self.assertEqual(task['result'],self.task['result'])
 
 if __name__=='__main__':unittest.main()

@@ -21,7 +21,7 @@ BACKEND = (
     'podcast_feed.py','podcast_text.py','podcasts.py',
 )
 FRONTEND = (
-    'src/Studio.tsx', 'src/ChapterNavigation.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
+    'src/Studio.tsx', 'src/Mindmap.tsx', 'src/mindmap-render.ts', 'src/mindmap.css', 'src/ChapterNavigation.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
     'src/styles.css', 'src/articles.css', 'src/TopicSearch.tsx', 'src/topic-search.css', 'src/lib/utils.ts',
     'src/TopicLibrary.tsx', 'src/ImageImport.tsx', 'src/ImageEditorial.tsx', 'src/ImageReader.tsx', 'src/OcrEvaluation.tsx', 'src/image-reader.css',
     'core/main.tsx', 'core/index.html', 'core/public/logo.svg',

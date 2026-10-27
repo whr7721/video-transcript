@@ -20,6 +20,8 @@
     "clsx": "^2.1.1",
     "diff": "^8.0.0",
     "lucide-react": "^0.468.0",
+    "markmap-common": "0.18.9",
+    "markmap-view": "0.18.12",
     "radix-ui": "^1.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

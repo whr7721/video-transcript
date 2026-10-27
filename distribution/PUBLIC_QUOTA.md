@@ -1,7 +1,8 @@
 # Public request quotas
 
 The quota gates are inactive unless the server process sets `SHIWEN_PUBLIC=1`.
-Only the four endpoints in the public-quota task are covered:
+The four endpoints in the public-quota task are covered. The new mindmap action
+also shares the editorial bucket (it does not add another free allowance):
 
 | Endpoint | Per device/day | Per IP/day |
 |---|---:|---:|
@@ -9,6 +10,7 @@ Only the four endpoints in the public-quota task are covered:
 | POST /api/library/image-items/{id}/classify | 3 | 10 |
 | POST /api/library/items/{id}/question | 10 | 20 |
 | POST /api/studio/research/documents/{id} | 5 | 10 |
+| POST /api/studio/documents/{id}/generate, action=mindmap | shares editorial | shares editorial |
 
 Counts use the server's local calendar day. Missing/invalid device IDs fall back
 to the IP bucket under the device limit. Rejected over-limit attempts do not

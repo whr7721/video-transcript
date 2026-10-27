@@ -38,7 +38,8 @@ def capabilities(task):
     try:mindmap.source(task);map_reason=''
     except ValueError as exc:map_reason=str(exc)
     return {'raw_characters':len(raw),'manuscript_limit':24000,
-            'mindmap':{'available':not bool(map_reason),'reason':map_reason},
+            'mindmap':{'available':not bool(map_reason),'reason':map_reason,
+                       'source_hash':mindmap.source_hash(task) if not map_reason else None},
             'manuscript':{'available':not bool(reason),'reason':reason},
             'summary':{'available':not bool(other),'reason':other},
             'quotes':{'available':not bool(other),'reason':other}}
@@ -89,11 +90,11 @@ def reserve_daily_call():
         db.execute('UPDATE organizer_calls SET count=count+1 WHERE day=?', (day,))
 
 
-def request_json(system, user, max_tokens=1400):
+def request_json(system, user, max_tokens=1400, schema=None):
     reserve_daily_call()
     try:
         with httpx.Client(trust_env=False, timeout=httpx.Timeout(180, connect=15)) as client:
-            response = client.post('https://api.siliconflow.cn/v1/chat/completions', headers={'Authorization':'Bearer '+settings.cloud_key()}, json={'model':MODEL,'messages':[{'role':'system','content':system},{'role':'user','content':user}], 'temperature':0.1,'enable_thinking':False,'max_tokens':max_tokens,'response_format':{'type':'json_object'}})
+            response = client.post('https://api.siliconflow.cn/v1/chat/completions', headers={'Authorization':'Bearer '+settings.cloud_key()}, json={'model':MODEL,'messages':[{'role':'system','content':system},{'role':'user','content':user}], 'temperature':0.1,'enable_thinking':False,'max_tokens':max_tokens,'response_format':{'type':'json_schema','json_schema':{'name':'mindmap','strict':True,'schema':schema}} if schema is not None else {'type':'json_object'}})
         if response.status_code != 200: raise RuntimeError(f'文本服务暂不可用（HTTP {response.status_code}），原文已保存，可稍后重试。')
         data=response.json(); choice=data['choices'][0]
         if choice.get('finish_reason')!='stop': raise RuntimeError('正文输出未完整结束，没有将截断内容作为整理稿；请重试。')
@@ -135,7 +136,7 @@ def run(job, task, doc):
             manuscript.run(job,task,request_json)
         elif job['action'] == 'mindmap':
             import mindmap
-            mindmap.run(job,task,request_json)
+            mindmap.run(job,task,lambda system,user,max_tokens:request_json(system,user,max_tokens,schema=mindmap.SCHEMA))
         elif job['action'] == 'paragraphs':
             value = documents.text(doc['content'])
             parts = [p.strip() for p in re.split(r'\n\s*\n|(?<=[。！？])(?=.{80})',value) if p.strip()]
