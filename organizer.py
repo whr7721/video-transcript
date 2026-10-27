@@ -34,7 +34,11 @@ def capabilities(task):
     reason='' if raw.strip() and len(raw)<=24000 else '完整整理稿支持24000字以内原稿；全文不截断，仍可阅读、编辑、导出和选段研究。'
     try:source_chunks(task);other=''
     except ValueError as exc:other=str(exc)
+    import mindmap
+    try:mindmap.source(task);map_reason=''
+    except ValueError as exc:map_reason=str(exc)
     return {'raw_characters':len(raw),'manuscript_limit':24000,
+            'mindmap':{'available':not bool(map_reason),'reason':map_reason},
             'manuscript':{'available':not bool(reason),'reason':reason},
             'summary':{'available':not bool(other),'reason':other},
             'quotes':{'available':not bool(other),'reason':other}}
@@ -43,12 +47,15 @@ def capabilities(task):
 def start(task, action, revision):
     doc = documents.get(task)
     if revision != doc['revision']: raise documents.Conflict('请先保存当前编辑稿，再生成整理结果。')
-    if action not in {'paragraphs','summary','quotes','manuscript'}: raise ValueError('未知整理操作。')
+    if action not in {'paragraphs','summary','quotes','manuscript','mindmap'}: raise ValueError('未知整理操作。')
     if action!='paragraphs':
         capability=capabilities(task)[action]
         if not capability['available']:raise ValueError(capability['reason'])
     if action != 'paragraphs' and not settings.cloud_key(): raise ValueError('请先在设置中配置硅基流动 Key；手动编辑和分段仍可使用。')
     fingerprint = json.dumps([task.get('result',{}).get('text'), doc['content'] if action == 'paragraphs' else '', action, revision, MODEL, VERSION], ensure_ascii=False)
+    if action=='mindmap':
+        import mindmap
+        fingerprint=json.dumps([task['id'],mindmap.source_hash(task),action,MODEL,mindmap.VERSION])
     ident = hashlib.sha256(fingerprint.encode()).hexdigest()[:16]
     with LOCK:
         old = documents.generation_get(ident)
@@ -126,6 +133,9 @@ def run(job, task, doc):
         if job['action'] == 'manuscript':
             import manuscript
             manuscript.run(job,task,request_json)
+        elif job['action'] == 'mindmap':
+            import mindmap
+            mindmap.run(job,task,request_json)
         elif job['action'] == 'paragraphs':
             value = documents.text(doc['content'])
             parts = [p.strip() for p in re.split(r'\n\s*\n|(?<=[。！？])(?=.{80})',value) if p.strip()]

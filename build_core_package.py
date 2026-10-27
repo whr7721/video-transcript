@@ -14,7 +14,7 @@ BACKEND = (
     'app_core.py', 'app_shared.py', 'public_quota.py', 'source_contract.py', 'store.py', 'settings.py',
     'media_io.py', 'transcript_stage.py', 'transcribe.py', 'media_buffer.py',
     'local_files.py', 'local_media.py', 'core_instance.py', 'import_file.py',
-    'documents.py', 'chapters.py', 'chapter_jobs.py', 'organizer.py', 'manuscript.py', 'research.py', 'verification.py',
+    'documents.py', 'chapters.py', 'chapter_jobs.py', 'organizer.py', 'manuscript.py', 'mindmap.py', 'research.py', 'verification.py',
     'research_api.py', 'topic_search.py', 'studio_api.py', 'articles.py', 'article_api.py', 'image_documents.py', 'ocr_worker.py', 'ocr_reading.py', 'ocr_evaluation.py', 'ocr_classification.py',
     'article_parser.py', 'article_fetch.py', 'image_editorial.py', 'requirements.lock.txt', 'requirements.txt', 'requirements-ocr.lock.txt',
     'setup_models.py', 'check_core.py',

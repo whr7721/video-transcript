@@ -1,7 +1,7 @@
 import json
 import re
 from typing import Literal
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 import documents
@@ -28,7 +28,26 @@ class Draft(BaseModel):
 
 class Generate(BaseModel):
     revision: int = Field(ge=1)
-    action: Literal['paragraphs','summary','quotes','manuscript']
+    action: Literal['paragraphs','summary','quotes','manuscript','mindmap']
+
+
+def mindmap_quota(request:Request,body:Generate):
+    if body.action=='mindmap':
+        import public_quota
+        public_quota.require_quota('editorial')(request)
+
+
+@router.get('/generations/{ident}/mindmap.md')
+def export_mindmap(ident:str):
+    import mindmap
+    job=documents.generation_get(ident)
+    if not job or job.get('action')!='mindmap' or job.get('status')!='completed' or not job.get('mindmap'):
+        raise HTTPException(404,'尚无可导出的思维导图。')
+    task(job['task_id'])
+    try:content=mindmap.to_markdown(job['mindmap'])
+    except ValueError as exc:raise HTTPException(400,str(exc))
+    return Response(content,media_type='text/markdown; charset=utf-8',
+                    headers={'Content-Disposition':f'attachment; filename="mindmap-{ident}.md"'})
 
 
 class Pin(BaseModel):
@@ -121,7 +140,7 @@ def audio(ident:str):
     return FileResponse(path,media_type='audio/wav')
 
 
-@router.post('/documents/{ident}/generate')
+@router.post('/documents/{ident}/generate',dependencies=[Depends(mindmap_quota)])
 def generate(ident:str,body:Generate):
     try: return organizer.start(task(ident),body.action,body.revision)
     except documents.Conflict as exc: raise HTTPException(409,str(exc))
