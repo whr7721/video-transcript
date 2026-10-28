@@ -142,7 +142,8 @@ from media_io import probe_media, extract_audio
 
 def run_task(task, update, cloud_key=""):
     start = time.perf_counter()
-    directory = ROOT / "data" / "jobs" / task["id"]
+    from store import DATA
+    directory = DATA / "jobs" / task["id"]
     directory.mkdir(parents=True, exist_ok=True)
     media_buffer.register(task['id'], pinned=task.get('keep_media', True))
     update(stage="resolving", status="running", message="正在识别分享链接", started_at=time.time(), error=None)
@@ -173,8 +174,8 @@ def run_task(task, update, cloud_key=""):
             video.unlink(missing_ok=True)
         update(status="skipped", stage="skipped", message=f"实际时长超过{task['max_duration_sec'] // 60}分钟，已跳过", duration=duration, media_available=video.exists())
         return
-    if duration > 3600:
-        raise RuntimeError("首版目前支持 1 小时以内内容；原视频已保留。")
+    if duration > 10800:
+        raise RuntimeError("目前支持 3 小时以内内容；原视频已保留。")
     audio = directory / "audio.wav"
     reserve=int(duration*32000)+1_000_000
     if audio.exists():

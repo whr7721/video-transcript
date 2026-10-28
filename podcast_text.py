@@ -28,7 +28,7 @@ def parse(data, kind):
             index=indices[0];match=re.fullmatch(r'\s*([\d:.]+)\s+-->\s+([\d:.]+)(?:\s+.*)?',lines[index])
             if not match:raise ValueError('字幕时间格式无效')
             start,end=map(timestamp,match.groups())
-            if not start<end<=7200.5 or (segments and start<segments[-1]['start']):raise ValueError('字幕超时或顺序无效')
+            if not start<end<=10800.5 or (segments and start<segments[-1]['start']):raise ValueError('字幕超时或顺序无效')
             body=html.unescape(re.sub('<[^>]*>','','\n'.join(lines[index+1:]))).strip()
             if body:segments.append({'text':body,'start':start,'end':end})
     else:raise ValueError('首版仅支持节目纯文本和WebVTT')

@@ -431,3 +431,8 @@
 不采用：关闭 TLS 校验、让用户为首发先买域名、修改本地资料库或把完整私有采集能力发到云端。
 
 本机实测：新版 Wrangler 首次 Pages 创建需显式保留经典 Pages，列表 JSON 使用 `Project Name`；Pages 配置需标准文件名并通过工作目录发现。部署脚本及 Service Binding 已真实部署，28 项测试与构建通过；合成5分钟音频、真实云端模型、两个临时用户隔离及分享更新/撤销通过，详情 cloud/LAUNCH_20261028.md。观察到转写错字与导图部分主题遗漏，未声称质量通过。正式登录配置/GUI/手机/Cron长期健康/账单尚待验证。
+# 2026-10-28 P0 链接 CLI
+
+采用 yt-dlp 官方项目 Python 接口（固定2026.10.26）提供 metadata、subtitles/automatic_captions 和下载；参考 https://github.com/yt-dlp/yt-dlp/blob/master/README.md 。B站备用播放器字幕接口依据 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/video/player.md ，不复制第三方完整实现。RSS复用本站feedparser/发布者字幕解析；抖音复用独立会话，不改 MediaCrawler。统一 `subtitlesArray` 按本机 BibiGPT openapi.json 字段设计，不调用其付费 API。
+
+用户修正已采用：仅解锁现有多语言 SenseVoice 参数、补 cover/duration/publishedDate、声明 yt-dlp 安装、说话人分离挂账。本机四平台真实链接均获得结果，B站代理412改直连后成功；两小时稀疏合成时间轴及中断复用通过（27.55秒、复用2段、末段起点7184.266秒）。自然长录音质量不由此推定；详情 P0_LINK_GUIDE.md。未引入新后端或第二模型，无新增付费调用。

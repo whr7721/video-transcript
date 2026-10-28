@@ -13,16 +13,19 @@ MODEL_VERSION = "sensevoice-int8-20240717-vad-v1"
 _recognizer = None
 
 
-def get_recognizer():
+def get_recognizer(language="zh"):
     global _recognizer
-    if _recognizer is None:
+    if language not in {"auto","zh","en","ja","ko","yue"}:
+        raise ValueError("不支持的识别语言")
+    if _recognizer is None or getattr(get_recognizer, "language", None) != language:
         if not (MODEL / "model.int8.onnx").exists():
             raise RuntimeError("本地模型未就绪，请按当前版本 README 准备模型文件。")
         import sherpa_onnx
         _recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
             model=str(MODEL / "model.int8.onnx"), tokens=str(MODEL / "tokens.txt"),
-            num_threads=4, use_itn=True, language="zh", provider="cpu", debug=False,
+            num_threads=4, use_itn=True, language=language, provider="cpu", debug=False,
         )
+        get_recognizer.language = language
     return _recognizer
 
 
@@ -51,9 +54,9 @@ def paragraphs(segments):
     return "\n\n".join(blocks)
 
 
-def local_transcribe(audio, cache_dir, progress):
+def local_transcribe(audio, cache_dir, progress, language="zh"):
     import sherpa_onnx
-    recognizer = get_recognizer()
+    recognizer = get_recognizer() if language == 'zh' else get_recognizer(language)
     config = sherpa_onnx.VadModelConfig()
     config.silero_vad.model = str(ROOT / "models" / "silero_vad.onnx")
     config.silero_vad.threshold = 0.35
@@ -81,7 +84,7 @@ def local_transcribe(audio, cache_dir, progress):
                 start = int(speech.start)
                 samples = np.array(speech.samples, dtype=np.float32)
                 end = start + len(samples)
-                fingerprint = hashlib.sha256(samples.tobytes() + MODEL_VERSION.encode()).hexdigest()[:16]
+                fingerprint = hashlib.sha256(samples.tobytes() + MODEL_VERSION.encode() + (language.encode() if language != 'zh' else b'')).hexdigest()[:16]
                 cache = cache_dir / f"{start}-{end}-{fingerprint}.json"
                 if cache.exists():
                     segment = json.loads(cache.read_text(encoding="utf-8"))

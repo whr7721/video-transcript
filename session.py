@@ -6,7 +6,8 @@ import psutil
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = Path(r"D:\zcode1\mediacrawler\browser_data\dy_user_data_dir")
-PROFILE = ROOT / "data" / "browser"
+from store import DATA
+PROFILE = DATA / "browser"
 
 
 def prepare_session():

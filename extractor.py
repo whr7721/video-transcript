@@ -14,7 +14,7 @@ from batch_rules import classify_post
 
 ROOT = Path(__file__).resolve().parent
 MC = Path(r"D:\zcode1\mediacrawler")
-PROFILE = ROOT / "data" / "browser"
+PROFILE = Path(os.environ.get("SHIWEN_DATA_DIR", ROOT / "data")).resolve() / "browser"
 
 
 async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_sec=600):

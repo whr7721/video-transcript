@@ -15,7 +15,10 @@ def finish_transcription(task, update, directory, audio, duration, metadata, sta
     if task["provider"] == "cloud":
         result = cloud_transcribe(audio, directory / "cloud_chunks", progress, cloud_key)
     else:
-        result = local_transcribe(audio, directory / "local_chunks", progress)
+        if task.get('language', 'zh') == 'zh':
+            result = local_transcribe(audio, directory / "local_chunks", progress)
+        else:
+            result = local_transcribe(audio, directory / "local_chunks", progress, language=task['language'])
     result.update({**metadata, "duration": duration,
                    "total_seconds": round(time.perf_counter() - start, 2), "created_at": time.time(),
                    "cost_yuan": 0, "review_note": "原文由语音识别生成，保留讲话内容；人名、数字和专有名词建议回听核对。未进行全文人工校对。"})
