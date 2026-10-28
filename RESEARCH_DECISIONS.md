@@ -416,3 +416,9 @@
 用户授权20元新阶段实验，不重置旧账本。研究Open Notebook的ask源码、Mem0记忆源码、SurfSense/Cognee产品与许可、Anthropic工作流/Agent区分及SiliconFlow tools协议；选择已有SQLite FTS5＋标准tool_calls循环，明确记忆由用户确认，暂缓向量库/图谱/整套框架。实现跨音视频、文章、OCR与笔记检索，动态搜索/读取最多4轮8段，引用逐字匹配与无支撑段落过滤、全库指纹缓存/历史变化提示、研究导出和转卡片。
 
 6次真实研究、19次模型调用；预留4.34元，保守usage估算0.78752元（非账单）。跨题材NOAA与摄影记忆夹具仅在runtime隔离库，生产只保留真实调用账本。无答案任务7处不合格内容被系统过滤，音频任务1处引用移除，OCR布局推断是已观察局限；不能据此声称模型无幻觉或准确率达标。详细候选/源码链接、测试证据与取舍见PERSONAL_AI_RESEARCH_20261028.md；说明书PERSONAL_AI_GUIDE_20261028.md；简历地图AI_RESUME_CAPABILITY_MAP_20261028.md。
+
+## 2026-10-28 · 资料到行动工作区
+
+用户转达上一轮无问题，再次授权自由拓展。参考Anthropic Context Engineering https://www.anthropic.com/research/effective-context-engineering-for-ai-agents 与Deep Agents https://github.com/langchain-ai/deepagents 的外部状态/计划理念，不引入新框架。新增独立SQLite工作区、人工采用计划、进度/复盘、历史快照和revision冲突控制，复用现有Agent与同一20元账本。模型仍只读，不假装自动完成任务。
+
+4项后端、2项前端新测试（总67前端）与构建通过；隔离真实研究3次模型调用，24.875秒，8节结果，采用后保存进度与引用、缓存不重复调用。累计预留4.95元，保守估算0.90821元（非账单）。修复进度保存丢引用的问题。用法、边界、审查范围见KNOWLEDGE_PROJECTS_20261028.md；未用假完成状态冒充真实任务执行。

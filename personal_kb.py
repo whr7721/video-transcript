@@ -188,7 +188,7 @@ def run(job,corpus):
     job.update(trace=trace,updated_at=time.time());save(job)
 
 class Ask(BaseModel):
-    question:str=Field(min_length=2,max_length=600)
+    question:str=Field(min_length=2,max_length=4000)
     mode:Literal['answer','compare','study','brief']='answer'
     kind:Literal['all','audio','article','images','memory','note']='all'
 class Memory(BaseModel):

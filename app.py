@@ -341,6 +341,9 @@ def resume_buffer():
     return {'resumed':count}
 
 
+import knowledge_projects
+app.include_router(knowledge_projects.router)
+
 import personal_kb
 app.include_router(personal_kb.router)
 
