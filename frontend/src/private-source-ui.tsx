@@ -14,7 +14,7 @@ export const sourceUI:SourceUI={
  introduction:'选择左侧已有文稿，或粘贴一个链接。\n原稿、整理、编辑和来源，在这里连起来。',
  Capture,
  ImageCapture:PrivateImageCapture,
- Navigation:()=> <a className="text-link" style={{padding:'12px 8px'}} href="/studio/?view=discovery">抖音话题发现<ArrowUpRight size={13}/></a>,
+ Navigation:()=> <><a className="text-link" href="/studio/?view=knowledge">我的资料助手</a><a className="text-link" style={{padding:'12px 8px'}} href="/studio/?view=discovery">抖音话题发现<ArrowUpRight size={13}/></a></>,
  Management:()=> <a href="/">转写与批量管理<ArrowUpRight size={13}/></a>,
  SettingsLink:()=> <a className="text-link" href="/">抖音登录与完整转写设置<ArrowUpRight size={14}/></a>,
  SourceLink:({task})=>task.video_id?<a href={`https://www.douyin.com/video/${task.video_id}`} target="_blank" rel="noreferrer" aria-label="在抖音打开来源"><ArrowUpRight size={16}/></a>:null

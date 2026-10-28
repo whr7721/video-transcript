@@ -341,6 +341,9 @@ def resume_buffer():
     return {'resumed':count}
 
 
+import personal_kb
+app.include_router(personal_kb.router)
+
 import creation
 app.include_router(creation.router)
 

@@ -62,3 +62,6 @@
 先掌握其中两条代码路径：topic_search.py的投影/事务/检索/上下文，以及chapter_jobs.py的分窗/缓存/恢复。亲自运行一个小样本和相关测试，修改一处小需求并解释影响。比同时列出多个未使用框架更容易形成可追问的证据。
 
 性能/质量证据：K1_EVAL_MILESTONE_20261024.md、K1_RERANK_MILESTONE_20261024.md、K1_PRODUCTION_MILESTONE_20261025.md、experiments/topic_search/QUALITY_20261025.md。长稿证据见R2_MILESTONE_20261023.md。局限与未验收项保留，不以演示替代真实用户效果。
+# 本轮更新索引（2026-10-28）
+
+统一资料库RAG、标准tool_calls有界Agent、显式个人记忆已经新增，详见 [AI简历能力对比地图](AI_RESUME_CAPABILITY_MAP_20261028.md)。下文保留此前专题检索阶段的历史范围与评测数字，不能把旧“RAG尚未闭环”当成本轮统一库实现状态；新增实现也不等于向量检索、知识图谱或MCP已接入。
