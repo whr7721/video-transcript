@@ -5,6 +5,7 @@ param(
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
 Set-Location (Split-Path -Parent $PSScriptRoot)
 if ($ProjectName -notmatch '^[a-z][a-z0-9-]{2,48}$') { throw 'ProjectName must be a lowercase project slug.' }
 function Run-Npm([string[]]$Arguments) {
@@ -41,6 +42,8 @@ $config = Get-Content wrangler.jsonc -Raw | ConvertFrom-Json
 $config.name = $ProjectName + '-api'
 $config.main = '../../worker/index.ts'
 $config.vars.WEB_ORIGIN = $origin
+$config | Add-Member -NotePropertyName workers_dev -NotePropertyValue $false -Force
+$config | Add-Member -NotePropertyName preview_urls -NotePropertyValue $false -Force
 New-Item -ItemType Directory -Path '.wrangler/launch' -Force | Out-Null
 $configPath = Join-Path (Get-Location) '.wrangler/launch/wrangler.json'
 [IO.File]::WriteAllText($configPath,($config | ConvertTo-Json -Depth 10),[Text.UTF8Encoding]::new($false))
@@ -53,28 +56,32 @@ try {
     # Secret values go only through stdin, never command arguments or tracked files.
     $secrets | ConvertTo-Json -Compress | & npm.cmd exec wrangler -- secret bulk --config $configPath
     if ($LASTEXITCODE -ne 0) { throw 'Secret upload failed. Check Cloudflare authentication.' }
-    $deploymentOutput = & npm.cmd exec wrangler -- deploy --config $configPath 2>&1
-    if ($LASTEXITCODE -ne 0) { throw 'Worker deployment failed; inspect Cloudflare dashboard.' }
-    $workerUrl = [regex]::Match(($deploymentOutput -join "`n"),'https://[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev').Value
-    if (!$workerUrl) { throw 'Worker deployed but URL could not be detected. Read it from Cloudflare and set VITE_API_URL when building.' }
-    $health = Invoke-RestMethod -Uri ($workerUrl+'/api/health') -TimeoutSec 20
-    if (!$health.ok -or !$health.configured) { throw 'Worker health check failed.' }
-    $env:VITE_API_URL = $workerUrl
+    Run-Npm -Arguments @('exec','wrangler','--','deploy','--config',$configPath)
+    # Same-origin API via Pages Service Binding, no public workers.dev dependency.
+    $env:VITE_API_URL = ''
     Run-Npm -Arguments @('run','build')
     # Add exact production origins to the CSP; preview subdomains are deliberately not trusted by API CORS.
     $headers = Get-Content public/_headers -Raw
-    $headers += "`n  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' $workerUrl $SupabaseUrl; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`n"
+    $headers += "`n  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' $SupabaseUrl; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`n"
     [IO.File]::WriteAllText((Join-Path (Get-Location) 'dist/_headers'),$headers,[Text.UTF8Encoding]::new($false))
     # Listing is read-only; create only when this exact Pages project is absent.
     $projectOutput = & npm.cmd exec wrangler -- pages project list --json
     if ($LASTEXITCODE -ne 0) { throw 'Cannot list Pages projects.' }
     $projects = ($projectOutput -join "`n") | ConvertFrom-Json
-    if (!($projects | Where-Object {$_.name -eq $ProjectName})) {
-        Run-Npm -Arguments @('exec','wrangler','--','pages','project','create',$ProjectName,'--production-branch','main')
+    if (!($projects | Where-Object {$_.name -eq $ProjectName -or $_.'Project Name' -eq $ProjectName})) {
+        # Explicit classic Pages creation avoids newer Wrangler delegating to a Worker.
+        Run-Npm -Arguments @('exec','wrangler','--','pages','project','create',$ProjectName,'--production-branch','main','--force')
     }
-    Run-Npm -Arguments @('exec','wrangler','--','pages','deploy','dist','--project-name',$ProjectName,'--branch','main')
+    $pagesConfig = @{name=$ProjectName;pages_build_output_dir='../../dist';compatibility_date=$config.compatibility_date;services=@(@{binding='API';service=($ProjectName+'-api')})}
+    $pagesDir = Join-Path (Get-Location) '.wrangler/pages'
+    New-Item -ItemType Directory -Path $pagesDir -Force | Out-Null
+    $pagesConfigPath = Join-Path $pagesDir 'wrangler.json'
+    [IO.File]::WriteAllText($pagesConfigPath,($pagesConfig | ConvertTo-Json -Depth 10),[Text.UTF8Encoding]::new($false))
+    Run-Npm -Arguments @('exec','wrangler','--','--cwd',$pagesDir,'pages','deploy','../../dist','--project-name',$ProjectName,'--branch','main')
+    $health = Invoke-RestMethod -Uri ($origin+'/api/health') -TimeoutSec 20
+    if (!$health.ok -or !$health.configured) { throw 'Published but health check failed; inspect Pages bindings.' }
     Write-Host ('Published: ' + $origin)
-    Write-Host ('API: ' + $workerUrl)
+    Write-Host ('API: ' + $origin + '/api')
     Write-Host ('Next: Supabase Auth Site URL and Redirect URLs must include ' + $origin)
     Write-Host 'Verify two real accounts, a five-minute recording, share revocation, mobile Safari and actual billing before inviting users.'
 } finally {

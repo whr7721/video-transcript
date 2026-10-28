@@ -1,6 +1,6 @@
 # 拾文云端版 MVP
 
-独立的 Cloudflare Pages + Workers + Workers AI + Supabase 应用。仅收音频文件，不含本地采集、MediaCrawler、本地数据库或用户素材。当前为可部署源码，**没有账号时不等于已上线**。
+独立的 Cloudflare Pages + Workers + Workers AI + Supabase 应用。仅收音频文件，不含本地采集、MediaCrawler、本地数据库或用户素材。2026-10-28 已部署到 https://shiwen-cloud-whr7721.pages.dev ，真实云端接口链路通过，正式登录配置与人工验收进度见 [上线记录](LAUNCH_20261028.md)。
 
 ## 已实现范围
 
@@ -22,7 +22,7 @@ npm exec wrangler -- login
 powershell -NoProfile -File tools/deploy.ps1 -SupabaseUrl 'https://项目ID.supabase.co' -SupabaseAnonKey '公开anon或publishable key'
 ```
 
-脚本会运行测试、构建、核验表、隐藏输入两个服务端密钥、上传 Worker Secret、发布 Worker、构建生产前端并发布 Pages。默认项目名 `shiwen-cloud-whr7721`，可传 `-ProjectName` 改成自己的唯一名称；只对这个名称创建/更新，不操作其他项目。不要启用付费自动升级。若账户需要选择，先设置 `CLOUDFLARE_ACCOUNT_ID`。首次 Worker subdomain 开通可能需在 Cloudflare Dashboard 完成。
+脚本会运行测试、构建、核验表、隐藏输入两个服务端密钥、上传 Worker Secret、发布 Worker、构建生产前端并发布 Pages。默认项目名 `shiwen-cloud-whr7721`，可传 `-ProjectName` 改成自己的唯一名称；只对这个名称创建/更新，不操作其他项目。不要启用付费自动升级。若账户需要选择，先设置 `CLOUDFLARE_ACCOUNT_ID`。API 由 Pages 的 `/api/*` 通过 Service Binding 内部转发；后端不公开 workers.dev 或预览地址。前端使用同域请求，避免浏览器依赖 workers.dev 的可达性。Pages 首次创建显式使用 `--force` 保持 Pages 形态，后续部署不带该参数。
 
 4. 把脚本输出的 Pages 网址填入 Supabase Auth 的 Site URL 与 Redirect URLs；GitHub OAuth 回调按 Supabase 页面给出的 URL 配置。配置 SMTP 后才邀请公众自行注册。Pages 预览网址不在 API CORS 白名单内，使用脚本输出的正式 `*.pages.dev` 地址。
 5. 登录自己的两个体验账号，完成下方验收后再邀请真实用户。Supabase 账号密钥、GitHub OAuth secret、SiliconFlow Key 不得出现在前端构建产物。

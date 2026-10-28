@@ -422,3 +422,12 @@
 用户转达上一轮无问题，再次授权自由拓展。参考Anthropic Context Engineering https://www.anthropic.com/research/effective-context-engineering-for-ai-agents 与Deep Agents https://github.com/langchain-ai/deepagents 的外部状态/计划理念，不引入新框架。新增独立SQLite工作区、人工采用计划、进度/复盘、历史快照和revision冲突控制，复用现有Agent与同一20元账本。模型仍只读，不假装自动完成任务。
 
 4项后端、2项前端新测试（总67前端）与构建通过；隔离真实研究3次模型调用，24.875秒，8节结果，采用后保存进度与引用、缓存不重复调用。累计预留4.95元，保守估算0.90821元（非账单）。修复进度保存丢引用的问题。用法、边界、审查范围见KNOWLEDGE_PROJECTS_20261028.md；未用假完成状态冒充真实任务执行。
+# 2026-10-28 云端实际部署：Pages 同域 API
+
+问题：首次云端发布发现本机 pages.dev 可访问，workers.dev TLS 握手失败；旧版部署脚本又受 Wrangler Pages 默认转发、JSON 字段及配置路径变化影响。
+
+采用：[Pages Service Binding](https://developers.cloudflare.com/pages/functions/bindings/#service-bindings) + [Advanced mode](https://developers.cloudflare.com/pages/functions/advanced-mode/)，`public/_worker.js` 仅转发 `/api/*` 到独立后端 Worker，其他请求走静态资源；`_routes.json` 限定调用范围。无新依赖，保留后端认证、额度、服务端密钥与 Cron，后端关闭公开 workers.dev。浏览器改为同域请求，CSP 不再允许外部 Worker 地址。
+
+不采用：关闭 TLS 校验、让用户为首发先买域名、修改本地资料库或把完整私有采集能力发到云端。
+
+本机实测：新版 Wrangler 首次 Pages 创建需显式保留经典 Pages，列表 JSON 使用 `Project Name`；Pages 配置需标准文件名并通过工作目录发现。部署脚本及 Service Binding 已真实部署，28 项测试与构建通过；合成5分钟音频、真实云端模型、两个临时用户隔离及分享更新/撤销通过，详情 cloud/LAUNCH_20261028.md。观察到转写错字与导图部分主题遗漏，未声称质量通过。正式登录配置/GUI/手机/Cron长期健康/账单尚待验证。
