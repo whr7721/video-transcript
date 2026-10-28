@@ -341,6 +341,9 @@ def resume_buffer():
     return {'resumed':count}
 
 
+import creation
+app.include_router(creation.router)
+
 import studio_api
 studio_api.on_finalize = resume_buffer
 
