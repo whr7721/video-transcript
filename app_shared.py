@@ -14,6 +14,8 @@ async def local_security(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    if request.url.path.startswith("/cards/"):
+        response.headers["Content-Security-Policy"] = response.headers["Content-Security-Policy"].replace("img-src 'self' data:", "img-src 'self' data: blob:")
     if request.url.path.startswith("/api"):
         response.headers["Cache-Control"] = "no-store"
     return response

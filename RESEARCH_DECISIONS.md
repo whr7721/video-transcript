@@ -400,3 +400,7 @@
 - 原Worker无鉴权、无真实时长检查、整块spread转base64可能栈溢出；原SQL允许客户端改写生成物、没有额度和分享。本版补服务端用户认证、service-only事务RPC、浏览器只读RLS、幂等和有限重试、账号/IP/全站额度及可撤销分享。实际模型同时兼容transcription_info.text与text结构，依据：https://developers.cloudflare.com/workers-ai/models/whisper-large-v3-turbo/ 。
 - 每日Cron访问真实Supabase数据库并记成功时间；低活跃免费项目可能暂停，不能保证保活即永不暂停。默认邮件不适合公开注册，需要SMTP或OAuth。免费基础设施不等于文本调用/域名/邮件全部零成本。来源：https://supabase.com/docs/guides/deployment/going-into-prod 、https://supabase.com/docs/guides/auth/auth-smtp 、https://developers.cloudflare.com/workers-ai/platform/pricing/ 。
 - 最终26项前后端流程测试、原生PostgreSQL16权限/事务/失败边界及8路并发、双端打包和部署准备脚本通过；npm audit 0漏洞。首轮Wrangler依赖漏洞已更新4.153.0；Windows运行中二进制导致npm ci文件锁，停本轮开发进程后完整重跑成功。真实云端与手机验收挂账见AGENTS.md，完整证据见cloud/MILESTONE_20261027.md。
+
+## 2026-10-28 · 自用图文卡片接入
+
+用户授权直接接现成工具，便利优先。复用haodongcui/md2card固定f672126c5caba634244c34aebcd5c83e11f0cc52，阅读源码App草稿恢复与export导出入口，保留MIT。Preact独立构建，通过本机/cards/挂载，不迁移React工作台。工作台编辑稿与素材库当前整理文字经一次性localStorage带入，跳过上游旧草稿恢复避免覆盖。仅/cards/允许blob图片供本地图片预览；本地公开核心/云端不新增此功能。AI沿用现有整理，不新增付费步骤。上游23项单测通过，构建通过，真实HTTP/cards/app/200；PNG视觉由用户实际使用验收，不夸称已验证。详情见tools/md2card/SHIWEN.md。

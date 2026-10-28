@@ -16,3 +16,5 @@ data-core/
 .env.*
 !.env.example
 !.env.sample
+
+tools/md2card/dist/

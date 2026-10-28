@@ -345,6 +345,9 @@ import studio_api
 studio_api.on_finalize = resume_buffer
 
 
+if (ROOT/'tools'/'md2card'/'dist').is_dir():
+    app.mount('/cards', StaticFiles(directory=ROOT/'tools'/'md2card'/'dist',html=True),name='cards')
+
 if (ROOT/'frontend'/'dist').is_dir():
     app.mount('/studio', StaticFiles(directory=ROOT/'frontend'/'dist',html=True),name='studio')
 app.mount("/", StaticFiles(directory=ROOT / "web", html=True), name="web")
