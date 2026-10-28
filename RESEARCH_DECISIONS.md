@@ -436,3 +436,6 @@
 采用 yt-dlp 官方项目 Python 接口（固定2026.10.26）提供 metadata、subtitles/automatic_captions 和下载；参考 https://github.com/yt-dlp/yt-dlp/blob/master/README.md 。B站备用播放器字幕接口依据 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/video/player.md ，不复制第三方完整实现。RSS复用本站feedparser/发布者字幕解析；抖音复用独立会话，不改 MediaCrawler。统一 `subtitlesArray` 按本机 BibiGPT openapi.json 字段设计，不调用其付费 API。
 
 用户修正已采用：仅解锁现有多语言 SenseVoice 参数、补 cover/duration/publishedDate、声明 yt-dlp 安装、说话人分离挂账。本机四平台真实链接均获得结果，B站代理412改直连后成功；两小时稀疏合成时间轴及中断复用通过（27.55秒、复用2段、末段起点7184.266秒）。自然长录音质量不由此推定；详情 P0_LINK_GUIDE.md。未引入新后端或第二模型，无新增付费调用。
+# 2026-10-28 P0 P1审查修复
+
+采用官方 WinGet DenoLand.Deno（实装2.9.8），并按 https://github.com/yt-dlp/yt-dlp/wiki/EJS 补齐同版本要求的 yt-dlp-ejs==0.8.0；仅安装Deno不足以补齐pip默认未带的挑战脚本。源profile通过SHIWEN_DOUYIN_PROFILE参数化，默认兼容旧路径。16项针对性测试通过；新隔离目录YouTube英文字幕正向CLI成功，未命中旧文稿缓存。审查其他P2/P3暂缓，详见P0_P1_FIX_20261028.md。

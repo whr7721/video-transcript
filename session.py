@@ -1,11 +1,12 @@
 """Create a private, isolated session without launching the production profile."""
 import shutil
+import os
 from pathlib import Path
 
 import psutil
 
 ROOT = Path(__file__).resolve().parent
-SOURCE = Path(r"D:\zcode1\mediacrawler\browser_data\dy_user_data_dir")
+SOURCE = Path(os.environ.get('SHIWEN_DOUYIN_PROFILE', r"D:\zcode1\mediacrawler\browser_data\dy_user_data_dir")).expanduser().resolve()
 from store import DATA
 PROFILE = DATA / "browser"
 

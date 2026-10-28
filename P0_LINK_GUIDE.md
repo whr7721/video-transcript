@@ -22,7 +22,7 @@ YouTube/B站先读 yt-dlp 的 `subtitles` / `automatic_captions`（对应官方�
 
 `--language` 支持 auto/zh/en/ja/ko/yue，只切换同一个多语言模型参数。缓存按语言隔离；原有中文缓存键保持兼容。ASR 时间轴是 VAD 语音段边界，不是词级对齐。发布者纯文本没有时间轴时不伪造 SRT。
 
-当前支持3小时以内媒体，下载和 ASR 复用已有文件/分段缓存；中断后重复同一命令继续。字幕获取不成功时仍可能需要平台授权或触发风控；不会绕过验证码。YouTube 本机提示缺少支持的 JS runtime，本次字幕获取成功不代表所有 YouTube 音频格式均可用。未来遇到该问题再按 yt-dlp EJS 文档配置，不另加识别模型。
+当前支持3小时以内媒体，下载和 ASR 复用已有文件/分段缓存；中断后重复同一命令继续。字幕获取不成功时仍可能需要平台授权或触发风控；不会绕过验证码。YouTube 依赖 Deno 和匹配的 EJS，安装说明见 README。2026-10-28 审查修复已安装 Deno 2.9.8、yt-dlp-ejs 0.8.0，并在全新隔离目录真实取得英文字幕；不代表所有 YouTube 音频格式均已验收。
 
 抖音只在用户现有 MediaCrawler 环境中调用既有客户端，原 browser_data 只读复制，不修改配置、锁文件和定时任务；复制后的目录受 SHIWEN_DATA_DIR 控制。MediaCrawler 相关能力限自用，不进入商业云端包。
 

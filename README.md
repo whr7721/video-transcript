@@ -1,5 +1,11 @@
 # 拾文
 
+## 链接 CLI 依赖（P0）
+
+安装 Python 依赖：`.venv/Scripts/python.exe -m pip install -r requirements.txt`。另需 ffmpeg/ffprobe 和 **Deno ≥2.3.0**。Windows 使用官方包：`winget install --id DenoLand.Deno --exact --source winget`；安装后重新打开终端，执行 `deno --version`。Deno 应在 PATH 中，yt-dlp 默认启用它。YouTube JS 挑战还需要匹配版本的 EJS 脚本，本项目固定 `yt-dlp==2026.10.26` + `yt-dlp-ejs==0.8.0`，升级时须一起核对，不依赖临时远程脚本下载。参考 [yt-dlp EJS](https://github.com/yt-dlp/yt-dlp/wiki/EJS)、[Deno 官方安装](https://docs.deno.com/runtime/getting_started/installation/)。
+
+抖音源登录目录可通过 `SHIWEN_DOUYIN_PROFILE` 设置，默认 `D:/zcode1/mediacrawler/browser_data/dy_user_data_dir`。例如 `$env:SHIWEN_DOUYIN_PROFILE='E:/MediaCrawler/browser_data/dy_user_data_dir'`；在首次准备独立会话之前设置。只读复制到 `SHIWEN_DATA_DIR/browser`，源配置和登录目录不写入。已有独立会话不会因更改源目录自动覆盖。[P0 使用说明](P0_LINK_GUIDE.md)。
+
 本机运行的AI学习与资料整理工作台：从音视频、RSS单集和文章保留原文，按需整理、阅读、研究、记录理解并在专题里找回来源。识别与AI结果可能出错，不能视为人工核实。
 
 自用新增[个人AI资料库与助手](PERSONAL_AI_GUIDE_20261028.md)：统一检索音视频、文章、图集OCR与个人记忆，支持有工具调用轨迹的引用问答、对比、学习指南和行动简报。入口 `/studio/?view=knowledge`。[AI简历能力对比地图](AI_RESUME_CAPABILITY_MAP_20261028.md)与[调研取舍](PERSONAL_AI_RESEARCH_20261028.md)分别说明已实现证据、未实现项与真实实验边界。
