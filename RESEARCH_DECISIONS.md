@@ -439,3 +439,8 @@
 # 2026-10-28 P0 P1审查修复
 
 采用官方 WinGet DenoLand.Deno（实装2.9.8），并按 https://github.com/yt-dlp/yt-dlp/wiki/EJS 补齐同版本要求的 yt-dlp-ejs==0.8.0；仅安装Deno不足以补齐pip默认未带的挑战脚本。源profile通过SHIWEN_DOUYIN_PROFILE参数化，默认兼容旧路径。16项针对性测试通过；新隔离目录YouTube英文字幕正向CLI成功，未命中旧文稿缓存。审查其他P2/P3暂缓，详见P0_P1_FIX_20261028.md。
+# 2026-10-28 CLI整理闭环
+
+采用现有manuscript.run完整稿/精华两阶段，精华请求一次附带五段结构、逐字金句和导图，复用现有request_json每日30次与image_editorial费用保护。备份不覆盖已合入mindmap；复用当前validate/to_markdown，HTML参考Markmap官方 https://markmap.js.org/docs/packages--markmap-view ，内嵌前端已锁定的d3 7.9.0/markmap-view 0.18.12及许可，不增加npm依赖、不用CDN。采用阶段落库和目录OS锁，导出重试无需再次模型调用。
+
+实测：47项定向测试；真实新任务2次请求、缓存0次、transcript.*哈希不变。初次形状无效被拒绝，原稿和完整稿保留，单独补第二阶段成功，随后明确JSON示例。共5次请求如实记入旧账本。Chrome窗口最小化无法操作，离线HTML视觉交互挂账。使用说明与审查边界见CLI_SUMMARY_GUIDE.md。

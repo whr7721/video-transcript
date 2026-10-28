@@ -125,7 +125,12 @@ def add(args):
     ident=hashlib.sha256((identity+'|'+args.language).encode()).hexdigest()[:16]
     directory=store.DATA/'jobs'/ident;directory.mkdir(parents=True,exist_ok=True)
     if (directory/'transcript.json').exists():
-        print(directory/'transcript.json');return
+        print(directory/'transcript.json')
+        if getattr(args,'summarize',False):
+            from cli_summary import summarize
+            summarize(directory)
+            print(directory/'summary.md');print(directory/'mindmap.html')
+        return
     store.init()
     task={'id':ident,'url':args.url,'provider':'local','language':args.language,'created_at':time.time(),'status':'queued'}
     def update(**fields):task.update(fields);store.save(task)
@@ -163,11 +168,16 @@ def add(args):
     result=export(directory,result,metadata)
     update(status='completed',stage='completed',title=metadata.get('title'),result=result)
     print(directory/'transcript.json')
+    if getattr(args,'summarize',False):
+        from cli_summary import summarize
+        print('本地转写已保存；开始模型整理（共享每日30次请求配额，成功阶段缓存不重复调用）。',flush=True)
+        summarize(directory)
+        print(directory/'summary.md');print(directory/'mindmap.html')
 
 
 def main():
     parser=argparse.ArgumentParser(prog='shiwen');sub=parser.add_subparsers(dest='command',required=True)
-    p=sub.add_parser('add');p.add_argument('url');p.add_argument('--episode',type=int);p.add_argument('--language',choices=['auto','zh','en','ja','ko','yue'],default='auto')
+    p=sub.add_parser('add');p.add_argument('url');p.add_argument('--episode',type=int);p.add_argument('--language',choices=['auto','zh','en','ja','ko','yue'],default='auto');p.add_argument('--summarize',action='store_true',help='原稿保存后用模型生成完整稿、精华、金句与离线导图；共享每日请求配额')
     args=parser.parse_args()
     try:add(args)
     except Exception as e:parser.exit(1,f'处理失败：{e}\n')

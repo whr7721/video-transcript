@@ -2,6 +2,8 @@
 
 ## 链接 CLI 依赖（P0）
 
+CLI 可加 `--summarize`：原稿保存后生成同目录 `summary.md`（完整稿/五段式精华/逐字金句）、`mindmap.md` 与离线单文件 `mindmap.html`。本地转写不调用模型；整理首次成功两次模型请求，失败仅重试未成功阶段，命中阶段缓存不计请求。依赖现有Key与共享每日30次额度及费用保护，不修改 `transcript.*`。[CLI整理使用与验收](CLI_SUMMARY_GUIDE.md)。
+
 安装 Python 依赖：`.venv/Scripts/python.exe -m pip install -r requirements.txt`。另需 ffmpeg/ffprobe 和 **Deno ≥2.3.0**。Windows 使用官方包：`winget install --id DenoLand.Deno --exact --source winget`；安装后重新打开终端，执行 `deno --version`。Deno 应在 PATH 中，yt-dlp 默认启用它。YouTube JS 挑战还需要匹配版本的 EJS 脚本，本项目固定 `yt-dlp==2026.10.26` + `yt-dlp-ejs==0.8.0`，升级时须一起核对，不依赖临时远程脚本下载。参考 [yt-dlp EJS](https://github.com/yt-dlp/yt-dlp/wiki/EJS)、[Deno 官方安装](https://docs.deno.com/runtime/getting_started/installation/)。
 
 抖音源登录目录可通过 `SHIWEN_DOUYIN_PROFILE` 设置，默认 `D:/zcode1/mediacrawler/browser_data/dy_user_data_dir`。例如 `$env:SHIWEN_DOUYIN_PROFILE='E:/MediaCrawler/browser_data/dy_user_data_dir'`；在首次准备独立会话之前设置。只读复制到 `SHIWEN_DATA_DIR/browser`，源配置和登录目录不写入。已有独立会话不会因更改源目录自动覆盖。[P0 使用说明](P0_LINK_GUIDE.md)。
