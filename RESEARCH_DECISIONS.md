@@ -469,3 +469,7 @@ B站接口资料参考 https://github.com/bilibili-plugins/bilibili-api-collect/
 采用link_batches专用表引用既有单项tasks/generations；从link_jobs提取submit服务，批次轮转派发且与单条共用唯一媒体worker，不引入Redis/Celery或第二套摄取。Python标准库queue/zipfile依据 https://docs.python.org/3.12/library/queue.html 、 https://docs.python.org/3.11/library/zipfile.html 。状态通知参考 https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html 。预览2×N与共享每日剩余配额，执行前按当前cli_summary缓存所需0/1/2检查，不足只等待整理，转写继续；实际限额仍由request_json执行。停止动作区分仅本批所有与共享任务，重启后手动继续。
 
 真实四平台混合批次4完成、0失败、重复/无效各1，执行无重叠；ZIP13成员与CRC通过。runtime模拟剩余额度0，跨批复用两篇单项结果、等待整理且原稿哈希不变；模拟不是真实收费调用，不触及真实账本。客户包冻结保持。证据/限制/GUI交接见BATCH_QUEUE_GUIDE.md。
+
+## 2026-10-29 首页产品化
+
+采用私有入口ProductApp路由外壳：无task时Home，有明确task才挂载原Studio，根治默认首页被localStorage恢复旧文稿；保留其他view分支。复用LinkCapture/BatchCapture/设置字段，工作台仅抽取设置展示，编辑等内部逻辑不变。输入优先参考 https://bibigpt.co/about ，表单标签依据 https://www.w3.org/WAI/tutorials/forms/labels/ 。手机单列、输入16px、蓝灰既有风格，无新依赖和后端修改。79前端用例与私有构建通过；真实浏览器与手机首屏截图交ZCode，见HOME_ENTRY_GUIDE.md。
