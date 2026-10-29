@@ -1,5 +1,6 @@
 import type {ComponentType} from 'react'
 export type SourceUI={
+ DocumentChat?:ComponentType<{taskId:string;onCitation:(id:string)=>void}>
  empty:string
  description:string
  introduction:string

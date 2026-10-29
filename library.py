@@ -86,15 +86,16 @@ def sync():
                 db.execute('INSERT OR REPLACE INTO library_state VALUES (1,?)',(fingerprint,))
         return records
 
-def retrieve(query,uid=None,limit=12):
+def retrieve(query,uid=None,limit=12,original_only=False):
     terms=topic_search.terms(query)[:48]
+    scope=" AND json_extract(p.payload,'$.block_id') NOT IN ('title','summary','draft')" if original_only else ''
     with store.connect() as db:
         init(db)
         if terms:
             expression=' OR '.join('"'+t.replace('"','""')+'"' for t in terms)
-            rows=db.execute('SELECT p.id,p.payload FROM library_fts f JOIN library_passages p ON p.id=f.rowid WHERE library_fts MATCH ? AND (? IS NULL OR p.uid=?) ORDER BY bm25(library_fts),p.id LIMIT ?',(expression,uid,uid,limit)).fetchall()
+            rows=db.execute('SELECT p.id,p.payload FROM library_fts f JOIN library_passages p ON p.id=f.rowid WHERE library_fts MATCH ? AND (? IS NULL OR p.uid=?) '+scope+' ORDER BY bm25(library_fts),p.id LIMIT ?',(expression,uid,uid,limit)).fetchall()
         else:
-            rows=db.execute('SELECT id,payload FROM library_passages WHERE (? IS NULL OR uid=?) AND instr(lower(json_extract(payload,\'$.text\')),?)>0 LIMIT ?',(uid,uid,topic_search.normalize(query),limit)).fetchall() if query.strip() else []
+            rows=db.execute('SELECT p.id,p.payload FROM library_passages p WHERE (? IS NULL OR uid=?) AND instr(lower(json_extract(payload,\'$.text\')),?)>0'+scope+' LIMIT ?',(uid,uid,topic_search.normalize(query),limit)).fetchall() if query.strip() else []
     return [{**json.loads(r['payload']),'citation_id':str(r['id'])} for r in rows]
 
 def require(uid):

@@ -491,3 +491,9 @@ RSS 只保存序号或最新 Feed 不足以追溯旧节目，采用 GUID 与单�
 ## 2026-10-29 连发 A：资料库
 
 调研 SQLite FTS5（https://www.sqlite.org/fts5.html）、Paperless-ngx 文档库/筛选模式（https://github.com/paperless-ngx/paperless-ngx）、WAI状态反馈（https://www.w3.org/TR/wai-aria/states_and_properties）。Paperless文档站403，未把未读页面当证据；BibiGPT本地OpenAPI仅参考library/collections语义。采用既有topic_search双字分词+SQLite FTS5，避免为中文短关键词额外安装trigram/向量库；不复制第三方源码或引入依赖。单独派生library索引，避免改变已审专题FTS的统计；B将按uid约束同一索引。收藏/合集只存引用，ZIP抽公共write_task供原批量与合集复用。UI保留首页输入优先，搜索置列表顶部，控件标签/状态反馈/可键盘排序。
+
+## 2026-10-29 连发 B：单篇追问
+
+调研 LightRAG 引用与检索实现（https://github.com/HKUDS/LightRAG），仅借鉴“回答带可回查片段”思路；其图索引、多存储和额外LLM建图不适合本次单篇私有工具，不引入代码或依赖。采用A的同一索引，SQL先限制uid与原文block，再排序/限量；摘要、标题与草稿不能挤占证据结果。回答后校验实际送入片段及逐字引文，并检查原稿指纹。资料/历史仅为数据，不能当指令；引用真实性不等于语义正确性，明确保留人工质量验收。
+
+从personal_kb抽出原有费用预留/结算函数供两条链共用，原账本不重置；仍经request_json共享日配额，先检查剩余额度再预留预算。持久化每篇对话与请求ID，重复完成请求零调用；故障不自动重试，重启标记中断。只有私有sourceUI注入追问组件；不修改客户入口。没有实际付费模型调用，以确定性模型夹具覆盖链路边界。

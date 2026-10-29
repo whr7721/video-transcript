@@ -25,6 +25,7 @@ import settings
 import link_ingest, link_jobs
 import bilibili_auth
 import link_batches
+import document_chat
 import library
 import subscriptions
 import source_expand
@@ -111,6 +112,7 @@ async def lifespan(app):
     link_jobs.recover()
     discovery.recover()
     subscriptions.recover()
+    document_chat.recover()
     for task in reversed(store.all_tasks()):
         if task["status"] in {"queued", "running"} and task.get("source",{}).get("kind")!="link":
             task.update(status="queued", message="正在恢复上次未完成的任务")
@@ -131,6 +133,7 @@ from app_shared import install_shared, recover_shared
 install_shared(app)
 app.include_router(bilibili_auth.router)
 app.include_router(link_batches.router)
+app.include_router(document_chat.router)
 app.include_router(library.router)
 app.include_router(subscriptions.router)
 app.include_router(source_expand.router)

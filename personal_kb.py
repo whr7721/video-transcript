@@ -102,14 +102,23 @@ def budget():
         init(db);r=db.execute('SELECT COUNT(*),COALESCE(SUM(reserved),0),COALESCE(SUM(estimated),0) FROM kb_calls').fetchone()
     return {'calls':r[0],'reserved_cny':round(r[1],4),'conservative_estimated_cny':round(r[2],6),'limit_cny':BUDGET}
 
-def model(messages,tools):
-    organizer.reserve_daily_call()
-    size=len(json.dumps([messages,tools],ensure_ascii=False).encode())
-    amount=math.ceil(((size+4096)*INPUT_RATE+2200*OUTPUT_RATE)/10000)/100
+def reserve_budget(size,max_tokens=2200):
+    amount=math.ceil(((size+4096)*INPUT_RATE+max_tokens*OUTPUT_RATE)/10000)/100
     with LOCK,store.connect() as db:
         init(db);db.execute('BEGIN IMMEDIATE')
         if db.execute('SELECT COALESCE(SUM(reserved),0) FROM kb_calls').fetchone()[0]+amount>BUDGET:raise RuntimeError('本轮个人资料库20元预算已达上限。')
         ident=db.execute('INSERT INTO kb_calls(reserved,status,created) VALUES (?,\'reserved\',?)',(amount,time.time())).lastrowid
+    return ident
+
+
+def settle_budget(ident,usage,status):
+    estimated=(usage.get('prompt_tokens',0)*INPUT_RATE+usage.get('completion_tokens',0)*OUTPUT_RATE)/1e6 if usage else None
+    with store.connect() as db:db.execute('UPDATE kb_calls SET estimated=?,status=? WHERE id=?',(estimated,status,ident))
+
+
+def model(messages,tools):
+    organizer.reserve_daily_call()
+    ident=reserve_budget(len(json.dumps([messages,tools],ensure_ascii=False).encode()))
     usage={};status='failed'
     try:
         with httpx.Client(trust_env=False,timeout=120) as c:
@@ -119,8 +128,7 @@ def model(messages,tools):
         if choice.get('finish_reason') not in {'stop','tool_calls'}:raise ValueError('模型输出不完整。')
         status='completed';return choice['message']
     finally:
-        estimated=(usage.get('prompt_tokens',0)*INPUT_RATE+usage.get('completion_tokens',0)*OUTPUT_RATE)/1e6 if usage else None
-        with store.connect() as db:db.execute('UPDATE kb_calls SET estimated=?,status=? WHERE id=?',(estimated,status,ident))
+        settle_budget(ident,usage,status)
 
 TOOLS=[{'type':'function','function':{'name':'search_library','description':'搜索用户资料库，可改写关键词，音视频/文章/OCR/个人笔记都可能有相关材料。','parameters':{'type':'object','properties':{'query':{'type':'string'}},'required':['query']}}},
        {'type':'function','function':{'name':'read_passages','description':'读取已检索到的片段全文，最终回答只可引用实际读取的材料。','parameters':{'type':'object','properties':{'ids':{'type':'array','items':{'type':'string'},'maxItems':8}},'required':['ids']}}}]
