@@ -486,3 +486,8 @@ B站接口资料参考 https://github.com/bilibili-plugins/bilibili-api-collect/
 抖音搜索复用现有实现，由私有解释器桥接；主进程准备隔离 profile，子进程仅覆盖运行参数，不修改外部源码/配置。失败教训：MediaCrawler 环境无主项目 psutil，且自带 store 包；子进程不得导入主项目 session/store，锁使用标准库并延后读取已加载 store，避免命名冲突。补了真实子进程 namespace smoke 与 Windows 互斥测试。元数据枚举不按转写时长过滤，真正提取仍维持既有时长上限。
 
 RSS 只保存序号或最新 Feed 不足以追溯旧节目，采用 GUID 与单集快照；发现序号作为已读游标，检查中更新保留人工标记。话题首次选取确有无语音失败，保留证据并换条验证，不制造文稿。真实四源、两条抖音选5全链、RSS快照与缓存引用证据见 SUBSCRIPTIONS_GUIDE.md / runtime/feed-20261029。自动轮询平台、推送、话题订阅暂缓；GUI/手机由 ZCode 点验。
+
+
+## 2026-10-29 连发 A：资料库
+
+调研 SQLite FTS5（https://www.sqlite.org/fts5.html）、Paperless-ngx 文档库/筛选模式（https://github.com/paperless-ngx/paperless-ngx）、WAI状态反馈（https://www.w3.org/TR/wai-aria/states_and_properties）。Paperless文档站403，未把未读页面当证据；BibiGPT本地OpenAPI仅参考library/collections语义。采用既有topic_search双字分词+SQLite FTS5，避免为中文短关键词额外安装trigram/向量库；不复制第三方源码或引入依赖。单独派生library索引，避免改变已审专题FTS的统计；B将按uid约束同一索引。收藏/合集只存引用，ZIP抽公共write_task供原批量与合集复用。UI保留首页输入优先，搜索置列表顶部，控件标签/状态反馈/可键盘排序。

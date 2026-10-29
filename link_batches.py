@@ -199,13 +199,8 @@ def export(ident:str):
  with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as z:
   for item in b['items']:
    entry={k:item.get(k) for k in ('index','url','status','task_id','job_id','error')};entry['files']=[];entry['missing']=[]
-   tid=item.get('task_id');task=store.get(tid) if tid else None
-   title=re.sub(r'[\\/:*?"<>|\x00-\x1f]','_',str((task or {}).get('title') or '文稿')).strip(' .')[:60] or '文稿'
-   prefix=f"{item['index']:03}-{title}-{tid or 'unresolved'}"
-   for name in ['transcript.txt','transcript.json','transcript.srt','summary.md','mindmap.html']:
-    path=store.DATA/'jobs'/tid/name if tid else None
-    if path and path.is_file() and item['status']!='duplicate':z.write(path,prefix+'/'+name);entry['files'].append(name)
-    elif name.startswith('transcript.') or item['summarize']:entry['missing'].append(name)
+   from document_exports import write_task
+   entry=write_task(z,item)
    manifest.append(entry)
   z.writestr('batch-manifest.json',json.dumps({'id':b['id'],'items':manifest},ensure_ascii=False,indent=2))
  return Response(output.getvalue(),media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="shiwen-batch-{ident}.zip"'})
