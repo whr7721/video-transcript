@@ -503,3 +503,7 @@ RSS 只保存序号或最新 Feed 不足以追溯旧节目，采用 GUID 与单�
 参考官方Codex插件结构（https://developers.openai.com/plugins/build/plugins 、https://github.com/openai/plugins/blob/main/plugins/openai-developers/.codex-plugin/plugin.json）、DeepSeek Harness（https://github.com/deepseek-ai/deepseek-harness）及用户给定BibiGPT本地skill/DSH bundle的结构，文案/代码自写。只采用manifest+技能目录与DSH skills.register/resourceBase契约，不接MCP/OAuth；skill-creator校验与本地隔离安装实测。DSH从canonical skill打包，避免维护两份手工文案；实际宿主未安装，明确不声称宿主验收。
 
 CLI add返回内部id供summarize复用，不改原输出；JSON进度到stderr，成功stdout单对象；costDuration明确耗时秒数而非金额。chapter复用现有chapter_jobs目录链与缓存，不引入第二个分章prompt；人工Web章节不被CLI导出覆盖。A的UID索引供B复用，C沿用task id而非创造新内容ID，三单没有冲突的存储模型。
+
+## 2026-10-29 冲刺 D：笔记与导出
+
+研究Obsidian纯Markdown vault（https://obsidian.md/help/data-storage）、Notion官方SDK的Pages.create/Blocks.children.append（https://github.com/makenotion/notion-sdk-js）、Notion参考端点（https://developers.notion.com/reference/post-page 、https://developers.notion.com/reference/patch-block-children），本地BibiGPT OpenAPI仅借鉴notes/notion语义。官方参考网页抓取因页面过大失败，采用官方SDK端点契约与既有httpx，不增加SDK依赖。笔记独立版本表与原文锚点，vault模板白名单并防止覆盖外部手改；Notion沿用本机DPAPI加密与明确点击导出，不做自动同步。无真实token，模拟API契约不当作远端验收。G单最新明确授权恢复私有full变体，覆盖旧冻结规则但不顺带维护core白名单包。

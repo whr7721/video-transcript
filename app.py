@@ -25,6 +25,7 @@ import settings
 import link_ingest, link_jobs
 import bilibili_auth
 import link_batches
+import document_notes
 import document_chat
 import library
 import subscriptions
@@ -133,6 +134,7 @@ from app_shared import install_shared, recover_shared
 install_shared(app)
 app.include_router(bilibili_auth.router)
 app.include_router(link_batches.router)
+app.include_router(document_notes.router)
 app.include_router(document_chat.router)
 app.include_router(library.router)
 app.include_router(subscriptions.router)
