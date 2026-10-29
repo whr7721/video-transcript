@@ -47,6 +47,10 @@ def export(directory, result, metadata):
     return result
 
 def ytdlp(url, directory, language, progress=lambda **f: None):
+    precheck=PRECHECKS.get(platform(url))
+    if precheck:
+        fast=precheck(url,language,progress)
+        if fast:return fast
     import yt_dlp
     opts = {'noplaylist': True, 'outtmpl': str(directory / 'original.%(ext)s'), 'format': 'bestaudio/best', 'quiet': True, 'socket_timeout': 30, 'retries': 2, 'continuedl': True}
     if platform(url) == 'bilibili':
@@ -232,6 +236,7 @@ def add(args, progress=lambda **f: None):
         print(directory / 'summary.md')
         print(directory / 'mindmap.html')
 
+PRECHECKS={}
 INGESTERS={}
 FALLBACKS={}
 

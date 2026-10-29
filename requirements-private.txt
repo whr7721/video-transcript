@@ -1,0 +1,3 @@
+# Private app.py only; customer distribution dependencies remain frozen.
+-r requirements.txt
+playwright==1.64.0

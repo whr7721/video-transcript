@@ -8,6 +8,7 @@ export type SourceUI={
  TaskActions?:ComponentType<{task:{id:string;status:string};onRefresh:()=>Promise<void>;notify:(message:string)=>void}>
  Navigation:ComponentType
  Management:ComponentType
+ PrivateSettings?:ComponentType
  SettingsLink:ComponentType
  SourceLink:ComponentType<{task:{video_id?:string;source?:{kind:string;original_name?:string;feed_url?:string;show_title?:string;ingest?:string}}}>
 }

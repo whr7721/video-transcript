@@ -457,3 +457,9 @@
 B站接口资料参考 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/video/player.md ，仅复用本项目原有补充实现，不引入Cookie或新依赖。匿名真实三样本字幕为空，快路真实验收挂账；不因仓库声明推断本机可用。
 
 实测RSS经yt-dlp generic发生TLS EOF，同地址项目已有安全流下载可读，采用article_fetch.stream写part再rename；不增加下载库。四平台真实文稿与缓存、客户ZIP独立进程拒绝私有平台已测。详情WEB_LINK_MILESTONE_20261029.md；GUI与手机截图交ZCode。
+
+## 2026-10-29 B站登录与字幕探针
+
+采用私有venv的Playwright 1.64.0 + 独立上下文，不借用MediaCrawler运行环境。私有依赖requirements-private.txt；客户ZIP按用户要求冻结，不构建/验证/维护。nav.isLogin校验、固定API主机Cookie、WBI/legacy播放器接口、CDN不带Cookie、Windows用户独占DACL；标准库实现，不引入B站SDK。参考 https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context 及 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/login/login_info.md 、 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/video/player.md 。本机yt-dlp的Unlicense实现用于核对WBI公开签名规则；未引入完整客户端。
+
+用户真实扫码后BV1GJ411x7h7冷缓存1.819秒取得47段字幕、无下载/ASR；匿名对照22.097秒走ASR。Windows真实ACL、Cookie不进任务数据、登出删除Cookie及专属profile、原稿哈希不变均实测。已有缓存不因登录覆盖。62后端/71前端测试及私有build通过，证据与GUI边界见BILIBILI_LOGIN_GUIDE.md。

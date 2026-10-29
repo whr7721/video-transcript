@@ -1,3 +1,4 @@
+import BilibiliSettings from './BilibiliSettings'
 import LinkCapture from './LinkCapture'
 import React,{useState} from 'react'
 import {ArrowUpRight,LoaderCircle,Plus} from 'lucide-react'
@@ -14,6 +15,7 @@ export const sourceUI:SourceUI={
  empty:'从一个抖音链接开始。', description:'粘贴抖音分享文字，使用本地识别。',
  introduction:'选择左侧已有文稿，或粘贴一个链接。\n原稿、整理、编辑和来源，在这里连起来。',
  Capture,
+ PrivateSettings:BilibiliSettings,
  ImageCapture:PrivateImageCapture,
  Navigation:()=> <><a className="text-link" href="/studio/?view=knowledge">我的资料助手</a><a className="text-link" style={{padding:'12px 8px'}} href="/studio/?view=discovery">抖音话题发现<ArrowUpRight size={13}/></a></>,
  Management:()=> <a href="/">转写与批量管理<ArrowUpRight size={13}/></a>,
