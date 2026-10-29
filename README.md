@@ -1,5 +1,7 @@
 # 拾文
 
+Windows客户交付包：见[安装包与验收记录](PRIVATE_DELIVERY_20261029.md)，内含一键安装、现有Web入口、本地音频/YouTube/RSS CLI、离线导图和面向非技术客户的Key申请图文说明；客户版本不包含私有采集模块。
+
 ## 链接 CLI 依赖（P0）
 
 CLI 可加 `--summarize`：原稿保存后生成同目录 `summary.md`（完整稿/五段式精华/逐字金句）、`mindmap.md` 与离线单文件 `mindmap.html`。本地转写不调用模型；整理首次成功两次模型请求，失败仅重试未成功阶段，命中阶段缓存不计请求。依赖现有Key与共享每日30次额度及费用保护，不修改 `transcript.*`。[CLI整理使用与验收](CLI_SUMMARY_GUIDE.md)。

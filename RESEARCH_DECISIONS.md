@@ -444,3 +444,8 @@
 采用现有manuscript.run完整稿/精华两阶段，精华请求一次附带五段结构、逐字金句和导图，复用现有request_json每日30次与image_editorial费用保护。备份不覆盖已合入mindmap；复用当前validate/to_markdown，HTML参考Markmap官方 https://markmap.js.org/docs/packages--markmap-view ，内嵌前端已锁定的d3 7.9.0/markmap-view 0.18.12及许可，不增加npm依赖、不用CDN。采用阶段落库和目录OS锁，导出重试无需再次模型调用。
 
 实测：47项定向测试；真实新任务2次请求、缓存0次、transcript.*哈希不变。初次形状无效被拒绝，原稿和完整稿保留，单独补第二阶段成功，随后明确JSON示例。共5次请求如实记入旧账本。Chrome窗口最小化无法操作，离线HTML视觉交互挂账。使用说明与审查边界见CLI_SUMMARY_GUIDE.md。
+# 2026-10-29 Windows 客户交付包
+
+采用app_core白名单与已构建前端、独立客户数据目录。运行时选uv管理的Python 3.11.14（--no-bin/--no-registry），不用官方embeddable硬补pip，参考 https://docs.astral.sh/uv/guides/install-python/ 。uv/Deno/ffmpeg下载固定官方发行与SHA256；SenseVoice复用现有ONNX指纹，HF-mirror同源文件实测匹配，VAD仍用官方固定导出。只增加本地文件CLI接线与客户白名单，抖音提取分支不进交付包。
+
+说明书依据 https://docs.siliconflow.cn/cn/userguide/quickstart 补注册/余额充值/Key创建/本机设置示意，区分本地转写与云端整理。57项回归、真实安装/两调用摘要导图/设置Key/卸载验证与网络限制详见PRIVATE_DELIVERY_20261029.md。不把开发机模拟当全新系统验收。

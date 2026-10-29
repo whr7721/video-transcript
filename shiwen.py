@@ -110,7 +110,14 @@ def ytdlp(url,directory,language):
 
 
 def add(args):
-    kind=platform(args.url)
+    local=Path(args.url).expanduser()
+    is_file=local.is_file()
+    if not is_file and '://' not in args.url:raise ValueError('本地文件不存在，请检查文件路径；链接请包含https://')
+    if is_file and local.stat().st_size>1_000_000_000:raise ValueError('本地文件超过1GB限制')
+    kind='local_file' if is_file else platform(args.url)
+    customer=(Path(__file__).resolve().parent/'customer-package.json').exists()
+    if customer and kind not in {'local_file','rss','youtube'}:
+        raise ValueError('此版本不支持抖音链接' if kind=='douyin' else '此版本不支持此平台链接')
     episode=None
     if kind=='rss':
         import article_fetch,podcast_feed
@@ -121,7 +128,9 @@ def add(args):
             print('使用 --episode 序号选择一集');return
         if not 1<=args.episode<=len(feed['episodes']):raise ValueError('单集序号超出范围')
         episode=feed['episodes'][args.episode-1]
-    identity=episode['id'] if episode else args.url
+    if is_file:
+        with local.open('rb') as stream:identity=hashlib.file_digest(stream,'sha256').hexdigest()
+    else:identity=episode['id'] if episode else args.url
     ident=hashlib.sha256((identity+'|'+args.language).encode()).hexdigest()[:16]
     directory=store.DATA/'jobs'/ident;directory.mkdir(parents=True,exist_ok=True)
     if (directory/'transcript.json').exists():
@@ -135,7 +144,16 @@ def add(args):
     task={'id':ident,'url':args.url,'provider':'local','language':args.language,'created_at':time.time(),'status':'queued'}
     def update(**fields):task.update(fields);store.save(task)
     metadata={'sourceUrl':args.url,'cover':None,'duration':None,'publishedDate':None,'platform':kind}
-    if kind=='douyin':
+    if kind=='local_file':
+        import shutil
+        from media_io import extract_audio,probe_media
+        from transcribe import local_transcribe
+        duration=probe_media(local)
+        if duration>10800:raise ValueError('最多支持3小时')
+        audio=directory/'audio.wav';extract_audio(local,audio)
+        result=local_transcribe(audio,directory/'local_chunks',lambda *a:None,language=args.language)
+        metadata.update(title=local.stem,duration=duration,sourceUrl=None,original_name=local.name)
+    elif kind=='douyin':
         import pipeline
         pipeline.run_task(task,update)
         result=task['result'];metadata.update(title=result.get('title'),duration=result.get('duration'))
@@ -166,7 +184,7 @@ def add(args):
             result=local_transcribe(audio,directory/'local_chunks',lambda *a:None,language=args.language)
             metadata['duration']=duration
     result=export(directory,result,metadata)
-    update(status='completed',stage='completed',title=metadata.get('title'),result=result)
+    update(status='completed',stage='completed',title=metadata.get('title'),duration=metadata.get('duration'),result=result)
     print(directory/'transcript.json')
     if getattr(args,'summarize',False):
         from cli_summary import summarize
