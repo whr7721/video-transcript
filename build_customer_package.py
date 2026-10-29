@@ -56,5 +56,9 @@ def build(customer='验收客户',output=None):
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--customer',default='验收客户');p.add_argument('--output',type=Path);a=p.parse_args()
-    print(build(a.customer,a.output))
+    p=argparse.ArgumentParser();p.add_argument('--customer',default='验收客户');p.add_argument('--output',type=Path)
+    g=p.add_mutually_exclusive_group();g.add_argument('--full',action='store_true');g.add_argument('--offline-full',action='store_true');p.add_argument('--runtime-seed',type=Path);a=p.parse_args()
+    if a.full or a.offline_full:
+        import build_full_package
+        print(build_full_package.build(a.output,a.offline_full,a.runtime_seed))
+    else:print(build(a.customer,a.output))

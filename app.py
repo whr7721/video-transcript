@@ -309,14 +309,14 @@ def export(task_id: str, kind: str):
     task = find_task(task_id)
     if task["status"] != "completed" or kind not in {"txt", "md", "json"}:
         raise HTTPException(404, "完整文稿尚未生成。")
-    path = ROOT / "data" / "jobs" / task_id / f"transcript.{kind}"
+    path = store.DATA / "jobs" / task_id / f"transcript.{kind}"
     return FileResponse(path, filename=f"拾文-{task.get('video_id', task_id)}.{kind}")
 
 
 @app.get("/api/tasks/{task_id}/media")
 def media(task_id: str):
     find_task(task_id)
-    path = ROOT / "data" / "jobs" / task_id / "original.mp4"
+    path = store.DATA / "jobs" / task_id / "original.mp4"
     if not path.exists():
         raise HTTPException(404, "原视频尚未下载完成。")
     media_buffer.touch(task_id)
@@ -345,12 +345,12 @@ def login():
         if LOGIN is not None and LOGIN.poll() is None:
             return {"status": "already_open"}
         from douyin_session_guard import session_guard
-        with session_guard():prepare_session()
+        with session_guard():prepare_session(for_login=True)
         env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}
         for key in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]:
             env.pop(key, None)
         LOGIN = subprocess.Popen([str(MC_PY), "-B", "-X", "utf8", str(ROOT / "extractor.py"), "login",
-                                  "--output", str(ROOT / "data" / "login-result.json")],
+                                  "--output", str(store.DATA / "login-result.json")],
                                  env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                  creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     return {"status": "opened"}

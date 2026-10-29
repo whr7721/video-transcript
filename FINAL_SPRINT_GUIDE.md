@@ -23,3 +23,20 @@ D全量私有版测试312后端/85前端与构建通过；证据runtime/final-sp
 逐帧显示缩略图、中文描述/待核对、该时点附近的原文。模型沿用现有Qwen/Qwen3.5-35B-A3B视觉请求、硅基流动Key、共享每日配额及既有视觉预算账本；点击前预检所选数量与当日剩余额度。已完成描述缓存复用，失败/重启只需显式补失败帧；不会自动重试付费请求。预算预留是保守保护，不是实际账单。
 
 真实验收2次视觉请求、2帧中文描述完成，重复选择额外0次；原视频字节不变。usage折算约0.0015元，具体以供应商账单为准。证据F-live-calls.json/F-live-acceptance.json与visual-data；硬上限5次。单元回归使用模拟模型及真实合成视频抽帧，不再调用模型。317后端/87前端与构建通过。未做OCR全文或画面搜索。
+
+## G · 全功能 Windows 包
+
+构建命令：
+
+```powershell
+.\.venv\Scripts\python.exe build_customer_package.py --full --output runtime/final-sprint-20261029/packages
+.\.venv\Scripts\python.exe build_customer_package.py --offline-full --runtime-seed "已安装full包的目录" --output runtime/final-sprint-20261029/packages
+```
+
+普通full约7MB，仅代码/网页/离线导图资源/采集客户端代码；用户首次运行install.cmd按需下载包内Python、媒体工具、Chromium、语音/OCR依赖及模型。也可用-ModelDir和-BrowserDir提供已校验的本地资源。offline-full约889MB，包含相同功能及全部工具/解释器/依赖wheel/Chromium/模型，解包后运行install.ps1 -Offline；不需要系统Python/Node/MediaCrawler。下载网页内容和云端AI仍需网络，不能把离线安装误解为云端模型也离线。
+
+新包只用自己的data-full与运行目录，登录态永不入包；首次抖音/B站都需本人扫码。USER_GUIDE.html有自绘四步流程图和操作文案。抖音带客户端代码及原非商用学习许可，本变体用于个人自用，不构成商业采集授权。旧core白名单客户包不顺带改造。
+
+真实runtime干净解包安装、Chromium启动、采集客户端导入、ASR/OCR模型校验与服务启动通过；四源API提交均200/排队（在安装后的app用TestClient检查接线，实际服务另验health与Studio）。没有登录态，不声称四源内容全量重新提取。离线全包在另一个新目录以-Offline/无索引/本地wheel安装并完成全套自检，不联网下载依赖。320后端/87前端与构建通过。真实另一台Windows机器仍待外部设备验收。
+
+证据：G-install.txt、G-start.txt、G-admission.txt、full-install/shiwen/.runtime/check.json与admission.json、G-offline-install.txt、offline-install-v2/shiwen/.runtime/check.json、G-archive-check.json。失败尝试也保留：漏web静态目录与uv Python minor链接被错误拷贝问题已修复；最终包只收真实版本目录。

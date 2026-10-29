@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 import store
 
-ADAPTER = Path(r'D:\zcode1\douyin-discovery\discovery.py')
-PYTHON = Path(r'D:\zcode1\mediacrawler\.venv\Scripts\python.exe')
+ADAPTER = Path(os.environ.get('SHIWEN_DISCOVERY_ADAPTER',r'D:\zcode1\douyin-discovery\discovery.py'))
+PYTHON = Path(os.environ.get('SHIWEN_MC_PYTHON',r'D:\zcode1\mediacrawler\.venv\Scripts\python.exe'))
 EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix='discovery')
 LOCK = threading.RLock()
 STATUSES = {'ok', 'partial', 'login_required', 'user_action_required', 'rate_limited', 'unsupported', 'error'}

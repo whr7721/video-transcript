@@ -11,8 +11,11 @@ from store import DATA
 PROFILE = DATA / "browser"
 
 
-def prepare_session():
+def prepare_session(for_login=False):
     if (PROFILE / "Default").exists():
+        return
+    if not SOURCE.is_dir() and for_login:
+        (PROFILE/'Default').mkdir(parents=True,exist_ok=True)
         return
     if not SOURCE.is_dir():
         raise RuntimeError("未找到可复用的抖音会话，请先打开登录窗口。")

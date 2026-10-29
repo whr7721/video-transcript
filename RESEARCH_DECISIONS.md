@@ -515,3 +515,9 @@ CLI add返回内部id供summarize复用，不改原输出；JSON进度到stderr�
 ## 2026-10-29 冲刺 F：视频关键帧
 
 调研FFmpeg seek/scale（https://ffmpeg.org/ffmpeg.html 、https://ffmpeg.org/ffmpeg-filters.html，后者抓取超时如实记录）、硅基流动视觉消息格式（https://docs.siliconflow.cn/docs/userguide/capabilities/vision）。直接复用既有experiments.vision.client.request的限额/费用账本、固定模型与usage，不另造视觉SDK。先免费本地抽帧、再明确选帧付费，单篇最大30，缓存按视频stat+间隔+帧数+模型版本隔离；失败后跳过完成帧，不自动补发。画面是局部采样，不推断不可见语音/人物身份；描述与附近时间原文并列，不做全文OCR。真实2次、缓存0增量，使用runtime隔离副本与进程内Key解密，不写密钥/登录态进Git。
+
+## 2026-10-29 冲刺 G：私有full打包
+
+参照uv离线/本地wheel（https://docs.astral.sh/uv/reference/cli/）、Playwright浏览器路径（https://playwright.dev/python/docs/browsers）与MediaCrawler原许可。复用原Windows安装工具锁、语音模型校验与uv包内Python，新增full变体，不修改旧core默认构建行为。完整依赖是既有应用/OCR锁合并+Playwright1.64/tenacity/PyExecJS/aiomysql供客户端导入；不把MediaCrawler整套requirements的旧FastAPI强塞主环境。仅复制客户端所需代码/JS和许可，禁复制原checkout config、browser_data、data、.env；bundled config为空安全默认，取消bundled包__init__的完整crawler副作用，原外部项目不改动。用Playwright自带Node执行已有JS签名客户端，不再另装系统Node。
+
+运行路径全由full_env注入，扫码可初始化空的拾文owned profile，不再要求开发机已有MC浏览器。实际安装发现web漏包及ROOT/data遗留路径，补齐并改store.DATA；离线复制uv minor junction为普通目录会报145，改仅复制固定真实Python目录，已存在解释器跳过重复安装。offline-full只收bin/python/wheels/browsers/models，不收data-full与登录态；同机另目录真正离线依赖安装与启动检查，不当作真实新Windows设备验收。

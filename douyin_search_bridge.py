@@ -4,9 +4,10 @@ from pathlib import Path
 PROFILE=Path(os.environ['SHIWEN_DATA_DIR']).resolve()/'browser'
 p=argparse.ArgumentParser();p.add_argument('--request');p.add_argument('--output');a=p.parse_args()
 if not (PROFILE/'Default').is_dir():raise RuntimeError('拾文隔离会话未准备')
-spec=importlib.util.spec_from_file_location('shiwen_external_search',Path('D:/zcode1/douyin-discovery/discovery.py'))
+spec=importlib.util.spec_from_file_location('shiwen_external_search',Path(os.environ.get('SHIWEN_DISCOVERY_ADAPTER','D:/zcode1/douyin-discovery/discovery.py')))
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 m.PROFILE=PROFILE;m.prepare_profile=lambda:None
+if os.environ.get('SHIWEN_MEDIACRAWLER_DIR'):m.MC=Path(os.environ['SHIWEN_MEDIACRAWLER_DIR'])
 request=json.loads(Path(a.request).read_text(encoding='utf8'))
 try:asyncio.run(m.run(request,Path(a.output)))
 except Exception as exc:

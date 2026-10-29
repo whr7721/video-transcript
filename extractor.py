@@ -13,7 +13,7 @@ from pathlib import Path
 from batch_rules import classify_post
 
 ROOT = Path(__file__).resolve().parent
-MC = Path(r"D:\zcode1\mediacrawler")
+MC = Path(os.environ.get("SHIWEN_MEDIACRAWLER_DIR", r"D:\zcode1\mediacrawler"))
 PROFILE = Path(os.environ.get("SHIWEN_DATA_DIR", ROOT / "data")).resolve() / "browser"
 
 

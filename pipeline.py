@@ -13,7 +13,7 @@ import media_buffer
 from session import prepare_session
 from store import ROOT, atomic_json
 
-MC_PY = Path(r"D:\zcode1\mediacrawler\.venv\Scripts\python.exe")
+MC_PY = Path(os.environ.get("SHIWEN_MC_PYTHON", r"D:\zcode1\mediacrawler\.venv\Scripts\python.exe"))
 
 
 def input_url(text):
