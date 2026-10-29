@@ -52,3 +52,9 @@ DSH已有安装时，可用`dsh plugin --profile web add "D:/zcode1/video-transc
 A：301后端/82前端；B：306后端/84前端；C：309后端/84前端；每单生产构建通过。后端全量针对私有版，排除已冻结的test_customer_package.py与test_distribution.py。最初A回归误包含旧core分发测试，此后排除，未发布/维护客户包。既有unittest discover无法收集pytest函数测试的挂账不在本轮修复，用已存在runtime/public-quota-tools中的pytest跑全套。
 
 技能quick_validate通过；为运行该工具，PyYAML6.0.3仅安装进runtime校验工具目录，没有改项目依赖。真实LLM请求0；B的模型回答质量与浏览器/手机交互仍待人工验收。完整日志在runtime/library-chat-skill-20261029，合并审查请求同目录REVIEW_REQUEST.md。
+
+## 本机体验与证据
+
+8782预览服务已在确认无运行任务后更新到本轮代码，仍使用原有runtime/feed-20261029/data；其他服务未重启。打开 http://127.0.0.1:8782/studio/ 使用新资料库。已完成真实HTTP搜索/星标/合集创建改名、排序移出与ZIP、无依据追问/历史持久化、原稿字节不变检查；临时合集已删除，原收藏状态恢复。拒答验收消息留在隔离数据中，未写入默认生产data。证据http-acceptance.json在本轮runtime目录。
+
+DSH可安装包：runtime/library-chat-skill-20261029/shiwen-dsh-plugin-0.1.0.tgz；已真实npm pack、解包比对技能原文，并从解包目录完成注册/销毁测试。需真实宿主安装后才能验收交互。
