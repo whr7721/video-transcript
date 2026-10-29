@@ -110,7 +110,7 @@ else:
             root = Path(temp)/'standalone'
             with zipfile.ZipFile(artifact['archive']) as z:
                 z.extractall(root)
-            self.assertEqual(package.verify(root), artifact['files'])
+            self.assertEqual(package.verify(root, link_profile=True), artifact['files'])
             self.assertFalse((root/'data').exists())
             env = {k:v for k,v in os.environ.items() if k not in
                    {'PYTHONPATH', 'SHIWEN_DATA_DIR', 'SHIWEN_CORE_DATA_DIR', 'SHIWEN_PROFILE',
@@ -130,7 +130,7 @@ with TestClient(app_core.app) as client:
     health=client.get('/api/health').json()
     assert health['profile']=='core' and health['models_ready'] is False
     assert health['capabilities']['file_import'] is True
-    assert health['capabilities']['sources']==['local_file','podcast']
+    assert set(health['capabilities']['sources'])=={'local_file','podcast','link'}
     for path in ('/api/login','/api/batches','/api/discovery/search','/api/tasks'):
         assert client.post(path,json={'share_text':'https://example.com'}).status_code in (404,405)
     assert client.post('/api/settings',headers={'Origin':'https://evil.example'},json={}).status_code==403

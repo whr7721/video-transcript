@@ -18,10 +18,10 @@ BACKEND = (
     'research_api.py', 'topic_search.py', 'studio_api.py', 'articles.py', 'article_api.py', 'image_documents.py', 'ocr_worker.py', 'ocr_reading.py', 'ocr_evaluation.py', 'ocr_classification.py',
     'article_parser.py', 'article_fetch.py', 'image_editorial.py', 'requirements.lock.txt', 'requirements.txt', 'requirements-ocr.lock.txt',
     'setup_models.py', 'check_core.py',
-    'podcast_feed.py','podcast_text.py','podcasts.py',
+    'podcast_feed.py','podcast_text.py','podcasts.py','link_ingest.py','link_jobs.py','cli_summary.py',
 )
 FRONTEND = (
-    'src/Studio.tsx', 'src/Mindmap.tsx', 'src/mindmap-render.ts', 'src/mindmap.css', 'src/ChapterNavigation.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
+    'src/LinkCapture.tsx','src/link-capture.css','src/Studio.tsx', 'src/Mindmap.tsx', 'src/mindmap-render.ts', 'src/mindmap.css', 'src/ChapterNavigation.tsx', 'src/source-ui.ts', 'src/ArticleLibrary.tsx', 'src/ResearchPanel.tsx',
     'src/styles.css', 'src/articles.css', 'src/TopicSearch.tsx', 'src/topic-search.css', 'src/lib/utils.ts',
     'src/TopicLibrary.tsx', 'src/ImageImport.tsx', 'src/ImageEditorial.tsx', 'src/ImageReader.tsx', 'src/OcrEvaluation.tsx', 'src/image-reader.css',
     'core/main.tsx', 'core/index.html', 'core/public/logo.svg',
@@ -32,20 +32,22 @@ FRONTEND = (
 COMPONENTS = ('button.tsx', 'tabs.tsx', 'dialog.tsx', 'tooltip.tsx')
 
 
-def verify(directory):
+def verify(directory, link_profile=False):
     """Inspect every path and every byte, including hidden/binary files. No grep ignores."""
     directory = Path(directory)
+    forbidden=(b'mediacrawler',) if link_profile else FORBIDDEN
     checked = 0
     for path in directory.rglob('*'):
         relative = path.relative_to(directory).as_posix()
         if path.is_symlink() or getattr(path.lstat(), 'st_file_attributes', 0) & 0x400:
             raise ValueError(f'链接不能进入公开包: {relative}')
-        if any(word in relative.lower().encode('utf-8') for word in FORBIDDEN):
+        if any(word in relative.lower().encode('utf-8') for word in forbidden):
             raise ValueError(f'禁止路径: {relative}')
+        if path.name in {'link_private.py','pipeline.py','session.py','extractor.py','app.py'}:raise ValueError(f'禁止私有模块: {relative}')
         if path.is_file():
             content = path.read_bytes().lower()
             # Also cover common UTF-16 exports, not only UTF-8/ASCII text.
-            for word in FORBIDDEN:
+            for word in forbidden:
                 if word in content or word.decode().encode('utf-16le') in content or word.decode().encode('utf-16be') in content:
                     raise ValueError(f'禁止内容: {relative}')
             checked += 1
@@ -60,9 +62,9 @@ def copy(source, target):
     shutil.copyfile(source, target)
 
 
-def verify_manifest(directory):
+def verify_manifest(directory, link_profile=False):
     directory=Path(directory)
-    verify(directory)
+    verify(directory, link_profile)
     manifest=json.loads((directory/'manifest.json').read_text(encoding='utf-8'))
     actual={p.relative_to(directory).as_posix() for p in directory.rglob('*') if p.is_file() and p!=directory/'manifest.json'}
     if not isinstance(manifest,dict) or set(manifest)!=actual:raise ValueError('包内文件集合与manifest不一致')
@@ -80,6 +82,7 @@ def build(output=None):
         staging = Path(temporary)/'shiwen-core'
         for name in BACKEND:
             copy(ROOT/name, staging/name)
+        shutil.copytree(ROOT/'cli_assets',staging/'cli_assets')
         for name in FRONTEND:
             copy(ROOT/'frontend'/name, staging/'frontend'/name)
         for name in COMPONENTS:
@@ -97,12 +100,12 @@ def build(output=None):
         copy(ROOT/'distribution/start-core.ps1', staging/'start-core.ps1')
         for name in ('DEPLOYMENT_ACCEPTANCE.md','THIRD_PARTY_NOTICES.md','THIRD_PARTY_LICENSES.txt','RELEASE_CHECKLIST.md','PUBLIC_QUOTA.md'):
             copy(ROOT/'distribution'/name, staging/name)
-        verify(staging)
+        verify(staging, link_profile=True)
         manifest = {p.relative_to(staging).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()) if p.is_file()}
         (staging/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
-        count = verify(staging)
-        verify_manifest(staging)
+        count = verify(staging, link_profile=True)
+        verify_manifest(staging, link_profile=True)
         archive = output/'shiwen-core-k1.zip'
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
             for p in sorted(staging.rglob('*'),key=lambda p:p.relative_to(staging).as_posix()):
@@ -115,8 +118,8 @@ def build(output=None):
         with tempfile.TemporaryDirectory(prefix='core-verify-') as extracted:
             with zipfile.ZipFile(archive) as z:
                 z.extractall(extracted)
-            assert verify(extracted) == count
-            verify_manifest(extracted)
+            assert verify(extracted, link_profile=True) == count
+            verify_manifest(extracted, link_profile=True)
         digest=hashlib.sha256(archive.read_bytes()).hexdigest()
         (output/'SHA256SUMS.txt').write_text(digest+'  '+archive.name+'\n',encoding='utf-8')
         def command(args):

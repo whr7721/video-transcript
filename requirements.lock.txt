@@ -40,3 +40,6 @@ tzlocal==5.4.4
 urllib3==2.8.0
 feedparser==6.0.14
 feedparser-sgmllib==2.1.0
+
+yt-dlp==2026.10.26
+yt-dlp-ejs==0.8.0

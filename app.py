@@ -22,6 +22,8 @@ if os.environ.get('SHIWEN_PROFILE') == 'core':
     raise RuntimeError('私有入口和核心入口必须使用独立进程')
 
 import settings
+import link_ingest, link_jobs
+link_ingest.configure(private=True)
 import store
 import batches
 import media_buffer
@@ -42,6 +44,7 @@ TASKS = queue.Queue()
 MUTEX = threading.RLock()
 LOGIN = None
 SOURCE_HANDLERS = TaskHandlers()
+SOURCE_HANDLERS.register('link', link_jobs.run)
 SOURCE_HANDLERS.register('platform_video', lambda task, update: run_task(
     task, update, settings.cloud_key() if task['provider'] == 'cloud' else ''))
 SOURCE_HANDLERS.register('platform_creator', lambda task, update: batches.run_creator(task, update, TASKS.put))
@@ -71,7 +74,7 @@ def worker():
                     current.update(fields)
                     store.save(current)
 
-            if not task or task['status'] not in {'queued', 'running'}:
+            if not task or (task['status'] not in {'queued', 'running'} and task.get('source',{}).get('kind')!='link'):
                 continue
             with MUTEX:
                 parent = store.get(task.get('parent_id', ''))
@@ -98,9 +101,10 @@ def worker():
 @asynccontextmanager
 async def lifespan(app):
     recover_shared()
+    link_jobs.recover()
     discovery.recover()
     for task in reversed(store.all_tasks()):
-        if task["status"] in {"queued", "running"}:
+        if task["status"] in {"queued", "running"} and task.get("source",{}).get("kind")!="link":
             task.update(status="queued", message="正在恢复上次未完成的任务")
             store.save(task)
             TASKS.put(task["id"])
@@ -114,6 +118,7 @@ async def lifespan(app):
 app = FastAPI(title="拾文 · 视频原文工作台", lifespan=lifespan, docs_url=None, redoc_url=None)
 from app_shared import install_shared, recover_shared
 install_shared(app)
+app.include_router(link_jobs.router(TASKS.put, ('youtube','bilibili','douyin','rss')))
 
 class NewTask(BaseModel):
     share_text: str = Field(min_length=1, max_length=5000)

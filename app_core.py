@@ -26,10 +26,12 @@ from pydantic import BaseModel, Field
 from app_shared import install_shared, recover_shared
 from source_contract import TaskHandlers
 import local_files
+import link_jobs
 import podcasts
 import core_instance
 
 handlers = TaskHandlers()
+handlers.register('link', link_jobs.run)
 handlers.register('local_file', local_files.run_task)
 handlers.register('podcast', local_files.run_task)
 
@@ -45,6 +47,7 @@ async def lifespan(app):
     instance=core_instance.acquire(CORE_DATA/'.instance.lock')
     try:
         recover_shared()
+        link_jobs.recover()
         local_files.start(handlers)
         yield
     finally:
@@ -54,6 +57,7 @@ async def lifespan(app):
 
 app = FastAPI(title='拾文 · 本地内容工作台', lifespan=lifespan, docs_url=None, redoc_url=None)
 install_shared(app)
+app.include_router(link_jobs.router(lambda ident: local_files.TASKS.put(ident), ('youtube','rss')))
 app.include_router(local_files.router)
 app.include_router(podcasts.router)
 

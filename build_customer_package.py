@@ -1,6 +1,5 @@
 """Build the commercial local delivery from explicit core source files only."""
 import argparse
-import ast
 import json
 import shutil
 import tempfile
@@ -13,16 +12,8 @@ ROOT=Path(__file__).resolve().parent
 
 
 def delivery_cli():
-    tree=ast.parse((ROOT/'shiwen.py').read_text(encoding='utf8'))
-    class StripPrivate(ast.NodeTransformer):
-        def visit_If(self,node):
-            node=self.generic_visit(node)
-            if ast.unparse(node.test)=="kind == 'douyin'":return node.orelse
-            return node
-    tree=StripPrivate().visit(tree)
-    text=ast.unparse(ast.fix_missing_locations(tree))
-    assert 'import pipeline' not in text
-    return 'import customer_env\ncustomer_env.configure()\n'+text+'\n'
+    return 'import customer_env\ncustomer_env.configure()\n'+(ROOT/'shiwen.py').read_text(encoding='utf8')
+
 
 
 def build(customer='验收客户',output=None):
@@ -36,7 +27,7 @@ def build(customer='验收客户',output=None):
         shutil.copyfile(ROOT/'cli_summary.py',stage/'cli_summary.py')
         shutil.copytree(ROOT/'cli_assets',stage/'cli_assets')
         (stage/'shiwen.py').write_text(delivery_cli(),encoding='utf8')
-        req=(ROOT/'requirements.lock.txt').read_text().strip()+'\nyt-dlp==2026.10.26\nyt-dlp-ejs==0.8.0\n'
+        req=(ROOT/'requirements.lock.txt').read_text().strip()+'\n'
         (stage/'requirements.txt').write_text(req,encoding='utf8')
         assets=ROOT/'frontend/dist-core'
         if not (assets/'index.html').exists():raise RuntimeError('请先构建核心前端')

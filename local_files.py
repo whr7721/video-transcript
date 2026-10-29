@@ -293,9 +293,9 @@ def worker():
             continue
         try:
             task=store.get(ident)
-            if not task or task.get('source',{}).get('kind') not in {'local_file','podcast'}: continue
-            if task['status'] not in {'queued','running'} and not task.get('media_restore_pending'): continue
-            if not task.get('media_restore_pending'): update_task(ident,status='running',error=None)
+            if not task or task.get('source',{}).get('kind') not in {'local_file','podcast','link'}: continue
+            if task['status'] not in {'queued','running'} and not task.get('media_restore_pending') and task.get('source',{}).get('kind')!='link': continue
+            if not task.get('media_restore_pending') and task.get('source',{}).get('kind')!='link': update_task(ident,status='running',error=None)
             handler=HANDLERS.resolve(task) if HANDLERS else run_task
             if not handler: raise ValueError('未注册此来源处理器')
             handler(task,lambda **f:update_task(ident,**f))

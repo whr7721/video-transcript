@@ -173,6 +173,6 @@ def recover():
         documents.init(db)
         jobs=[json.loads(r[0]) for r in db.execute('SELECT payload FROM generations')]
     for job in jobs:
-        if job['status'] in {'queued','running'}:
+        if job.get('action')!='link_ingest' and job['status'] in {'queued','running'}:
             job.update(status='failed',error='服务重启中断了整理。原文和编辑稿已保留，可重新生成。')
             documents.generation_save(job)

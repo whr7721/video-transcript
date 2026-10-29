@@ -449,3 +449,11 @@
 采用app_core白名单与已构建前端、独立客户数据目录。运行时选uv管理的Python 3.11.14（--no-bin/--no-registry），不用官方embeddable硬补pip，参考 https://docs.astral.sh/uv/guides/install-python/ 。uv/Deno/ffmpeg下载固定官方发行与SHA256；SenseVoice复用现有ONNX指纹，HF-mirror同源文件实测匹配，VAD仍用官方固定导出。只增加本地文件CLI接线与客户白名单，抖音提取分支不进交付包。
 
 说明书依据 https://docs.siliconflow.cn/cn/userguide/quickstart 补注册/余额充值/Key创建/本机设置示意，区分本地转写与云端整理。57项回归、真实安装/两调用摘要导图/设置Key/卸载验证与网络限制详见PRIVATE_DELIVERY_20261029.md。不把开发机模拟当全新系统验收。
+
+## 2026-10-29 Web链接共享接线
+
+采用现有CLI链路抽取link_ingest + 显式link_private注册，而非复制一套Web实现或AST删除私有分支。任务复用generations(action=link_ingest)与各入口串行媒体队列；不采用额外进程池/Celery。参考FastAPI后台任务文档 https://fastapi.tiangolo.com/tutorial/background-tasks/ ，本项目需要重启可识别状态，因此保留已有持久记录与专属恢复。UI使用现有React与样式，状态/失败通知参考WAI https://www.w3.org/WAI/tutorials/forms/notifications/ 。
+
+B站接口资料参考 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/video/player.md ，仅复用本项目原有补充实现，不引入Cookie或新依赖。匿名真实三样本字幕为空，快路真实验收挂账；不因仓库声明推断本机可用。
+
+实测RSS经yt-dlp generic发生TLS EOF，同地址项目已有安全流下载可读，采用article_fetch.stream写part再rename；不增加下载库。四平台真实文稿与缓存、客户ZIP独立进程拒绝私有平台已测。详情WEB_LINK_MILESTONE_20261029.md；GUI与手机截图交ZCode。
