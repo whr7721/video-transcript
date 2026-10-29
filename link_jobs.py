@@ -36,18 +36,29 @@ def history(job,**fields):
     if stage and (not job.get('stages') or job['stages'][-1]['stage']!=stage):
         job.setdefault('stages',[]).append({'stage':stage,'at':time.time()})
     job.update({k:v for k,v in fields.items() if k in {'stage','message','cached','progress','segment_count'}})
-    documents.generation_save(job)
+    with LOCK:
+        saved=documents.generation_get(job['id'])
+        if saved and saved.get('summarize'):job['summarize']=True
+        if saved and saved.get('single_requested'):job['single_requested']=True
+        documents.generation_save(job)
 
 def run(task,update):
-    job=get(task['link_job_id'])
-    if job['status'] not in {'queued','running'}:return
-    args=SimpleNamespace(**job['arguments']);args.plan={**args.plan,'local':Path(args.plan['local'])}
-    job.update(status='running',error=None);documents.generation_save(job)
+    with LOCK:
+        job=get(task['link_job_id'])
+        if job['status'] not in {'queued','running'}:return
+        args=SimpleNamespace(**job['arguments']);args.plan={**args.plan,'local':Path(args.plan['local'])}
+        job.update(status='running',error=None);documents.generation_save(job)
     try:
         link_ingest.add(args,lambda **f:history(job,**f))
         path=store.DATA/'jobs'/task['id']
         result=json.loads((path/'transcript.json').read_text(encoding='utf8'))
         update(status='completed',stage='completed',result=result,title=result.get('title','文稿'),duration=result.get('duration'))
+        with LOCK:
+            job=documents.generation_get(job['id']) or job
+            if not job.get('summarize'):
+                job.update(status='completed',completed_at=time.time())
+                history(job,stage='done',message='处理完成')
+                return
         if job.get('summarize'):
             from cli_summary import summarize
             history(job,stage='summarizing',message='正在整理，原稿已保存')
@@ -67,6 +78,34 @@ def recover():
             job.update(status='failed',error='服务重启中断了链接任务；缓存已保留，请点击重试');documents.generation_save(job)
             t=store.get(job['task_id'])
             if t and t['status'] in {'queued','running'}:t.update(status='failed',message=job['error']);store.save(t)
+
+def submit(args,plan,summarize,enqueue,*,batch_id=None):
+    url=args.url;kind=plan['kind']
+    ident=plan['ident'];jid=hashlib.sha256((ident+'|link|'+str(summarize)).encode()).hexdigest()[:16]
+    with LOCK:
+        job=documents.generation_get(jid)
+        if job and (job['status'] in {'queued','running'} or (job['status']=='completed' and (store.DATA/'jobs'/ident/'transcript.json').is_file())):
+            if batch_id is None:job['single_requested']=True;documents.generation_save(job)
+            return {**job,'cached':job['status']=='completed'}
+        active=store.get(ident)
+        if active and active.get('link_job_id') and active['link_job_id']!=jid:
+            other=documents.generation_get(active['link_job_id'])
+            if other and other['status'] in {'queued','running'}:
+                if summarize:other['summarize']=True
+                if batch_id is None:other['single_requested']=True
+                documents.generation_save(other)
+                return other
+        args.plan={**plan,'local':str(plan['local'])}
+        job={'id':jid,'task_id':ident,'action':ACTION,'status':'queued','stage':'queued','stages':[],'created_at':time.time(),'arguments':{**vars(args),'summarize_requested':summarize}}
+        job['arguments'].pop('summarize_requested');job['summarize']=summarize
+        job.update(created_by_batch=batch_id,single_requested=batch_id is None)
+        task=active or dict(id=ident,url=url,provider='local',language=args.language,created_at=time.time(),status='queued',source={'kind':'link','platform':kind})
+        task['source']={'kind':'link','platform':kind};task['link_job_id']=jid
+        if task.get('status')!='completed':task.update(status='queued',stage='queued')
+        store.save(task);documents.generation_save(job)
+        enqueue(ident)
+        return job
+
 
 def router(enqueue,allowed):
     api=APIRouter(prefix='/api/link')
@@ -91,23 +130,7 @@ def router(enqueue,allowed):
             if 'feed' in plan:return {'selection_required':True,'feed':plan['feed']}
         except ValueError as exc:raise HTTPException(400,str(exc))
         except httpx.HTTPError:raise HTTPException(502,'无法读取播客，请检查网络后重试')
-        ident=plan['ident'];jid=hashlib.sha256((ident+'|link|'+str(body.summarize)).encode()).hexdigest()[:16]
-        with LOCK:
-            job=documents.generation_get(jid)
-            if job and (job['status'] in {'queued','running'} or (job['status']=='completed' and (store.DATA/'jobs'/ident/'transcript.json').is_file())):return {**job,'cached':job['status']=='completed'}
-            active=store.get(ident)
-            if active and active.get('link_job_id') and active['link_job_id']!=jid:
-                other=documents.generation_get(active['link_job_id'])
-                if other and other['status'] in {'queued','running'}:return other
-            args.plan={**plan,'local':str(plan['local'])}
-            job={'id':jid,'task_id':ident,'action':ACTION,'status':'queued','stage':'queued','stages':[],'created_at':time.time(),'arguments':{**vars(args),'summarize_requested':body.summarize}}
-            job['arguments'].pop('summarize_requested');job['summarize']=body.summarize
-            task=active or dict(id=ident,url=url,provider='local',language=body.language,created_at=time.time(),status='queued',source={'kind':'link','platform':kind})
-            task['source']={'kind':'link','platform':kind};task['link_job_id']=jid
-            if task.get('status')!='completed':task.update(status='queued',stage='queued')
-            store.save(task);documents.generation_save(job)
-            enqueue(ident)
-            return job
+        return submit(args,plan,body.summarize,enqueue)
     @api.get('/{ident}/export/{filename}')
     def export(ident:str,filename:str):
         job=get(ident)

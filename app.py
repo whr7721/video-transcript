@@ -24,6 +24,7 @@ if os.environ.get('SHIWEN_PROFILE') == 'core':
 import settings
 import link_ingest, link_jobs
 import bilibili_auth
+import link_batches
 link_ingest.configure(private=True)
 import store
 import batches
@@ -66,6 +67,7 @@ def worker():
         if task_id is None:
             TASKS.task_done()
             return
+        link_batches.set_busy(True)
         with MUTEX:
             task = store.get(task_id)
         try:
@@ -97,6 +99,7 @@ def worker():
                     if parent_task.get('kind') == 'creator' and parent_task.get('status') == 'processing':
                         store.save(batches.reconcile(parent_task))
             TASKS.task_done()
+            link_batches.set_busy(False)
 
 
 @asynccontextmanager
@@ -111,7 +114,9 @@ async def lifespan(app):
             TASKS.put(task["id"])
     thread = threading.Thread(target=worker, daemon=True, name="shiwen-worker")
     thread.start()
+    link_batches.start(TASKS.put,TASKS.empty)
     yield
+    link_batches.stop()
     await bilibili_auth.stop()
     TASKS.put(None)
     thread.join(timeout=3)
@@ -121,6 +126,7 @@ app = FastAPI(title="拾文 · 视频原文工作台", lifespan=lifespan, docs_u
 from app_shared import install_shared, recover_shared
 install_shared(app)
 app.include_router(bilibili_auth.router)
+app.include_router(link_batches.router)
 app.include_router(link_jobs.router(TASKS.put, ('youtube','bilibili','douyin','rss')))
 
 class NewTask(BaseModel):

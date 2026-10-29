@@ -463,3 +463,9 @@ B站接口资料参考 https://github.com/bilibili-plugins/bilibili-api-collect/
 采用私有venv的Playwright 1.64.0 + 独立上下文，不借用MediaCrawler运行环境。私有依赖requirements-private.txt；客户ZIP按用户要求冻结，不构建/验证/维护。nav.isLogin校验、固定API主机Cookie、WBI/legacy播放器接口、CDN不带Cookie、Windows用户独占DACL；标准库实现，不引入B站SDK。参考 https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-persistent-context 及 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/login/login_info.md 、 https://github.com/bilibili-plugins/bilibili-api-collect/blob/master/docs/video/player.md 。本机yt-dlp的Unlicense实现用于核对WBI公开签名规则；未引入完整客户端。
 
 用户真实扫码后BV1GJ411x7h7冷缓存1.819秒取得47段字幕、无下载/ASR；匿名对照22.097秒走ASR。Windows真实ACL、Cookie不进任务数据、登出删除Cookie及专属profile、原稿哈希不变均实测。已有缓存不因登录覆盖。62后端/71前端测试及私有build通过，证据与GUI边界见BILIBILI_LOGIN_GUIDE.md。
+
+## 2026-10-29 引用式批量队列
+
+采用link_batches专用表引用既有单项tasks/generations；从link_jobs提取submit服务，批次轮转派发且与单条共用唯一媒体worker，不引入Redis/Celery或第二套摄取。Python标准库queue/zipfile依据 https://docs.python.org/3.12/library/queue.html 、 https://docs.python.org/3.11/library/zipfile.html 。状态通知参考 https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html 。预览2×N与共享每日剩余配额，执行前按当前cli_summary缓存所需0/1/2检查，不足只等待整理，转写继续；实际限额仍由request_json执行。停止动作区分仅本批所有与共享任务，重启后手动继续。
+
+真实四平台混合批次4完成、0失败、重复/无效各1，执行无重叠；ZIP13成员与CRC通过。runtime模拟剩余额度0，跨批复用两篇单项结果、等待整理且原稿哈希不变；模拟不是真实收费调用，不触及真实账本。客户包冻结保持。证据/限制/GUI交接见BATCH_QUEUE_GUIDE.md。
