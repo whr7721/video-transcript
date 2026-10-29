@@ -511,3 +511,7 @@ CLI add返回内部id供summarize复用，不改原输出；JSON进度到stderr�
 ## 2026-10-29 冲刺 E：离线快照
 
 复用cli_assets中固定D3 7.9.0 / markmap-view 0.18.12与既有mindmap验证，参照https://github.com/markmap/markmap 的浏览器渲染形态；无新增库。原文/标题/摘要/笔记全部HTML转义，导图标签只做纯文字，内嵌JSON转义小于号；CSP禁止远程资源/表单/默认请求。原始时间轴与编辑文稿分开显示，避免给编辑后的句子伪造时间。仅导出已有生成产物，0模型请求。测试验证单文件、无script src、内容转义、缺图提示、原文不变。
+
+## 2026-10-29 冲刺 F：视频关键帧
+
+调研FFmpeg seek/scale（https://ffmpeg.org/ffmpeg.html 、https://ffmpeg.org/ffmpeg-filters.html，后者抓取超时如实记录）、硅基流动视觉消息格式（https://docs.siliconflow.cn/docs/userguide/capabilities/vision）。直接复用既有experiments.vision.client.request的限额/费用账本、固定模型与usage，不另造视觉SDK。先免费本地抽帧、再明确选帧付费，单篇最大30，缓存按视频stat+间隔+帧数+模型版本隔离；失败后跳过完成帧，不自动补发。画面是局部采样，不推断不可见语音/人物身份；描述与附近时间原文并列，不做全文OCR。真实2次、缓存0增量，使用runtime隔离副本与进程内Key解密，不写密钥/登录态进Git。

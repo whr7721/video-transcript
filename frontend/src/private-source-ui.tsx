@@ -1,3 +1,4 @@
+import VideoFrames from './VideoFrames'
 import DocumentTools,{DocumentToolSettings} from './DocumentTools'
 import DocumentChat from './DocumentChat'
 import BatchCapture from './BatchCapture'
@@ -17,6 +18,7 @@ return <div className="dialog-form"><label>提取方式<select name="capture_mod
 export const sourceUI:SourceUI={
  DocumentChat,
  DocumentTools,
+ VideoFrames,
  empty:'从一个抖音链接开始。', description:'粘贴抖音分享文字，使用本地识别。',
  introduction:'选择左侧已有文稿，或粘贴一个链接。\n原稿、整理、编辑和来源，在这里连起来。',
  Capture,

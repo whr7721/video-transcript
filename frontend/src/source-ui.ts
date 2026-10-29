@@ -1,5 +1,6 @@
 import type {ComponentType} from 'react'
 export type SourceUI={
+ VideoFrames?:ComponentType<{taskId:string;sources?:{id:string;text:string;start?:number}[]}>
  DocumentTools?:ComponentType<{taskId:string;onCitation:(id:string)=>void}>
  DocumentChat?:ComponentType<{taskId:string;onCitation:(id:string)=>void}>
  empty:string
