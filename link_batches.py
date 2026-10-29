@@ -84,6 +84,11 @@ def pump(enqueue,queue_empty):
     try:
      job=link_jobs.submit(args,plan,want,enqueue,batch_id=b['id'])
      item.update(job_id=job['id'],task_id=job['task_id'],status=job['status'],stage=job.get('stage'),error=None)
+     for alias in b['items']:
+      if alias is item or (alias['status']=='duplicate' and alias.get('task_id')==job['task_id']):
+       if alias.get('feed_seq'):
+        import subscriptions;subscriptions.bind(alias['feed_seq'],job)
+       if alias['status']=='duplicate':alias['job_id']=job['id']
      INFLIGHT=job['id'] if job['status'] in {'queued','running'} else None
     except Exception:item.update(status='failed',error='无法派发，请重试此项')
     CURSOR=b['id'];save(b);return
@@ -111,6 +116,9 @@ def stop():
 class Row(BaseModel):
  text:str=Field(max_length=5000,min_length=1)
  episode:int|None=Field(default=None,ge=1,le=500)
+ episode_guid:str|None=Field(default=None,max_length=2000)
+ episode_id:str|None=Field(default=None,max_length=100)
+ feed_seq:int|None=None
  summarize:bool=False
 class Preview(BaseModel):
  rows:list[Row]=Field(min_length=1,max_length=50)
@@ -123,13 +131,22 @@ def admit():
 def preview(body:Preview):
  admit();init();items=[];seen={}
  for n,row in enumerate(body.rows,1):
-  item={'index':n,'text':row.text,'episode':row.episode,'summarize':row.summarize,'status':'waiting'}
+  item={'index':n,'text':row.text,'episode':row.episode,'summarize':row.summarize,'status':'waiting','feed_seq':row.feed_seq,'episode_id':row.episode_id,'episode_guid':row.episode_guid}
   try:
    url=link_jobs.normalize(row.text);kind=link_ingest.platform(url);item.update(url=url,platform=kind)
-   args=SimpleNamespace(url=url,episode=row.episode,language=body.language,allowed=ALLOWED,summarize=False)
+   args=SimpleNamespace(url=url,episode=row.episode,episode_id=row.episode_id,episode_guid=row.episode_guid,language=body.language,allowed=ALLOWED,summarize=False)
    if kind not in ALLOWED:raise ValueError('不支持此平台')
    # Video identity is local work; only RSS preview performs feed requests.
-   plan=link_ingest.prepare(args)
+   existing=None
+   if row.feed_seq is not None:
+    import subscriptions
+    _,source= subscriptions.rows_for([row.feed_seq])[0]
+    if source['url']!=url:raise ValueError('订阅引用与输入链接不一致')
+    args.episode_guid=source.get('episode_guid');args.episode_id=source.get('episode_id');args.episode_snapshot=source.get('episode_snapshot')
+    existing=subscriptions.documents_job(source.get('job_id'))
+   if existing and existing['arguments'].get('language')==body.language and (existing['status'] in {'queued','running'} or (existing['status']=='completed' and (store.DATA/'jobs'/existing['task_id']/'transcript.json').is_file())):
+    plan={**existing['arguments']['plan'],'local':Path(existing['arguments']['plan']['local'])}
+   else:plan=link_ingest.prepare(args)
    if 'feed' in plan:item.update(status='selection',feed=plan['feed'])
    elif plan['ident'] in seen:
     item.update(status='duplicate',task_id=plan['ident']);seen[plan['ident']]['summarize']|=row.summarize

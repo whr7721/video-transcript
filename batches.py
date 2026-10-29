@@ -26,7 +26,7 @@ def reconcile(task):
 
 
 def run_creator(task, update, enqueue):
-    directory = ROOT / 'data' / 'batches' / task['id']
+    directory = store.DATA / 'batches' / task['id']
     directory.mkdir(parents=True, exist_ok=True)
     update(status='running', stage='listing', message='正在确认作者并读取主页作品', error=None)
     sec_uid = task.get('sec_uid') or creator_id(task['url'])
@@ -34,25 +34,15 @@ def run_creator(task, update, enqueue):
     if not sec_uid:
         video_id = resolve_id(task['url'])
         cached = next((t for t in store.all_tasks() if t.get('video_id') == video_id and t.get('kind') != 'creator'), None)
-        seed_dir = ROOT / 'data' / 'jobs' / cached['id'] if cached else directory
+        seed_dir = store.DATA / 'jobs' / cached['id'] if cached else directory
         metadata = get_metadata(video_id, seed_dir)
         user = metadata['detail'].get('author', {})
         sec_uid, author = user.get('sec_uid'), user.get('nickname', '')
     if not sec_uid:
         raise RuntimeError('未取得真实作者编号，请提供抖音主页链接。')
     update(sec_uid=sec_uid, author=author, title=f'{author or "博主"} · 批量原文')
-    prepare_session()
-    output = directory / 'listing.json'
-    env = {k: v for k, v in os.environ.items() if k.lower() not in {'http_proxy', 'https_proxy', 'all_proxy'}}
-    env.update(PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1')
-    try:
-        subprocess.run([str(MC_PY), '-B', '-X', 'utf8', str(ROOT/'extractor.py'), 'creator',
-                        '--sec-uid', sec_uid, '--limit', str(task['limit']),
-                        '--max-duration-sec', str(task.get('max_duration_sec', 600)), '--output', str(output)],
-                       env=env, capture_output=True, timeout=600)
-    except subprocess.TimeoutExpired:
-        raise RuntimeError('主页读取超时，分页进度已保留，可以重试。') from None
-    listing = json.loads(output.read_text(encoding='utf-8')) if output.exists() else {}
+    from source_enumeration import enumerate_source
+    listing=enumerate_source('douyin',f'https://www.douyin.com/user/{sec_uid}',task['limit'],_directory=directory,_max_duration_sec=task.get('max_duration_sec',600))['_listing']
     if listing.get('status') != 'ok':
         raise RuntimeError(listing.get('error', '主页获取失败，未假定全部作品已获取。'))
     children, skipped, candidates = [], {}, 0
@@ -79,7 +69,7 @@ def run_creator(task, update, enqueue):
                  'message': '等待批量转写', 'created_at': time.time(), 'progress': 0, 'error': None}
         urls = listing.get('sources', {}).get(video_id, [])
         if urls:
-            store.atomic_json(ROOT/'data'/'jobs'/ident/'source.json', {'status': 'ok', 'detail': post, 'urls': urls})
+            store.atomic_json(store.DATA/'jobs'/ident/'source.json', {'status': 'ok', 'detail': post, 'urls': urls})
         store.save(child)
         children.append(ident)
         existing_tasks.append(child)
@@ -101,7 +91,7 @@ def export_zip(task):
             child = store.get(ident)
             if child and child['status'] == 'completed':
                 for suffix in ['txt', 'md']:
-                    path = ROOT/'data'/'jobs'/ident/f'transcript.{suffix}'
+                    path = store.DATA/'jobs'/ident/f'transcript.{suffix}'
                     if path.is_file():
                         archive.write(path, f'{child.get("video_id", ident)}.{suffix}')
     return memory.getvalue()

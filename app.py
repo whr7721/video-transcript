@@ -25,6 +25,8 @@ import settings
 import link_ingest, link_jobs
 import bilibili_auth
 import link_batches
+import subscriptions
+import source_expand
 link_ingest.configure(private=True)
 import store
 import batches
@@ -107,6 +109,7 @@ async def lifespan(app):
     recover_shared()
     link_jobs.recover()
     discovery.recover()
+    subscriptions.recover()
     for task in reversed(store.all_tasks()):
         if task["status"] in {"queued", "running"} and task.get("source",{}).get("kind")!="link":
             task.update(status="queued", message="正在恢复上次未完成的任务")
@@ -127,6 +130,8 @@ from app_shared import install_shared, recover_shared
 install_shared(app)
 app.include_router(bilibili_auth.router)
 app.include_router(link_batches.router)
+app.include_router(subscriptions.router)
+app.include_router(source_expand.router)
 app.include_router(link_jobs.router(TASKS.put, ('youtube','bilibili','douyin','rss')))
 
 class NewTask(BaseModel):
@@ -327,7 +332,8 @@ def login():
             raise HTTPException(409, "任务正在处理，请完成后再打开登录窗口。")
         if LOGIN is not None and LOGIN.poll() is None:
             return {"status": "already_open"}
-        prepare_session()
+        from douyin_session_guard import session_guard
+        with session_guard():prepare_session()
         env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}
         for key in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]:
             env.pop(key, None)

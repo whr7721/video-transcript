@@ -190,6 +190,10 @@ def validate_result(raw, value):
 
 
 def invoke(request_path, output_path):
+    from douyin_session_guard import session_guard
+    with session_guard():return _invoke(request_path,output_path)
+
+def _invoke(request_path, output_path):
     if not ADAPTER.is_file() or not PYTHON.is_file():
         raise ValueError('未找到独立搜索适配器或已有 Python 环境，请检查安装路径。')
     process = subprocess.Popen([str(PYTHON), '-X', 'utf8', str(ADAPTER), 'search',

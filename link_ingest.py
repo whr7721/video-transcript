@@ -127,9 +127,20 @@ def prepare(args):
     episode = None
     if kind == 'rss':
         import article_fetch, podcast_feed
-        chunks = []
-        article_fetch.stream(args.url, chunks.append, podcast_feed.MAX_FEED_BYTES, budget=30)
-        feed = podcast_feed.parse(b''.join(chunks), args.url)
+        if getattr(args,'episode_snapshot',None):
+            feed={'episodes':[args.episode_snapshot]};args.episode=1
+        else:
+            chunks = []
+            article_fetch.stream(args.url, chunks.append, podcast_feed.MAX_FEED_BYTES, budget=30)
+            feed = podcast_feed.parse(b''.join(chunks), args.url)
+        if getattr(args,'episode_guid',None):
+            match=next((i for i,e in enumerate(feed['episodes'],1) if e.get('guid')==args.episode_guid),None)
+            if match is None:raise ValueError('该单集已不在当前RSS中，未按旧序号提取其他内容')
+            args.episode=match
+        elif getattr(args,'episode_id',None):
+            match=next((i for i,e in enumerate(feed['episodes'],1) if e['id']==args.episode_id),None)
+            if match is None:raise ValueError('该单集已不在当前RSS中，未按旧序号提取其他内容')
+            args.episode=match
         if args.episode is None:
             return {'feed':feed}
         if not 1 <= args.episode <= len(feed['episodes']):

@@ -51,11 +51,19 @@ def api_client(cookies=()):
     return httpx.Client(cookies=jar,trust_env=False,timeout=6,headers={'Referer':'https://www.bilibili.com/','User-Agent':'Mozilla/5.0'})
 
 def bilibili_api_get(path,*,cookies=(),params=None):
-    if path not in {'/x/web-interface/nav','/x/web-interface/view','/x/player/v2','/x/player/wbi/v2'}:raise ValueError('不支持的B站接口')
+    if path not in {'/x/web-interface/nav','/x/web-interface/view','/x/player/v2','/x/player/wbi/v2','/x/space/wbi/arc/search'}:raise ValueError('不支持的B站接口')
     with api_client(cookies) as c:
         response=c.get('https://api.bilibili.com'+path,params=params);response.raise_for_status();value=response.json()
     if not isinstance(value,dict):raise ValueError('B站接口响应异常')
     return value
+
+def wbi_signed(params,nav):
+ from urllib.parse import urlencode
+ import hashlib
+ image=nav['wbi_img'];lookup=''.join(image[k].rsplit('/',1)[-1].split('.')[0] for k in ('img_url','sub_url'))
+ key=''.join(lookup[i] for i in [46,47,18,2,53,8,23,32,15,50,10,31,58,3,45,35,27,43,5,49,33,9,42,19,29,28,14,39,12,38,41,13])
+ values={k:str(v) for k,v in sorted({**params,'wts':int(time.time())}.items())};values['w_rid']=hashlib.md5((urlencode(values)+key).encode()).hexdigest();return values
+
 
 def validated():
     cookies=read_cookies()

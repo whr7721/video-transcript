@@ -55,13 +55,17 @@ def resolve_id(url):
 
 
 def get_metadata(video_id, job_dir):
+    from douyin_session_guard import session_guard
+    with session_guard():return _get_metadata(video_id,job_dir)
+
+def _get_metadata(video_id, job_dir):
     output = job_dir / "source.json"
     if output.exists():
         cached = json.loads(output.read_text(encoding="utf-8"))
         if cached.get("status") == "ok":
             return cached
     prepare_session()
-    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1"}
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONUTF8": "1", "SHIWEN_SESSION_LOCK_HELD":"1"}
     for key in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]:
         env.pop(key, None)
     try:
@@ -141,6 +145,10 @@ from media_io import probe_media, extract_audio
 
 
 def run_task(task, update, cloud_key=""):
+    from douyin_session_guard import session_guard
+    with session_guard():return _run_task(task,update,cloud_key)
+
+def _run_task(task, update, cloud_key=""):
     start = time.perf_counter()
     from store import DATA
     directory = DATA / "jobs" / task["id"]

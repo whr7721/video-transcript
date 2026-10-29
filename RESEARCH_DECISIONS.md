@@ -477,3 +477,12 @@ B站接口资料参考 https://github.com/bilibili-plugins/bilibili-api-collect/
 ## 2026-10-29 首页视觉规格对齐
 
 按用户实测的72px/700标题、56px一体输入栏、指定Lab边框/按钮色实施，仅首页启用LinkCapture home视觉变体；不改提交/缓存/重试/任务卡逻辑。用户确认按钮Lab为玫红而非此前口头“金黄”，以数值为准。引用 https://bibigpt.co/ 的产品形态及 https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/lab 的色彩定义；未复制对方素材。79前端测试及私有构建通过；1280/390截图和并排对照交ZCode，未宣称像素级一致，见HOME_ENTRY_GUIDE.md。
+
+
+## 2026-10-29 订阅与来源展开
+
+采用共用 source_enumeration，两个入口分别落元数据时间线与原有批量预览，不新增媒体任务队列。调研依据：[yt-dlp](https://github.com/yt-dlp/yt-dlp#video-selection) 的 flat-playlist/playlist-items；[B站空间接口社区文档](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/user/space.md) 与现有 WBI/nav 登录验证；[RSS 规范](https://www.rssboard.org/rss-specification) 的 guid；本地 D:/zcode1/douyin-discovery/discovery.py 搜索实现。前两者与现有依赖直接适配，不引入另一采集库；B站社区接口不是官方稳定承诺，以登录实测为准。
+
+抖音搜索复用现有实现，由私有解释器桥接；主进程准备隔离 profile，子进程仅覆盖运行参数，不修改外部源码/配置。失败教训：MediaCrawler 环境无主项目 psutil，且自带 store 包；子进程不得导入主项目 session/store，锁使用标准库并延后读取已加载 store，避免命名冲突。补了真实子进程 namespace smoke 与 Windows 互斥测试。元数据枚举不按转写时长过滤，真正提取仍维持既有时长上限。
+
+RSS 只保存序号或最新 Feed 不足以追溯旧节目，采用 GUID 与单集快照；发现序号作为已读游标，检查中更新保留人工标记。话题首次选取确有无语音失败，保留证据并换条验证，不制造文稿。真实四源、两条抖音选5全链、RSS快照与缓存引用证据见 SUBSCRIPTIONS_GUIDE.md / runtime/feed-20261029。自动轮询平台、推送、话题订阅暂缓；GUI/手机由 ZCode 点验。

@@ -23,11 +23,7 @@ def bili_subtitles(info, language):
         images=nav.get('wbi_img') or {}
         lookup=''.join((images.get(k,'').rsplit('/',1)[-1].split('.')[0] for k in ('img_url','sub_url')))
         if credentials and len(lookup)==64:
-            # Public WBI permutation, also documented by API-collect and yt-dlp (Unlicense).
-            order=[46,47,18,2,53,8,23,32,15,50,10,31,58,3,45,35,27,43,5,49,33,9,42,19,29,28,14,39,12,38,41,13]
-            key=''.join(lookup[i] for i in order)
-            signed={k:str(v) for k,v in sorted({**params,'wts':int(time.time())}.items())}
-            signed['w_rid']=hashlib.md5((urlencode(signed)+key).encode()).hexdigest()
+            signed=bilibili_auth.wbi_signed(params,nav)
             endpoints.append(('/x/player/wbi/v2',signed))
         endpoints.append(('/x/player/v2',params))
         for endpoint,query in endpoints:

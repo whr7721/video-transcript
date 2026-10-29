@@ -17,7 +17,7 @@ MC = Path(r"D:\zcode1\mediacrawler")
 PROFILE = Path(os.environ.get("SHIWEN_DATA_DIR", ROOT / "data")).resolve() / "browser"
 
 
-async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_sec=600):
+async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_sec=600, metadata_only=False):
     from playwright.async_api import async_playwright
     import httpx
 
@@ -86,16 +86,16 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
                     persist(author=user.get("nickname") or checkpoint.get("author", ""), status="collecting")
                 except Exception:
                     persist(status="collecting")
-                while sum(classify_post(p, max_duration_sec)[0] in {"eligible", "unknown"} for p in posts) < limit:
+                while sum(classify_post(p, float('inf') if metadata_only else max_duration_sec)[0] in {"eligible", "unknown"} for p in posts) < limit:
                     response = None
-                    for attempt in range(3):
+                    for attempt in range(1 if metadata_only else 3):
                         try:
                             response = await client.get_user_aweme_posts(sec_uid, cursor)
                             if not isinstance(response, dict) or "has_more" not in response or response.get("status_code", 0) != 0:
                                 raise RuntimeError("主页接口没有返回有效分页信息")
                             break
                         except Exception:
-                            if attempt == 2:
+                            if attempt == (0 if metadata_only else 2):
                                 persist(status="error", error="主页列表获取失败，已保存分页进度。请检查登录后重试。")
                                 return checkpoint
                             await asyncio.sleep(2 + attempt * 2)
@@ -194,6 +194,7 @@ if __name__ == "__main__":
     parser.add_argument("--sec-uid", default="")
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--max-duration-sec", type=int, choices=[600, 1200, 1800], default=600)
+    parser.add_argument("--metadata-only",action="store_true")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     args.output = str(Path(args.output).resolve())
@@ -202,7 +203,10 @@ if __name__ == "__main__":
     if args.action == "creator" and (not re.fullmatch(r"[A-Za-z0-9_-]{10,200}", args.sec_uid) or not 1 <= args.limit <= 100):
         sys.exit("无效博主 ID 或批次数量")
     try:
-        result = asyncio.run(run(args.action, args.id, args.sec_uid, args.output, args.limit, args.max_duration_sec))
+        if os.environ.get('SHIWEN_SESSION_LOCK_HELD')!='1':
+            from douyin_session_guard import session_guard
+            with session_guard():result=asyncio.run(run(args.action,args.id,args.sec_uid,args.output,args.limit,args.max_duration_sec,args.metadata_only))
+        else:result = asyncio.run(run(args.action, args.id, args.sec_uid, args.output, args.limit, args.max_duration_sec, args.metadata_only))
         Path(args.output).write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
         print(json.dumps({"status": result["status"]}), flush=True)
     except Exception as exc:

@@ -62,9 +62,9 @@ class BatchTests(unittest.TestCase):
             NewBatch(share_text='link', max_duration_sec=3600)
 
     def test_discovery_dedup_continuation_and_export(self):
-        with tempfile.TemporaryDirectory() as temp:
+        with tempfile.TemporaryDirectory(dir=store.ROOT/'runtime') as temp:
             root = Path(temp)
-            with patch.object(store, 'DATA', root/'data'), patch.object(store, 'DB', root/'data'/'tasks.sqlite3'), patch.object(batches, 'ROOT', root), patch.object(batches, 'prepare_session'), patch.object(batches.subprocess, 'run'):
+            with patch.object(store, 'DATA', root/'data'), patch.object(store, 'DB', root/'data'/'tasks.sqlite3'), patch.object(batches, 'ROOT', root), patch('session.prepare_session'), patch('source_enumeration.metadata_process'):
                 store.init()
                 task = {'id': '0123456789abcdef', 'kind': 'creator', 'url': 'https://www.douyin.com/user/abcdefghijk', 'author': '测试', 'provider': 'local', 'limit': 1, 'max_duration_sec': 1200, 'status': 'queued', 'created_at': time.time()}
                 store.save(task)
