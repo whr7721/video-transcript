@@ -17,3 +17,38 @@
 每次模型回答用request_json计入共享每日30次与既有个人资料助手20元保守预算账本（不是供应商实时报价，失败预留仍保留）。无依据直接拒答不调用模型；提交ID相同的已完成请求返回历史，不重复收费。失败可显式重试；网络中断请先点“检查状态”，避免不必要重复调用。重启中断会标记失败，不自动重新付费执行。
 
 所有回答段落均要求逐字引文，服务端检查本篇归属、实际送入片段与引文内容；不合格整条失败而非展示无引用结论。出处验证无法证明回答与原意完全一致，请人工核对观点、人名与数字。测试覆盖假引用、外篇问题、连续追问、长文末尾命中、重启恢复、预算/配额拒绝与原稿不变；本轮真实LLM请求为0，尚未验证模型实际回答质量。
+
+## C · 本地 CLI 与技能
+
+需本机已部署拾文、本地工具。保持原有 `shiwen add` 不变；新增：
+
+```powershell
+.\shiwen.cmd commands
+.\shiwen.cmd summarize "C:\录音\课程.wav" --json
+.\shiwen.cmd summarize "https://www.youtube.com/watch?v=实际ID" --chapter --json
+.\shiwen.cmd summarize "https://example.org/podcast.xml" --episode 1 --json
+```
+
+摘要继续复用原来的两阶段缓存，`--chapter`额外使用现有语义分章/导读链，产物`chapters.md`；不是本地字数分段冒充AI章节。章节失败时原稿与已经完成的摘要保留，再次运行只补失败阶段。章节请求按既有窗口与共享配额预检；与普通摘要一样需要Key，只有成功缓存可免调用。章节导读导出不自动覆盖Web的人工章节版本。
+
+成功JSON包含`id`、Markdown `summary`、`costDuration`（本次墙钟耗时秒数，不是费用；命中缓存也有运行耗时），章节模式额外有`chapters`。进度写stderr，stdout只有一个JSON对象。失败退出非0，错误写stderr。RSS需显式选择单集；没有选择时不自动批量处理。
+
+本地安装Codex技能（不安装或启动拾文本体）：
+
+```powershell
+.\install-skill.ps1
+# 或先装到自定目录检验
+.\install-skill.ps1 -TargetDir "D:\自己的技能目录"
+```
+
+默认复制到用户`.agents/skills/shiwen`，重开会话发现`$shiwen`。仓库根目录`.codex-plugin/plugin.json`与`skills/shiwen`构成插件兼容包；本轮校验清单与路径，不声称已经在Codex插件商店发布或完成GUI加载。
+
+DSH已有安装时，可用`dsh plugin --profile web add "D:/zcode1/video-transcript/dsh-plugin"`（换成自己的实际路径），重启对应profile。也可在dsh-plugin目录执行`npm pack`生成本地tgz后安装；prepare自动将同一份canonical skill打入包。无新增Node运行依赖；本机无dsh命令，因此只实测了打包、解包后的加载和dispose，不把模拟skills服务当成真实DSH宿主验收。
+
+技能意图/边界全文在`skills/shiwen/SKILL.md`，不提供MCP/OAuth，不会主动替用户配置Key、扫码登录、改MediaCrawler配置或发内容。安装脚本只安装本技能，本轮仅安装到runtime隔离目录，没有改用户全局技能。
+
+## 测试口径
+
+A：301后端/82前端；B：306后端/84前端；C：309后端/84前端；每单生产构建通过。后端全量针对私有版，排除已冻结的test_customer_package.py与test_distribution.py。最初A回归误包含旧core分发测试，此后排除，未发布/维护客户包。既有unittest discover无法收集pytest函数测试的挂账不在本轮修复，用已存在runtime/public-quota-tools中的pytest跑全套。
+
+技能quick_validate通过；为运行该工具，PyYAML6.0.3仅安装进runtime校验工具目录，没有改项目依赖。真实LLM请求0；B的模型回答质量与浏览器/手机交互仍待人工验收。完整日志在runtime/library-chat-skill-20261029，合并审查请求同目录REVIEW_REQUEST.md。

@@ -1,0 +1,12 @@
+{
+  "name": "@shiwen/dsh-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {".": "./index.js", "./cordis.patch.yml": "./cordis.patch.yml", "./package.json": "./package.json"},
+  "files": ["index.js", "cordis.patch.yml", "scripts", "skills"],
+  "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
+  "license": "UNLICENSED",
+  "scripts": {"prepare": "node scripts/sync-skill.mjs", "test": "node --test index.test.js"}
+}

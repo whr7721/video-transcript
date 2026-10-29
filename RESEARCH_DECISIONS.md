@@ -497,3 +497,9 @@ RSS 只保存序号或最新 Feed 不足以追溯旧节目，采用 GUID 与单�
 调研 LightRAG 引用与检索实现（https://github.com/HKUDS/LightRAG），仅借鉴“回答带可回查片段”思路；其图索引、多存储和额外LLM建图不适合本次单篇私有工具，不引入代码或依赖。采用A的同一索引，SQL先限制uid与原文block，再排序/限量；摘要、标题与草稿不能挤占证据结果。回答后校验实际送入片段及逐字引文，并检查原稿指纹。资料/历史仅为数据，不能当指令；引用真实性不等于语义正确性，明确保留人工质量验收。
 
 从personal_kb抽出原有费用预留/结算函数供两条链共用，原账本不重置；仍经request_json共享日配额，先检查剩余额度再预留预算。持久化每篇对话与请求ID，重复完成请求零调用；故障不自动重试，重启标记中断。只有私有sourceUI注入追问组件；不修改客户入口。没有实际付费模型调用，以确定性模型夹具覆盖链路边界。
+
+## 2026-10-29 连发 C：CLI本地技能
+
+参考官方Codex插件结构（https://developers.openai.com/plugins/build/plugins 、https://github.com/openai/plugins/blob/main/plugins/openai-developers/.codex-plugin/plugin.json）、DeepSeek Harness（https://github.com/deepseek-ai/deepseek-harness）及用户给定BibiGPT本地skill/DSH bundle的结构，文案/代码自写。只采用manifest+技能目录与DSH skills.register/resourceBase契约，不接MCP/OAuth；skill-creator校验与本地隔离安装实测。DSH从canonical skill打包，避免维护两份手工文案；实际宿主未安装，明确不声称宿主验收。
+
+CLI add返回内部id供summarize复用，不改原输出；JSON进度到stderr，成功stdout单对象；costDuration明确耗时秒数而非金额。chapter复用现有chapter_jobs目录链与缓存，不引入第二个分章prompt；人工Web章节不被CLI导出覆盖。A的UID索引供B复用，C沿用task id而非创造新内容ID，三单没有冲突的存储模型。

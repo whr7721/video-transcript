@@ -1,0 +1,4 @@
+interface:
+  display_name: "拾文本地阅读"
+  short_description: "调用已部署的拾文本地工具，将视频和音频整理成可回查的摘要、章节与导图"
+  default_prompt: "使用 $shiwen 读取这段音视频并保留原文引用。"

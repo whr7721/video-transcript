@@ -1,0 +1,8 @@
+{
+  "name": "shiwen-local",
+  "version": "0.1.0",
+  "description": "Use an existing local Shiwen installation to transcribe and summarize audio/video.",
+  "author": {"name": "Shiwen"},
+  "license": "UNLICENSED",
+  "skills": "./skills/"
+}

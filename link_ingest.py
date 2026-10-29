@@ -171,7 +171,7 @@ def add(args, progress=lambda **f: None):
             summarize(directory)
             print(directory / 'summary.md')
             print(directory / 'mindmap.html')
-        return
+        return ident
     store.init()
     task = store.get(ident) or {'id': ident, 'url': args.url, 'provider': 'local', 'language': args.language, 'created_at': time.time(), 'status': 'queued', 'source': {'kind':'link','platform':kind}}
 
@@ -246,6 +246,7 @@ def add(args, progress=lambda **f: None):
         summarize(directory)
         print(directory / 'summary.md')
         print(directory / 'mindmap.html')
+    return ident
 
 PRECHECKS={}
 INGESTERS={}
