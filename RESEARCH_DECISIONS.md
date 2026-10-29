@@ -473,3 +473,7 @@ B站接口资料参考 https://github.com/bilibili-plugins/bilibili-api-collect/
 ## 2026-10-29 首页产品化
 
 采用私有入口ProductApp路由外壳：无task时Home，有明确task才挂载原Studio，根治默认首页被localStorage恢复旧文稿；保留其他view分支。复用LinkCapture/BatchCapture/设置字段，工作台仅抽取设置展示，编辑等内部逻辑不变。输入优先参考 https://bibigpt.co/about ，表单标签依据 https://www.w3.org/WAI/tutorials/forms/labels/ 。手机单列、输入16px、蓝灰既有风格，无新依赖和后端修改。79前端用例与私有构建通过；真实浏览器与手机首屏截图交ZCode，见HOME_ENTRY_GUIDE.md。
+
+## 2026-10-29 首页视觉规格对齐
+
+按用户实测的72px/700标题、56px一体输入栏、指定Lab边框/按钮色实施，仅首页启用LinkCapture home视觉变体；不改提交/缓存/重试/任务卡逻辑。用户确认按钮Lab为玫红而非此前口头“金黄”，以数值为准。引用 https://bibigpt.co/ 的产品形态及 https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/lab 的色彩定义；未复制对方素材。79前端测试及私有构建通过；1280/390截图和并排对照交ZCode，未宣称像素级一致，见HOME_ENTRY_GUIDE.md。

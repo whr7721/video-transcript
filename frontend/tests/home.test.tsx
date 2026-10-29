@@ -24,7 +24,7 @@ test('batch route reuses and opens the existing batch panel',async()=>{
 
 test('an explicit task parameter still mounts the original workbench',async()=>{
  history.replaceState(null,'','/studio/?task=explicit');vi.stubGlobal('fetch',vi.fn(async(path:string)=>({ok:true,json:async()=>path==='/api/studio/buffer'?{capacity_bytes:5e9,used_bytes:0}:[]})))
- render(<ProductApp/>);expect(await screen.findByLabelText('文稿库')).toBeTruthy();expect(screen.queryByRole('heading',{name:'把值得留下的，整理成文。'})).toBeNull()
+ render(<ProductApp/>);expect(await screen.findByLabelText('文稿库')).toBeTruthy();expect(screen.queryByRole('heading',{name:'拾文 · 把视频读成文字'})).toBeNull()
 })
 test('home settings saves through the existing endpoint and clears entered keys',async()=>{
  history.replaceState(null,'','/studio/?view=settings');let posted:any
