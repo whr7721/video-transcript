@@ -539,3 +539,10 @@ C档实施前选定“自写认证/API/媒体编排 + MIT xhshow==0.2.0签名”
 XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）与官方SDK结构说明（https://github.com/xmindltd/xmind-sdk-js）作格式参照，不新增SDK依赖，标准库将既有验证树转JSON ZIP。首个ATools查看器选文件无显示，第二个Visora实际显示中文根节点/分支，保留反例与截图，不把ZIP检查冒充真实查看器。
 
 合集复用organizer.request_json与cli_summary文件锁，按指纹缓存与来源ID校验，长文逐块归纳/归并而非截断；不新增调度体系。真实2次中第1次引用格式拒绝、第2次生成，缓存零调用；首个失败usage缺失如实标注，不补烧调用取数。频道字段只采集平台已提供值，不自动联网回填旧稿。对应源码diarization/setup_speakers/xmind_export/collection_summary，操作和证据见ZERO_GAP_GUIDE.md。
+
+
+## 2026-10-30 拾文UI重做
+
+用户明确否定v0视觉、要求GitHub搜索skill并重做。查skills.sh及Anthropic frontend-design、Dammyjay93/interface-design原仓库，应用已安装frontend-design/ui-ux-pro-max、参考工具型界面技能；不重复安装相同skill。逐一核对React Bits AnimatedContent、Uiverse官方galaxy、GalaxyJS、Anime.js与Aceternity Tabs。取舍/原链接见UI_REDESIGN_GUIDE.md；没有照单全装动画库，也未把MotionSites全称免费。
+
+采用Sana参考的工作区布局，重构Home侧栏/输入区/资料库入口，统一阅读页。字体/控件/焦点/降动效与移动端由同套CSS约束；现有Tiptap/Radix/任务接口保留，新SVG自绘，无新npm依赖。v0原“API失败自动假数据”改为显式?preview=1隔离，只读写入拒绝，真实错误不伪装；90测试与截图/键盘/导航实测见runtime/ui-redesign-20261030/。独立分支，用户审美与独立审查未冒充通过。

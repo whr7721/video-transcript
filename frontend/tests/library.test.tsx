@@ -12,3 +12,10 @@ test('searches full catalog and saves star and ordered collection members',async
  fireEvent.click(screen.getByLabelText(/选择量子课程/));fireEvent.change(screen.getByLabelText('加入目标合集'),{target:{value:'c'}});fireEvent.click(screen.getByRole('button',{name:'加入所选 1 篇'}))
  await waitFor(()=>expect(calls.some(([p,i])=>p.endsWith('/c/members')&&i.method==='PUT'&&JSON.parse(i.body).uids[0]==='audio:a')).toBe(true))
 })
+
+
+test('a real API failure never silently becomes demo records',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('offline')}))
+ render(<Library/>);await screen.findByText('资料库暂时无法读取，请检查本地服务后重试。')
+ expect(screen.queryByText('把注意力留给真正重要的事')).toBeNull()
+})
