@@ -6,6 +6,7 @@ import BatchCapture from './BatchCapture'
 import SettingsFields from './SettingsFields'
 import {sourceUI} from './private-source-ui'
 import './home.css'
+import './workbench-redesign.css'
 type Task={id:string;title?:string;status:string;created_at:number;source?:{kind?:string;platform?:string};video_id?:string;kind?:string}
 const labels:Record<string,string>={xiaohongshu:'小红书',tiktok:'TikTok',twitter:'Twitter/X',xiaoyuzhou:'小宇宙',spotify:'Spotify播客',youtube:'YouTube',bilibili:'B站',douyin:'抖音',rss:'播客',local_file:'本地文件',podcast:'播客',completed:'已完成',queued:'排队中',running:'处理中',failed:'需重试',waiting_space:'等待空间'}
 async function api(path:string,body?:unknown){const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:undefined);const v=await r.json();if(!r.ok)throw Error(typeof v.detail==='string'?v.detail:'请求未完成');return v}
