@@ -546,3 +546,10 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 用户明确否定v0视觉、要求GitHub搜索skill并重做。查skills.sh及Anthropic frontend-design、Dammyjay93/interface-design原仓库，应用已安装frontend-design/ui-ux-pro-max、参考工具型界面技能；不重复安装相同skill。逐一核对React Bits AnimatedContent、Uiverse官方galaxy、GalaxyJS、Anime.js与Aceternity Tabs。取舍/原链接见UI_REDESIGN_GUIDE.md；没有照单全装动画库，也未把MotionSites全称免费。
 
 采用Sana参考的工作区布局，重构Home侧栏/输入区/资料库入口，统一阅读页。字体/控件/焦点/降动效与移动端由同套CSS约束；现有Tiptap/Radix/任务接口保留，新SVG自绘，无新npm依赖。v0原“API失败自动假数据”改为显式?preview=1隔离，只读写入拒绝，真实错误不伪装；90测试与截图/键盘/导航实测见runtime/ui-redesign-20261030/。独立分支，用户审美与独立审查未冒充通过。
+
+
+## 2026-10-30 安静工作区动效
+
+用户确认PR #2高级化方案：零新增依赖，CSS transform/opacity；浏览器原生IntersectionObserver、ResizeObserver、RAF与prefers-reduced-motion承担阅读/生命周期，不引scroll库、Anime/GSAP/three。复用Markmap既有SVG节点，仅交互SVG启用CSS spring，导出隐藏SVG保持0时长。资料卡片入场遇到用户操作即终止，避免入场fill占用transform干扰hover。
+
+遵从本单清理指令删除产品demo-data/preview-api/vercel.json；夹具仅runtime Playwright拦截。Vite用部署环境区分根资源路径与本地/studio/，未偷偷搬移原重写配置。MDN IntersectionObserver与W3C C39为降动效/观察参考（https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API 、https://www.w3.org/WAI/WCAG22/Techniques/css/C39.html）；具体时序、覆盖区域、静态降级与证据见UI_MOTION_GUIDE.md。91前端测试、双构建与390/1280连续画面，独立审查仍交ZCode。
