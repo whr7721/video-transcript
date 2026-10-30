@@ -13,13 +13,22 @@ def main(argv=None):
     for command in ('add','summarize'):
         sub.choices[command].add_argument('--diarize',action='store_true',help='本地识别说话人，自动估计人数')
         sub.choices[command].add_argument('--speakers',type=int,choices=range(1,21),default=0,help='指定说话人数并开启识别')
+    p=sub.add_parser('clips',help='从已有文稿挑选双语金句并渲染竖屏成片');p.add_argument('task_id');p.add_argument('--count',type=int,default=5);p.add_argument('--json',action='store_true')
     sub.add_parser('commands',help='列出本机命令和边界，不联网、不调用模型')
     args=parser.parse_args(argv)
     if args.command=='commands':
-        print(json.dumps({'commands':[{'name':'add','usage':'shiwen add <url|file> [--summarize] [--diarize|--speakers N] [--episode N] [--language auto|zh|en|ja|ko|yue]','effect':'本地转写免费；可选AI整理计入共享配额'},{'name':'summarize','usage':'shiwen summarize <url|file> [--chapter] [--json] [--diarize|--speakers N] [--episode N]','effect':'AI三层整理与导图；chapter额外语义章节请求，缓存不重复调用'},{'name':'commands','usage':'shiwen commands','effect':'只读命令清单'}],'requires':'需本机已部署拾文、本地工具','costDuration':'wall-clock seconds; not currency'},ensure_ascii=False,indent=2));return
+        print(json.dumps({'commands':[{'name':'clips','usage':'shiwen clips <task_id> [--count N] [--json]','effect':'一次模型挑选与翻译；本地渲染竖屏成片，缓存免重复请求'},{'name':'add','usage':'shiwen add <url|file> [--summarize] [--diarize|--speakers N] [--episode N] [--language auto|zh|en|ja|ko|yue]','effect':'本地转写免费；可选AI整理计入共享配额'},{'name':'summarize','usage':'shiwen summarize <url|file> [--chapter] [--json] [--diarize|--speakers N] [--episode N]','effect':'AI三层整理与导图；chapter额外语义章节请求，缓存不重复调用'},{'name':'commands','usage':'shiwen commands','effect':'只读命令清单'}],'requires':'需本机已部署拾文、本地工具','costDuration':'wall-clock seconds; not currency'},ensure_ascii=False,indent=2));return
     started=time.monotonic()
     try:
         configure(os.environ.get('SHIWEN_PROFILE')!='core' and not (Path(__file__).parent/'customer-package.json').exists())
+        if args.command=='clips':
+            import clips
+            pending=[]
+            value=clips.submit(args.task_id,args.count,pending.append)
+            if pending:value=clips.run(pending[0][6:])
+            print(json.dumps(value,ensure_ascii=False,indent=2))
+            if value['status']=='failed':parser.exit(1,'切片未完成，可用相同命令重试；已完成阶段保留。\n')
+            return
         if args.command=='add':add(args);return
         args.summarize=True
         with contextlib.redirect_stdout(sys.stderr if args.json else sys.stdout):

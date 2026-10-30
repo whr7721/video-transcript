@@ -32,7 +32,7 @@ class SkillCLI(unittest.TestCase):
  def test_commands_no_ingest_and_add_compatible(self):
   out=io.StringIO()
   with patch.object(shiwen,'add') as add,contextlib.redirect_stdout(out):shiwen.main(['commands']);add.assert_not_called()
-  self.assertEqual([r['name'] for r in json.loads(out.getvalue())['commands']],['add','summarize','commands'])
+  self.assertEqual([r['name'] for r in json.loads(out.getvalue())['commands']],['clips','add','summarize','commands'])
   with patch.object(shiwen,'add') as add:shiwen.main(['add',self.url,'--summarize']);self.assertTrue(add.call_args.args[0].summarize)
  def test_failed_json_keeps_stdout_clean_and_original_unchanged(self):
   out,err=io.StringIO(),io.StringIO()
