@@ -553,3 +553,6 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 用户确认PR #2高级化方案：零新增依赖，CSS transform/opacity；浏览器原生IntersectionObserver、ResizeObserver、RAF与prefers-reduced-motion承担阅读/生命周期，不引scroll库、Anime/GSAP/three。复用Markmap既有SVG节点，仅交互SVG启用CSS spring，导出隐藏SVG保持0时长。资料卡片入场遇到用户操作即终止，避免入场fill占用transform干扰hover。
 
 遵从本单清理指令删除产品demo-data/preview-api/vercel.json；夹具仅runtime Playwright拦截。Vite用部署环境区分根资源路径与本地/studio/，未偷偷搬移原重写配置。MDN IntersectionObserver与W3C C39为降动效/观察参考（https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API 、https://www.w3.org/WAI/WCAG22/Techniques/css/C39.html）；具体时序、覆盖区域、静态降级与证据见UI_MOTION_GUIDE.md。91前端测试、双构建与390/1280连续画面，独立审查仍交ZCode。
+
+## 2026-10-30 四页工作区补漏
+路由检查确认Discovery/Knowledge/TopicLibrary/ArticleLibrary均由main.tsx直接渲染，绕过Home外壳。复用现有desk布局与原生动效，统一ProductApp路由，不复制侧栏、不新增依赖。Discovery=view=discovery图文资料，topics=发现话题，library=图文素材库。保留各页业务组件与查询参数。参考W3C地标指南https://www.w3.org/WAI/WCAG22/Techniques/aria/ARIA11，工具页沿用内部main，外壳改条件地标以避免嵌套main。四页新增路由回归测试；证据见runtime/ui-tool-pages-20261030/，95测试与构建通过，八张隔离截图不替代真实数据业务验收。

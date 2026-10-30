@@ -1,4 +1,4 @@
-import {Skeleton} from './Motion'
+import {Skeleton,useFirstReveal} from './Motion'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowUpRight, Check, Compass, LoaderCircle, Search, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,7 @@ function durationLabel(value:number|null) {return value===null?'时长待核实'
 export default function Discovery() {
  const [jobs,setJobs] = useState<Brief[]>([]), [job,setJob] = useState<Job|null>(null)
  const [initialLoading,setInitialLoading]=useState(true)
+ const reveal=useFirstReveal(!initialLoading)
  const [topic,setTopic] = useState('AI工具的实际变现'), [queries,setQueries] = useState('AI工具 变现 实操\nAI 接单 客户 交付\nAI工具 收费 案例')
  const [sort,setSort] = useState('general'), [windowValue,setWindowValue] = useState('unlimited'), [limit,setLimit] = useState(30)
  const [term,setTerm] = useState(''), [exclude,setExclude] = useState(''), [duration,setDuration] = useState(600), [unknown,setUnknown] = useState(true)
@@ -71,7 +72,7 @@ export default function Discovery() {
   setBusy(true);setNotice('')
   try {const total=Math.min(100,Math.max(job.request.max_candidates_total,job.items.length)+20);const value=await api<Job>(`/api/discovery/${job.id}/resume`,{method:'POST',body:JSON.stringify({max_candidates_total:total})});receive(value);await list()}catch(e){setNotice((e as Error).message)}finally{setBusy(false)}
  }
- return <div className="discovery-page">{(initialLoading||busy)&&<Skeleton label="正在读取发现记录"/>}
+ return <div data-enter={reveal.enter} onPointerDown={reveal.cancel} onFocusCapture={reveal.cancel} className="discovery-page">{(initialLoading||busy)&&<Skeleton label="正在读取发现记录"/>}
   <a className="discovery-skip" href="#discovery-main">跳到候选内容</a>
   <aside className="discovery-nav" aria-label="话题发现导航">
    <a className="brand" href="/studio/"><img src="/logo.svg" alt="" width="36" height="36"/><span>拾文<small>把值得留下的，整理成文</small></span></a>

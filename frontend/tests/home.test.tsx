@@ -31,3 +31,11 @@ test('home settings saves through the existing endpoint and clears entered keys'
  vi.stubGlobal('fetch',vi.fn(async(path:string,init?:RequestInit)=>{if(init?.method==='POST')posted=JSON.parse(String(init.body));return {ok:true,json:async()=>path==='/api/settings'?{key_configured:!!posted,search_key_configured:false}:{status:'not_logged_in'}}}))
  render(<ProductApp/>);const input=await screen.findByLabelText(/硅基流动 API Key/);fireEvent.change(input,{target:{value:'fixture-key'}});fireEvent.click(screen.getByRole('button',{name:'保存设置'}));await screen.findByText('设置已保存。');expect(posted.api_key).toBe('fixture-key');expect((input as HTMLInputElement).value).toBe('')
 })
+
+test.each([['discovery','图文资料'],['knowledge','AI 资料助手'],['topics','发现话题'],['library','图文素材库']])('tool route %s keeps the shared desk navigation',async(view,title)=>{
+ history.replaceState(null,'','/studio/?view='+view)
+ vi.stubGlobal('fetch',vi.fn(async(path:string)=>({ok:true,json:async()=>path.endsWith('/overview')?{groups:[],history:[],memories:[],budget:{calls:0,reserved_cny:0,limit_cny:20}}:[]})))
+ render(<ProductApp/>);expect(screen.getByRole('navigation',{name:'主导航'})).toBeTruthy();expect(screen.getByRole('heading',{name:title,exact:true})).toBeTruthy();expect(document.querySelector('.desk-sidebar a[aria-current=page]')?.getAttribute('href')).toBe('/studio/?view='+view)
+ expect(document.querySelectorAll('main').length).toBe(1)
+ await screen.findByRole('heading',{name:title,exact:true})
+})

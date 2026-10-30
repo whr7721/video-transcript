@@ -1,4 +1,4 @@
-import {Skeleton} from './Motion'
+import {Skeleton,useFirstReveal} from './Motion'
 import Creation from './Creation'
 import React,{useEffect,useRef,useState} from 'react'
 import {ArrowLeft,ArrowUpRight,BookOpen,Download,FileText,Link,LoaderCircle,Plus,Search} from 'lucide-react'
@@ -21,6 +21,7 @@ async function api<T>(path:string,init?:RequestInit):Promise<T>{
 const stateName=(s:string)=>({queued:'等待导入',running:'正在导入',ready:'可阅读',failed:'需要处理'}[s]||s)
 export default function ArticleLibrary({extraNavigation,imageCapture:PrivateCapture}:{extraNavigation?:React.ReactNode;imageCapture?:React.ComponentType<{onCreated:(id:string)=>Promise<void>;notify:(text:string)=>void}>}){
  const [initialLoading,setInitialLoading]=useState(true)
+ const reveal=useFirstReveal(!initialLoading)
  const [items,setItems]=useState<Item[]>([]),[item,setItem]=useState<Item|null>(null),[filter,setFilter]=useState('')
  const [dialog,setDialog]=useState(false),[kind,setKind]=useState('url'),[content,setContent]=useState(''),[title,setTitle]=useState(''),[url,setUrl]=useState('')
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[note,setNote]=useState(''),[question,setQuestion]=useState(''),[saving,setSaving]=useState(false)
@@ -78,7 +79,7 @@ export default function ArticleLibrary({extraNavigation,imageCapture:PrivateCapt
  async function refetch(){if(!item)return;try{const r=await fetch('/api/private/image-posts/'+item.id+'/retry',{method:'POST'});const v=await r.json();if(!r.ok)throw Error(v.detail||'重试失败');setItem(v)}catch(e){setMessage((e as Error).message)}}
  async function addTopic(){if(!item)return;setBusy(true);try{const r=await fetch('/api/studio/research/materials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:item.id,topic_title:topicTitle})});const v=await r.json();if(!r.ok)throw Error(v.detail||'保存专题失败');setTopicSaved(v.topic_id);setMessage('已加入专题，正文和识别稿可在专题中搜索。')}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}}
  const working=item&&['queued','running'].includes(item.question_status)
- return <div className="article-app">{(initialLoading||busy)&&<Skeleton label="正在读取图文资料"/>}
+ return <div data-enter={reveal.enter} onPointerDown={reveal.cancel} onFocusCapture={reveal.cancel} className="article-app">{(initialLoading||busy)&&<Skeleton label="正在读取图文资料"/>}
   <a className="article-skip" href="#article-reading">跳到原文</a>
   <aside className="article-nav" aria-label="图文素材库">
    <a className="article-brand" href="/studio/?view=library"><img src="/logo.svg" width="34" height="34" alt=""/><span>拾文<small>收藏之后，继续读懂</small></span></a>
