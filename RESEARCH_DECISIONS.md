@@ -559,3 +559,6 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 
 ## 2026-10-30 金句切片成片
 采用现有request_json+共享配额/费用预留、连续来源ID校验、ASS与ffmpeg直渲；不引入MoviePy/Anime/剪辑框架。FFmpeg滤镜官方文档 https://ffmpeg.org/ffmpeg-filters.html 与Aegisub ASS规则 https://aegisub.org/docs/latest/ass_tags/ 支持双语分样式与背景合成；GitHub LosslessCut https://github.com/mifi/lossless-cut (GPL-2.0) 仅作裁切产品路线参考，不复用其代码/依赖。烧录字幕需要重编码，不采用纯stream-copy。素材检查发现字幕快路/yt-dlp音频任务可能没有视频，因此显式媒体检查，有音频则明确提示纯色成片，无媒体拒绝。合集引用单篇generation、加入现有串行媒体队列，organizer恢复排除clips；大合集ZIP使用磁盘流式发送，避免多GB内存峰值。实证：隔离真实视频/播客各3条、两次模型请求、串行重渲复用挑选缓存、六条解码与真实播放器；测试350/98。证据runtime/clips-20261030/，使用CLIPS_GUIDE.md。段内分页时间均分而非逐字，金句/译文与ASR质量人工核对，49集压力未实跑。
+
+## 2026-10-30 多平台AI二创
+现有creation.py强制卡片数组，保留不改；新增rewrite.py供Web/CLI共用，沿用request_json与费用保护，无新依赖。外部参考https://github.com/langgenius/dify（只参考工作流，不引入代码/依赖）与https://api-docs.deepseek.com/guides/json_mode/（结构化JSON须明确提示并应用层校验）。来源ID+逐字证据+金句核验、延伸分块显式标注；机器校验不替代语义忠实性判断。原始模型稿与人工修订分离，CAS保存避免覆盖，来源/金句/模型/提示版本参与缓存。短原文不为字数造事实，超长上下文明确拒绝。证据runtime/rewrite-20261030/，354后端/100前端与构建，双宽截图为隔离夹具；0次真实调用，待用户提供大麦哥素材后四次以内验收。见REWRITE_GUIDE.md。

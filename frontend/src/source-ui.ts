@@ -1,5 +1,6 @@
 import type {ComponentType} from 'react'
 export type SourceUI={
+ Rewrite?:ComponentType<{taskId:string}>
  Clips?:ComponentType<{taskId:string}>
  VideoFrames?:ComponentType<{taskId:string;sources?:{id:string;text:string;start?:number}[]}>
  DocumentTools?:ComponentType<{taskId:string;onCitation:(id:string)=>void}>

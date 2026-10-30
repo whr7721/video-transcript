@@ -13,14 +13,22 @@ def main(argv=None):
     for command in ('add','summarize'):
         sub.choices[command].add_argument('--diarize',action='store_true',help='本地识别说话人，自动估计人数')
         sub.choices[command].add_argument('--speakers',type=int,choices=range(1,21),default=0,help='指定说话人数并开启识别')
+    p=sub.add_parser('rewrite',help='已有文稿多平台二创');p.add_argument('task_id');p.add_argument('--style',choices=['xiaohongshu','gongzhonghao','zhihu','moments'],default='xiaohongshu');p.add_argument('--json',action='store_true')
     p=sub.add_parser('clips',help='从已有文稿挑选双语金句并渲染竖屏成片');p.add_argument('task_id');p.add_argument('--count',type=int,default=5);p.add_argument('--json',action='store_true')
     sub.add_parser('commands',help='列出本机命令和边界，不联网、不调用模型')
     args=parser.parse_args(argv)
     if args.command=='commands':
-        print(json.dumps({'commands':[{'name':'clips','usage':'shiwen clips <task_id> [--count N] [--json]','effect':'一次模型挑选与翻译；本地渲染竖屏成片，缓存免重复请求'},{'name':'add','usage':'shiwen add <url|file> [--summarize] [--diarize|--speakers N] [--episode N] [--language auto|zh|en|ja|ko|yue]','effect':'本地转写免费；可选AI整理计入共享配额'},{'name':'summarize','usage':'shiwen summarize <url|file> [--chapter] [--json] [--diarize|--speakers N] [--episode N]','effect':'AI三层整理与导图；chapter额外语义章节请求，缓存不重复调用'},{'name':'commands','usage':'shiwen commands','effect':'只读命令清单'}],'requires':'需本机已部署拾文、本地工具','costDuration':'wall-clock seconds; not currency'},ensure_ascii=False,indent=2));return
+        print(json.dumps({'commands':[{'name':'rewrite','usage':'shiwen rewrite <task_id> [--style xiaohongshu|gongzhonghao|zhihu|moments] [--json]','effect':'每平台一次请求，缓存命中免费，独立版本不改原稿'},{'name':'clips','usage':'shiwen clips <task_id> [--count N] [--json]','effect':'一次模型挑选与翻译；本地渲染竖屏成片，缓存免重复请求'},{'name':'add','usage':'shiwen add <url|file> [--summarize] [--diarize|--speakers N] [--episode N] [--language auto|zh|en|ja|ko|yue]','effect':'本地转写免费；可选AI整理计入共享配额'},{'name':'summarize','usage':'shiwen summarize <url|file> [--chapter] [--json] [--diarize|--speakers N] [--episode N]','effect':'AI三层整理与导图；chapter额外语义章节请求，缓存不重复调用'},{'name':'commands','usage':'shiwen commands','effect':'只读命令清单'}],'requires':'需本机已部署拾文、本地工具','costDuration':'wall-clock seconds; not currency'},ensure_ascii=False,indent=2));return
     started=time.monotonic()
     try:
         configure(os.environ.get('SHIWEN_PROFILE')!='core' and not (Path(__file__).parent/'customer-package.json').exists())
+        if args.command=='rewrite':
+            import rewrite
+            value=rewrite.submit(args.task_id,args.style)
+            if args.json:print(json.dumps(value,ensure_ascii=False))
+            elif value['status']=='completed':print(value['text'])
+            if value['status']=='failed':parser.exit(1,value.get('error','二创失败')+'\n')
+            return
         if args.command=='clips':
             import clips
             pending=[]
