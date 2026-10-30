@@ -1,10 +1,10 @@
 # 拾文开发路线与接手地图
 
-归档日期：2026-10-30；实现基线 `fdce3d6`。拾文是 **Windows 本地优先的个人多媒体阅读工作台**：链接/文件→字幕优先或本地转写→整理、导图、检索、追问、笔记与导出。当前主线是私有 `app.py`；旧 `app_core.py` 白名单客户版冻结，云端 `cloud/` 是独立 TypeScript 实现，不能当作本地 Python 的部署开关。最新审查报告记载 A–H 已关单；关单不等于下文人工/外部条件全部验收。证据：[AGENTS.md](AGENTS.md)、[最终说明](FINAL_SPRINT_GUIDE.md)、[Git 历史](#时间线)。
+归档日期：2026-10-30；实现基线 `2f25559`。拾文是 **Windows 本地优先的个人多媒体阅读工作台**：链接/文件→字幕优先或本地转写→整理、导图、检索、追问、笔记与导出。当前主线是私有 `app.py`；旧 `app_core.py` 白名单客户版冻结，云端 `cloud/` 是独立 TypeScript 实现，不能当作本地 Python 的部署开关。最新审查报告记载 A–H 已关单；随后平台扩展已实现、独立审查待转交；关单不等于下文人工/外部条件全部验收。证据：[AGENTS.md](AGENTS.md)、[最终说明](FINAL_SPRINT_GUIDE.md)、[Git 历史](#时间线)。
 
 ## 目录
 
-1. [时间线](#时间线)：P0 → Web/登录/批量/首页/订阅 → A–H
+1. [时间线](#时间线)：P0 → Web/登录/批量/首页/订阅 → A–H → 平台扩展
 2. [架构地图](#架构地图)：入口、身份、任务、引用和会话
 3. [红线与边界](#红线与边界)
 4. [测试与验收](#测试与验收)
@@ -49,11 +49,16 @@
 
 **H 清偿（`fdce3d6`）**：用户要求第五源话题订阅、本地中英扩展、390截图、POSIX锁及挂账处置。纯文字须确认；复用ID集合去重、仅手动检查；常用术语表查询扩展不改原文、不用翻译API。324/87与构建通过；WSL Ubuntu24.04 Python3.12实跑3项锁测试；三页390无横向溢出，真实话题重复检查无重复ID。仓库最终报告记载 H通过、D–H收官；不能扩张为所有旧人工质量项已清。证据：[H最终审查](runtime/review-20261029/REVIEW-H-final.md)、[说明](FINAL_SPRINT_GUIDE.md)、`runtime/final-sprint-20261029/H-*.json`、`H-posix.txt`、`mobile-*-390.png`。
 
+**平台扩展（`2f25559`）**：用户要求先A原生TikTok/X，再B小宇宙/Spotify单集，再C小红书，最后归档。A复用yt-dlp字幕优先，别名规范化、文本推文明确拒绝；B自写公开页面解析复用RSS音频链，不拿Spotify预览冒充完整；C实施前确定自写会话/API/媒体编排，仅复用MIT xhshow签名，避免引入完整爬虫依赖。小红书沿用DACL/epoch、API白名单与CDN零Cookie，图文复用本地OCR；笔记ID+语言缓存、分享令牌可刷新重试。334后端/87前端与构建通过；小宇宙179秒、小红书视频/图文真实出稿，混合批量3/3缓存完成，0付费调用。TikTok/X无代理且直连失败、Spotify实测RSS降级；粤语样本错字明显，未声明模型质量通过。五个新平台只扩单条/批量，不扩订阅枚举；core冻结、历史ZIP不重建。证据：[说明](PLATFORM_EXTENSION_GUIDE.md)、[实现审查请求](runtime/platform-extension-20261030/REVIEW-REQUEST.md)、`runtime/platform-extension-20261030/`。本单未独立审查，不能写成已关单。
+
 ## 架构地图
 
 ```text
 shiwen.py / app.py → link_ingest → 显式平台适配器 → transcript_stage / transcribe
-                         ↑              └─ link_private → pipeline → extractor
+                         ↑              ├─ link_private → pipeline → extractor
+                         │              ├─ platform_urls / yt-dlp：TikTok、X
+                         │              ├─ podcast_pages：小宇宙、Spotify完整音频或RSS提示
+                         │              └─ xhs_ingest → xhs_auth / 本地ASR / image_documents(OCR)
 Web单条 → link_jobs ─────┘                              ↕ douyin_session_guard
 批量 → link_batches → 引用既有 link_jobs              session → 隔离profile
          ↑
@@ -70,6 +75,8 @@ build_customer_package --full → build_full_package → full_delivery / full_en
 | 模块 | 职责与不可丢失的设计 |
 |---|---|
 | `link_ingest.py` / `link_private.py` | CLI/Web公共接入；注册制决定能力，不复制两套提取代码、不用AST删分支。 |
+| `platform_urls.py` / `podcast_pages.py` | 别名规范化、公开单集完整音频解析；无直链/DRM/预览降级RSS，不造字幕。 |
+| `xhs_auth.py` / `xhs_ingest.py` | 自有扫码会话、固定API认证、笔记ID缓存；签名用MIT xhshow，媒体无Cookie，图文复用本地OCR。 |
 | `link_jobs.py` / `link_batches.py` | 单项执行与引用式批次；串行/轮转、阶段记录、重启恢复；批次不复制内容。 |
 | `source_enumeration.py` / `source_expand.py` | 一套元数据枚举服务即时展开和订阅；发现不等于下载/整理。 |
 | `subscriptions.py` | 源及Feed持久化；稳定内容ID、发现游标、RSS快照，避免按旧序号串集。 |
@@ -104,7 +111,7 @@ npm.cmd --prefix frontend run build
 wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcript/runtime/<本次任务>/posix PYTHONPATH=/mnt/d/zcode1/video-transcript python3 -m unittest tests.test_douyin_session_guard -v
 ```
 
-上例WSL路径需改成本机仓库位置；全量排除的是冻结旧客户包测试，**包含**新test_full_package。若隔离pytest目录缺失，先在runtime工具环境准备pytest，勿把开发依赖塞进生产环境；旧unittest discover不覆盖所有pytest函数。当前H基线324后端/87前端、构建及POSIX3项通过。文档归档不需要重新跑模型或重复构建。证据：`runtime/final-sprint-20261029/H-backend.txt`、`H-frontend.txt`、`H-build.txt`、`H-posix.txt`。
+上例WSL路径需改成本机仓库位置；全量排除的是冻结旧客户包测试，**包含**新test_full_package。若隔离pytest目录缺失，先在runtime工具环境准备pytest，勿把开发依赖塞进生产环境；旧unittest discover不覆盖所有pytest函数。当前平台扩展基线334后端/87前端与构建通过；H阶段另有POSIX3项实跑证据。文档归档不需要重新跑模型或重复构建。证据：`runtime/platform-extension-20261030/backend-final.txt`、`frontend-final.txt`、`build-final.txt`；`runtime/final-sprint-20261029/H-backend.txt`、`H-frontend.txt`、`H-build.txt`、`H-posix.txt`。
 
 每次真实验收先设置隔离目录，再启动进程；本地HTTP用 `httpx.Client(trust_env=False)` 或正确NO_PROXY，防止代理假502。证据放 `runtime/<任务日期>/`：命令日志、API结果、截图、费用次数、原稿前后字节对比；审查放 `runtime/review-<日期>/REVIEW-<区间>.md`。测试/HTTP/浏览器/人工语义分别报告，不能互相冒充。真实付费须遵守当单预算；本周期D–H仅F视觉2次，失败预留不抹账。证据：[AGENTS.md](AGENTS.md)、`runtime/final-sprint-20261029/F-live-calls.json`、`H-http.json`。
 
@@ -119,6 +126,7 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 | 云端留存 | 原生上传/登录、自然录音、手机/iOS/离线导出、30天Cron与账单；用户已确认Auth配置，不等于上述已验 | cloud/LAUNCH_20261028.md、AGENTS |
 | 人工质量 | 自然长音频头中尾听校、术语/数字；OCR净化/图解/原图阅读与标签（用户暂停）；AI研究引用/推论、行动计划可行性；追问真实回答质量 | AGENTS、IMAGE_EDITORIAL_MILESTONE_20261026、PERSONAL_AI_GUIDE_20261028、KNOWLEDGE_PROJECTS_20261028 |
 | 专项GUI | 上传中文文件名、RSS/R2章节、专题搜索/图文选择高亮/键盘IME、深入与导出、导图完整中文PNG/大图/触控等尚无最终人工证据者保留；Web链接与首页已有独立GUI审查，不再泛称全未验 | AGENTS、Web/首页审查、MINDMAP_MILESTONE_20261027 |
+| 新平台外部条件 | TikTok/X可用代理真链；Spotify完整公开音频正向；xhslink真实短链及新设置GUI；粤语配乐识别稿需人工听校 | PLATFORM_EXTENSION_GUIDE、runtime/platform-extension-20261030/ |
 | 平台观察 | 话题图文排除依赖平台标记；真实RSS批量选集交互；B站POSIX Cookie权限分支（H只测会话锁） | Feed/批量/B站审查 |
 | 既有P2/P3 | 自动字幕语言排序、429提示/退避、HTTP升级、产物language溯源、混语言recognizer性能；公开core其他action/chapter-jobs保护范围不扩大 | P0审查、AGENTS；B站可选Cookie已由后单解决 |
 | 接受风险 | K1共享FTS BM25统计漂移，按用户已接受决定保留，范围过滤仍必守 | AGENTS K1条目 |
@@ -133,4 +141,4 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 3. **隔离后验证**：创建本次runtime目录，显式设SHIWEN_DATA_DIR；只重启自己确认拥有且空闲的服务，不盲用旧端口。先跑与改动相称的检查，按用户要求跑全量；默认模拟付费调用，不自动重复真实模型验收。
 4. **交付**：保存证据→更新GUIDE/决策/挂账→明确文件暂存→提交并核对私有远程后推送→出含区间、意图、测试、未验项的审查请求。不要把此档案当运行时保证，也不要把已关单阶段重新宣布“待审”。
 
-证据入口：[AGENTS.md](AGENTS.md)、[RESEARCH_DECISIONS.md](RESEARCH_DECISIONS.md)、[最终使用说明](FINAL_SPRINT_GUIDE.md)、[源码入口](app.py)、[CLI入口](shiwen.py)。
+证据入口：[AGENTS.md](AGENTS.md)、[RESEARCH_DECISIONS.md](RESEARCH_DECISIONS.md)、[最终使用说明](FINAL_SPRINT_GUIDE.md)、[新平台说明](PLATFORM_EXTENSION_GUIDE.md)、[源码入口](app.py)、[CLI入口](shiwen.py)。
