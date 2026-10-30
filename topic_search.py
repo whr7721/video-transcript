@@ -29,6 +29,11 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
+def query_terms(query):
+    from query_expansion import phrases
+    return list(dict.fromkeys(t for phrase in phrases(query) for t in terms(phrase)))[:96]
+
+
 def init(db):
     db.execute('CREATE TABLE IF NOT EXISTS topic_search_state (topic_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS topic_search_passages (id INTEGER PRIMARY KEY, topic_id TEXT NOT NULL, uid TEXT NOT NULL, category TEXT NOT NULL, payload TEXT NOT NULL)')
@@ -160,7 +165,7 @@ def search(topic_id, query, category='all', offset=0, limit=10, include_hidden=F
         raise ValueError('请输入1—200字的查询。')
     if category not in CATEGORIES or type(offset) is not int or not 0 <= offset <= 40 or type(limit) is not int or not 1 <= limit <= 10:
         raise ValueError('搜索范围或分页不正确。')
-    tokens = terms(query)
+    tokens = query_terms(query)
     literal = normalize(query).strip()
     single = not tokens and len(literal) == 1 and '\u3400' <= literal <= '\u9fff'
     with store.connect() as db:

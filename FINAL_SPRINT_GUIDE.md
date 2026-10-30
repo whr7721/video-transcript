@@ -40,3 +40,11 @@ D全量私有版测试312后端/85前端与构建通过；证据runtime/final-sp
 真实runtime干净解包安装、Chromium启动、采集客户端导入、ASR/OCR模型校验与服务启动通过；四源API提交均200/排队（在安装后的app用TestClient检查接线，实际服务另验health与Studio）。没有登录态，不声称四源内容全量重新提取。离线全包在另一个新目录以-Offline/无索引/本地wheel安装并完成全套自检，不联网下载依赖。320后端/87前端与构建通过。真实另一台Windows机器仍待外部设备验收。
 
 证据：G-install.txt、G-start.txt、G-admission.txt、full-install/shiwen/.runtime/check.json与admission.json、G-offline-install.txt、offline-install-v2/shiwen/.runtime/check.json、G-archive-check.json。失败尝试也保留：漏web静态目录与uv Python minor链接被错误拷贝问题已修复；最终包只收真实版本目录。
+
+## H · 收尾（2026-10-30）
+
+订阅页支持纯文字话题，须点“确认订阅抖音话题”，仅手动检查，按视频ID集合去重；取消不访问平台。本地术语表支持常见中英关键词互搜，不是通用翻译，未命中术语可换词；不调用翻译API。324后端、87前端与构建通过。WSL Ubuntu24.04 Python3.12实跑3项POSIX锁测试通过，不再挂“未实测”。
+
+mobile-batch-390.png、mobile-subscriptions-390.png、mobile-library-390.png位于runtime/final-sprint-20261029；三页viewport/scrollWidth都是390。分享HTTP直连生成/下载均200，环境代理请求502已复现，属本地请求经过代理导致；调用本地API应配置NO_PROXY=127.0.0.1,localhost或httpx trust_env=False，不更改用户全局代理。离线HTML实开外部请求0。
+
+Notion真实凭据仍未提供，保留远端验收挂账，不用模拟宣称完成。离线包约848MiB，推荐网盘或U盘交付，预留至少5GB解压/安装空间；普通full约7MB需联网下载。D/E/F/G已按独立审查关单，H待终审。

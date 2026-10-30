@@ -1,9 +1,9 @@
 """Private discovery metadata, independent of media jobs."""
-import json,time,uuid,threading
+import json,time,uuid,threading,unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from pathlib import Path
-from urllib.parse import urlsplit,urlunsplit
+from urllib.parse import urlsplit,urlunsplit,quote
 from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel,Field
 import store,source_enumeration as sources,link_ingest,link_jobs,link_batches
@@ -23,7 +23,7 @@ def save(c):
  with store.connect() as db:db.execute('UPDATE channels SET payload=? WHERE id=?',(json.dumps(c,ensure_ascii=False),c['id']))
 def check(ident,limit):
  try:
-  c=get(ident);result=sources.enumerate_source(c['platform'],c['url'],limit)
+  c=get(ident);result=sources.enumerate_source(c['platform'],c.get('query') or c['url'],limit)
   with LOCK,store.connect() as db:
    # Unsubscribe while a request runs must not resurrect entries.
    current=db.execute('SELECT payload FROM channels WHERE id=?',(ident,)).fetchone()
@@ -47,7 +47,9 @@ def recover():
  init()
  for c in channels():
   if c['status']=='checking':c.update(status='error',error='服务重启中断检查，请手动重试');save(c)
-class Subscribe(BaseModel):url:str=Field(min_length=1,max_length=2000)
+class Subscribe(BaseModel):
+ url:str=Field(min_length=1,max_length=2000)
+ confirm_topic:bool=False
 class Check(BaseModel):limit:int=20
 class Seen(BaseModel):seq:int|None=None;channel_id:str|None=None
 class Extract(BaseModel):seqs:list[int]=Field(min_length=1,max_length=50);summarize:bool=False
@@ -60,22 +62,28 @@ def subscribe(body:Subscribe):
  admit();init()
  from link_jobs import normalize
  try:
-  url=normalize(body.url);link_ingest.platform(url);kind,url=sources.identify(url)
-  if kind=='single':
-   if link_ingest.platform(url)!='rss':raise ValueError('请提供频道/博主主页，而不是单条视频链接')
-   kind='rss'
-  if kind not in {'rss','youtube','bilibili','douyin'} or (kind=='youtube' and urlsplit(url).path=='/playlist'):raise ValueError('请选择RSS、YouTube频道、B站UP主或抖音博主；话题和播放列表仅支持即时展开')
-  p=urlsplit(url);path=p.path.rstrip('/')
-  if kind=='youtube':path=path.removesuffix('/videos').removesuffix('/shorts')
-  if kind=='bilibili':path='/'+path.strip('/').split('/')[0]
-  if kind=='douyin':path='/user/'+path.split('/user/')[1].split('/')[0]
-  host='www.youtube.com' if kind=='youtube' else 'www.douyin.com' if kind=='douyin' else p.netloc.lower()
-  url=urlunsplit((p.scheme,host,path,p.query if kind=='rss' else '', ''))
+  query=None
+  if '://' not in body.url:
+   kind,query=sources.identify(unicodedata.normalize('NFKC',body.url).strip())
+   if not body.confirm_topic:raise ValueError('纯文字将作为抖音话题持续追踪，请明确确认；仅在手动检查时搜索')
+   url='douyin-topic:'+quote(query.casefold(),safe='')
+  else:
+   url=normalize(body.url);link_ingest.platform(url);kind,url=sources.identify(url)
+   if kind=='single':
+    if link_ingest.platform(url)!='rss':raise ValueError('请提供频道/博主主页，而不是单条视频链接')
+    kind='rss'
+   if kind not in {'rss','youtube','bilibili','douyin'} or (kind=='youtube' and urlsplit(url).path=='/playlist'):raise ValueError('请选择RSS、YouTube频道、B站UP主或抖音博主；播放列表仅支持即时展开')
+   p=urlsplit(url);path=p.path.rstrip('/')
+   if kind=='youtube':path=path.removesuffix('/videos').removesuffix('/shorts')
+   if kind=='bilibili':path='/'+path.strip('/').split('/')[0]
+   if kind=='douyin':path='/user/'+path.split('/user/')[1].split('/')[0]
+   host='www.youtube.com' if kind=='youtube' else 'www.douyin.com' if kind=='douyin' else p.netloc.lower()
+   url=urlunsplit((p.scheme,host,path,p.query if kind=='rss' else '', ''))
  except ValueError as e:raise HTTPException(400,str(e))
  with LOCK,store.connect() as db:
   old=db.execute('SELECT payload FROM channels WHERE url=?',(url,)).fetchone()
   if old:return json.loads(old[0])
-  c={'id':uuid.uuid4().hex[:16],'url':url,'platform':kind,'title':url,'added_at':time.time(),'last_check':None,'last_success':None,'cursor':0,'status':'idle','error':None}
+  c={'id':uuid.uuid4().hex[:16],'url':url,'platform':kind,'title':('话题：'+query if query else url),'query':query,'added_at':time.time(),'last_check':None,'last_success':None,'cursor':0,'status':'idle','error':None}
   db.execute('INSERT INTO channels VALUES (?,?,?,?)',(c['id'],url,kind,json.dumps(c,ensure_ascii=False)));return c
 @router.delete('/channels/{ident}')
 def unsubscribe(ident:str):

@@ -1,7 +1,18 @@
 import os,subprocess,sys,tempfile,unittest
 from pathlib import Path
 import store
+from unittest.mock import patch
 class SessionExclusion(unittest.TestCase):
+ def test_nested_guard_and_exception_release(self):
+  import douyin_session_guard as guard
+  with tempfile.TemporaryDirectory(dir=store.ROOT/'runtime') as tmp,patch.object(store,'DATA',Path(tmp)):
+   with self.assertRaises(ValueError):
+    with guard.session_guard():
+     with guard.session_guard():self.assertTrue(guard._LOCAL.active)
+     raise ValueError('exercise release')
+   self.assertFalse(guard._LOCAL.active)
+   with guard.session_guard():self.assertTrue(guard._LOCAL.active)
+   self.assertFalse(guard._LOCAL.active)
  def test_guard_import_does_not_shadow_external_store_package(self):
   r=subprocess.run([sys.executable,'-c',"import douyin_session_guard,sys;assert 'store' not in sys.modules"],cwd=store.ROOT,capture_output=True,timeout=10,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
   self.assertEqual(r.returncode,0,r.stderr)

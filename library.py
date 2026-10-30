@@ -87,7 +87,7 @@ def sync():
         return records
 
 def retrieve(query,uid=None,limit=12,original_only=False):
-    terms=topic_search.terms(query)[:48]
+    terms=topic_search.query_terms(query)
     scope=" AND json_extract(p.payload,'$.block_id') NOT IN ('title','summary','draft')" if original_only else ''
     with store.connect() as db:
         init(db)

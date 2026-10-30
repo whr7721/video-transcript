@@ -78,4 +78,17 @@ class FeedTests(unittest.TestCase):
  def test_topic_not_subscribable_and_restart_does_not_auto_check(self):
   self.assertEqual(self.c.post('/api/subscriptions/channels',json={'url':'Python'}).status_code,400)
   c=self.add();c['status']='checking';sub.save(c);sub.recover();self.assertEqual(sub.get(c['id'])['status'],'error');sub.EXECUTOR.submit.assert_not_called()
+
+ def test_confirmed_topic_subscription_dedupes_video_ids(self):
+  r=self.c.post('/api/subscriptions/channels',json={'url':'Ｐｙｔｈｏｎ','confirm_topic':True});self.assertEqual(r.status_code,200)
+  c=r.json();self.assertEqual(c['platform'],'douyin_topic');self.assertEqual(c['query'],'Python')
+  self.assertEqual(self.c.post('/api/subscriptions/channels',json={'url':'python','confirm_topic':True}).json()['id'],c['id'])
+  sub.EXECUTOR.submit.assert_not_called()
+  result={'identity':'Python','title':'Python话题','status':'ok','items':[{'id':'video-1','title':'第一条','url':'https://www.douyin.com/video/1234567890123456'}]}
+  with patch.object(sources,'enumerate_source',return_value=result) as adapter:
+   sub.check(c['id'],10);sub.check(c['id'],10);adapter.assert_called_with('douyin_topic','Python',10)
+  self.assertEqual(len(sub.feed()),1);seq=sub.feed()[0]['seq'];sub.seen(sub.Seen(channel_id=c['id']))
+  result['items'].insert(0,{'id':'video-2','title':'新条目','url':'https://www.douyin.com/video/2234567890123456'})
+  with patch.object(sources,'enumerate_source',return_value=result):sub.check(c['id'],10)
+  self.assertEqual(len(sub.feed()),1);self.assertGreater(sub.feed()[0]['seq'],seq);self.assertEqual(sub.feed()[0]['id'],'video-2')
 if __name__=='__main__':unittest.main()

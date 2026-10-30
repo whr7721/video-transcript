@@ -76,7 +76,7 @@ def sync():
     return {'fingerprint':fingerprint,'groups':groups}
 
 def search(query,kind='all'):
-    terms=topic_search.terms(query)[:48]
+    terms=topic_search.query_terms(query)
     if not terms:return []
     expression=' OR '.join('"'+t.replace('"','""')+'"' for t in terms)
     with store.connect() as db:
