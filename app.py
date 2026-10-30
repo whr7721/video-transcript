@@ -23,6 +23,7 @@ if os.environ.get('SHIWEN_PROFILE') == 'core':
 
 import settings
 import link_ingest, link_jobs
+import xhs_auth
 import bilibili_auth
 import link_batches
 import video_frames
@@ -128,6 +129,7 @@ async def lifespan(app):
     yield
     link_batches.stop()
     await bilibili_auth.stop()
+    await xhs_auth.stop()
     TASKS.put(None)
     thread.join(timeout=3)
 
@@ -135,6 +137,7 @@ async def lifespan(app):
 app = FastAPI(title="拾文 · 视频原文工作台", lifespan=lifespan, docs_url=None, redoc_url=None)
 from app_shared import install_shared, recover_shared
 install_shared(app)
+app.include_router(xhs_auth.router)
 app.include_router(bilibili_auth.router)
 app.include_router(link_batches.router)
 app.include_router(video_frames.router)
@@ -144,7 +147,7 @@ app.include_router(document_chat.router)
 app.include_router(library.router)
 app.include_router(subscriptions.router)
 app.include_router(source_expand.router)
-app.include_router(link_jobs.router(TASKS.put, ('youtube','bilibili','douyin','rss')))
+app.include_router(link_jobs.router(TASKS.put, ('youtube','bilibili','douyin','rss','tiktok','twitter','xiaoyuzhou','spotify','xiaohongshu')))
 
 class NewTask(BaseModel):
     share_text: str = Field(min_length=1, max_length=5000)

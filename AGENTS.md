@@ -86,3 +86,10 @@
 - 保留人工质量：长音频逐段听校、人名术语、OCR/原图阅读语义、研究引用含义、模型追问质量、触屏/中文输入法、导图PNG完整中文与大图交互；本轮只做三页截图及离线文件，不自动结清其他GUI。
 - 保留范围决定：core公开防刷其他action、自动字幕排序/429/HTTP升级/混语言性能等原P2/P3不顺带修改；B站cookie快路已由前单解除，旧清单该项不再当未实现。说话人分离、自动订阅轮询/推送仍属另立需求。pytest函数测试用现有隔离pytest全量运行，unittest discover不代表全套，未为此改变生产依赖。
 - 旧阶段条目保留历史证据，当前状态以本节为准，未把人工/外部条件伪装清零。
+
+
+## 平台扩展验收状态（2026-10-30）
+
+- 小宇宙179秒单集、小红书视频/图文均在runtime隔离真实出稿，混合批量3/3缓存完成；0付费调用。小红书扫码由用户确认，未迁移到真实data。
+- TikTok/X无HTTPS_PROXY且直连失败，等待可用代理；Spotify真实单集已验证RSS降级，完整公开音频正向样本未验；xhslink真实短链正向与新设置GUI待验。粤语配乐样本错字明显，不宣布ASR质量通过。见PLATFORM_EXTENSION_GUIDE.md及runtime/platform-extension-20261030/。
+- 新XHS认证/API自写，签名用MIT xhshow；Cookie/API受限、CDN无Cookie、Windows DACL与epoch；原core冻结、历史full ZIP未重建，本次同步构建源码/依赖。独立审查待用户转交，不自行关单。

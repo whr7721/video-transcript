@@ -10,7 +10,7 @@ import store,documents,link_ingest,link_jobs,organizer
 
 router=APIRouter(prefix='/api/link-batches')
 LOCK=threading.RLock();STOP=threading.Event();THREAD=None;BUSY=False;INFLIGHT=None;CURSOR=None
-ALLOWED=('youtube','bilibili','douyin','rss')
+ALLOWED=('youtube','bilibili','douyin','rss','tiktok','twitter','xiaoyuzhou','spotify','xiaohongshu')
 
 def init():
  with store.connect() as db:db.execute('CREATE TABLE IF NOT EXISTS link_batches(id TEXT PRIMARY KEY,payload TEXT NOT NULL)')
@@ -147,6 +147,7 @@ def preview(body:Preview):
    if existing and existing['arguments'].get('language')==body.language and (existing['status'] in {'queued','running'} or (existing['status']=='completed' and (store.DATA/'jobs'/existing['task_id']/'transcript.json').is_file())):
     plan={**existing['arguments']['plan'],'local':Path(existing['arguments']['plan']['local'])}
    else:plan=link_ingest.prepare(args)
+   item['url']=args.url
    if 'feed' in plan:item.update(status='selection',feed=plan['feed'])
    elif plan['ident'] in seen:
     item.update(status='duplicate',task_id=plan['ident']);seen[plan['ident']]['summarize']|=row.summarize

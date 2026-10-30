@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react'
 type Item={uid:string;id:string;title:string;url:string;platform:string;status:string;created_at:number;starred:boolean;snippet?:string}
 type Collection={id:string;name:string;count:number}
-const platforms:Record<string,string>={youtube:'YouTube',bilibili:'B站',douyin:'抖音',rss:'播客',podcast:'播客',local_file:'本地文件',article:'文章',images:'图文',memory:'记忆',note:'笔记'}
+const platforms:Record<string,string>={xiaohongshu:'小红书',tiktok:'TikTok',twitter:'Twitter/X',xiaoyuzhou:'小宇宙',spotify:'Spotify播客',youtube:'YouTube',bilibili:'B站',douyin:'抖音',rss:'播客',podcast:'播客',local_file:'本地文件',article:'文章',images:'图文',memory:'记忆',note:'笔记'}
 const statuses:Record<string,string>={completed:'已完成',ready:'已就绪',queued:'排队中',running:'处理中',failed:'需重试',waiting_space:'等待空间'}
 async function api(path:string,method='GET',body?:unknown){const r=await fetch('/api/library'+path,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const v=await r.json();if(!r.ok)throw Error(typeof v.detail==='string'?v.detail:'资料库操作失败');return v}
 export default function Library({fallback=[]}:{fallback?:any[]}){

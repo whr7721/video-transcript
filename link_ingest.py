@@ -22,6 +22,11 @@ def platform(url):
         return 'youtube'
     if host in {'bilibili.com', 'www.bilibili.com', 'm.bilibili.com', 'b23.tv'}:
         return 'bilibili'
+    if host in {'tiktok.com','www.tiktok.com','vm.tiktok.com','vt.tiktok.com','vxtiktok.com','www.vxtiktok.com'}:return 'tiktok'
+    if host in {'twitter.com','www.twitter.com','mobile.twitter.com','x.com','www.x.com'}:return 'twitter'
+    if host in {'xiaoyuzhoufm.com','www.xiaoyuzhoufm.com'}:return 'xiaoyuzhou'
+    if host=='open.spotify.com':return 'spotify'
+    if host in {'xiaohongshu.com','www.xiaohongshu.com','xhslink.com','www.xhslink.com'}:return 'xiaohongshu'
     return 'rss'
 
 def stamp(seconds):
@@ -59,7 +64,9 @@ def ytdlp(url, directory, language, progress=lambda **f: None):
         try:
             progress(stage='subtitles',message='正在获取字幕')
             info = y.extract_info(url, download=False)
-        except yt_dlp.utils.DownloadError:
+        except yt_dlp.utils.DownloadError as exc:
+            if platform(url)=='twitter' and re.search(r'no video|no formats|does not contain.*video',str(exc),re.I):
+                raise ValueError('仅支持视频推文') from None
             if platform(url) != 'bilibili':
                 raise
             info = {'webpage_url': url}
@@ -67,6 +74,7 @@ def ytdlp(url, directory, language, progress=lambda **f: None):
             if result:
                 return (info, result, None)
             raise
+        if platform(url)=='twitter' and not (info.get('formats') or info.get('url') or info.get('entries')):raise ValueError('仅支持视频推文')
         candidates = []
         for field in ('subtitles', 'automatic_captions'):
             tracks = info.get(field) or {}
@@ -119,12 +127,24 @@ def prepare(args):
     if is_file and local.stat().st_size > 1000000000:
         raise ValueError('本地文件超过1GB限制')
     kind = 'local_file' if is_file else platform(args.url)
-    if kind not in getattr(args,'allowed', {'local_file','youtube','rss','bilibili','douyin'}):
+    if kind not in getattr(args,'allowed', {'local_file','youtube','rss','bilibili','douyin','tiktok','twitter','xiaoyuzhou','spotify','xiaohongshu'}):
         raise ValueError('此版本不支持抖音链接' if kind=='douyin' else '此版本不支持此平台链接')
     customer = (Path(__file__).resolve().parent / 'customer-package.json').exists()
     if customer and kind not in {'local_file', 'rss', 'youtube'}:
         raise ValueError('此版本不支持抖音链接' if kind == 'douyin' else '此版本不支持此平台链接')
+    if kind=='tiktok':
+        from platform_urls import canonical
+        args.url=canonical(args.url);local=Path(args.url)
+    if kind=='twitter':
+        from platform_urls import canonical
+        args.url=canonical(args.url);local=Path(args.url)
+    if kind=='xiaohongshu':
+        from xhs_ingest import resolve
+        args.url,note_id=resolve(args.url);local=Path(args.url)
     episode = None
+    if kind in {'xiaoyuzhou','spotify'}:
+        from podcast_pages import episode_page
+        episode=episode_page(args.url,kind)
     if kind == 'rss':
         import article_fetch, podcast_feed
         if getattr(args,'episode_snapshot',None):
@@ -150,7 +170,7 @@ def prepare(args):
         with local.open('rb') as stream:
             identity = hashlib.file_digest(stream, 'sha256').hexdigest()
     else:
-        identity = episode['id'] if episode else args.url
+        identity = ('xiaohongshu:'+note_id) if kind=='xiaohongshu' else episode['id'] if episode else args.url
     ident = hashlib.sha256((identity + '|' + args.language).encode()).hexdigest()[:16]
     return dict(kind=kind,episode=episode,ident=ident,local=local)
 
@@ -192,13 +212,13 @@ def add(args, progress=lambda **f: None):
         progress(stage='transcribing',message='正在本地转写')
         result = local_transcribe(audio, directory / 'local_chunks', lambda fraction,count,text: progress(stage='transcribing',progress=fraction,segment_count=count), language=args.language)
         metadata.update(title=local.stem, duration=duration, sourceUrl=None, original_name=local.name)
-    elif kind == 'douyin':
-        if kind not in INGESTERS:raise ValueError('此版本不支持抖音链接')
+    elif kind in INGESTERS:
+        task['url']=args.url  # A fresh signed share URL can retry the same stable note identity.
         result = INGESTERS[kind](task, update, directory, metadata)
     else:
         media = None
         result = None
-        if kind == 'rss':
+        if kind in {'rss','xiaoyuzhou','spotify'}:
             import article_fetch, podcast_feed, podcast_text
             e = episode
             progress(stage='subtitles',message='正在获取节目文字')
@@ -256,3 +276,5 @@ def configure(private=False):
     if private:
         import link_private
         link_private.register()
+        import xhs_ingest
+        xhs_ingest.register()

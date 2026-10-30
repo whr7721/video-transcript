@@ -521,3 +521,12 @@ CLI add返回内部id供summarize复用，不改原输出；JSON进度到stderr�
 参照uv离线/本地wheel（https://docs.astral.sh/uv/reference/cli/）、Playwright浏览器路径（https://playwright.dev/python/docs/browsers）与MediaCrawler原许可。复用原Windows安装工具锁、语音模型校验与uv包内Python，新增full变体，不修改旧core默认构建行为。完整依赖是既有应用/OCR锁合并+Playwright1.64/tenacity/PyExecJS/aiomysql供客户端导入；不把MediaCrawler整套requirements的旧FastAPI强塞主环境。仅复制客户端所需代码/JS和许可，禁复制原checkout config、browser_data、data、.env；bundled config为空安全默认，取消bundled包__init__的完整crawler副作用，原外部项目不改动。用Playwright自带Node执行已有JS签名客户端，不再另装系统Node。
 
 运行路径全由full_env注入，扫码可初始化空的拾文owned profile，不再要求开发机已有MC浏览器。实际安装发现web漏包及ROOT/data遗留路径，补齐并改store.DATA；离线复制uv minor junction为普通目录会报145，改仅复制固定真实Python目录，已存在解释器跳过重复安装。offline-full只收bin/python/wheels/browsers/models，不收data-full与登录态；同机另目录真正离线依赖安装与启动检查，不当作真实新Windows设备验收。
+
+
+## 2026-10-30 平台扩展：原生提取、公开单集与独立小红书会话
+
+A档采用已安装yt-dlp的TikTok/TikTokVM/Twitter提取器（https://github.com/yt-dlp/yt-dlp/tree/master/yt_dlp/extractor），复用字幕优先/下载/本地ASR，不另造下载器；vxtiktok规范到tiktok，X规范到twitter，短链交原生解析。候选单独网页爬虫未采用，维护成本更高。本机没有HTTPS_PROXY，真实两站提取均失败；适配器单测不能替代可用代理下真链验收。
+
+B档参考原始项目 https://github.com/jerryqx/dsh-xiaoyuzhou 与 https://github.com/weisi-gu/xiaoyuzhou-podcast-notes 的公开__NEXT_DATA__单集enclosure解析，采用自写小解析器接既有RSS音频处理，不引入整套项目。Spotify官方 https://developer.spotify.com/documentation/web-api/reference/get-an-episode 的audio_preview_url不是完整单集；仅接受明确公开完整音频，DRM/预览/无直链降级RSS，音乐拒绝。小宇宙179秒真实单集已出稿，Spotify真实请求降级；不是宣称Spotify全量转写已通。
+
+C档实施前选定“自写认证/API/媒体编排 + MIT xhshow==0.2.0签名”，不vendor MediaCrawler小红书客户端。参考其原始client调用形态（https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/xhs/client.py），核对签名组件 https://github.com/cloxl/xhshow 的原源码/安装wheel许可与依赖；仅签名复用，固定API白名单、Cookie流向、解析和下载由拾文控制。新增私有依赖xhshow及其pycryptodome传递依赖，旧core冻结。复用自有B站DACL/epoch生命周期、图集OCR，不读取/改外部采集器配置。网页登录profile自然保有本站会话；显式认证HTTP仅发edith.xiaohongshu.com，媒体请求无Cookie。视频本地ASR与图文OCR真实出稿；粤语混配乐样本错字明显，链路通过不代表语义准确率。证据：PLATFORM_EXTENSION_GUIDE.md、runtime/platform-extension-20261030/。
