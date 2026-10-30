@@ -67,6 +67,8 @@ def offline_assets(stage,seed):
  subprocess.run([sys.executable,'-m','pip','wheel','--wheel-dir',str(wheels),'-r',str(stage/'requirements.txt')],check=True)
  shutil.copytree(wheels,stage/'.runtime/wheels')
  import setup_models
+ import setup_speakers
+ if not all(setup_speakers.verify(seed/'models').values()):raise ValueError('离线种子缺少已校验的说话人模型，请先更新full安装')
  if not all(setup_models.verify(seed/'models').values()):raise ValueError('离线种子模型校验失败')
  shutil.copytree(seed/'models',stage/'models')
 def build(output=None,offline_full=False,runtime_seed=None,mc=None,discovery=None):

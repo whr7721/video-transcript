@@ -17,7 +17,7 @@ def bili_subtitles(info, language):
         view=bilibili_auth.bilibili_api_get('/x/web-interface/view',cookies=credentials,params={'bvid':bvid})
         data=view.get('data') or {};cid=info.get('cid') or data.get('cid')
         if not cid:continue
-        info.update(title=data.get('title'),duration=data.get('duration'),thumbnail=data.get('pic'),uploader=(data.get('owner') or {}).get('name'))
+        info.update(channel_id=str((data.get('owner') or {}).get('mid') or '') or None,channel=(data.get('owner') or {}).get('name'),title=data.get('title'),duration=data.get('duration'),thumbnail=data.get('pic'),uploader=(data.get('owner') or {}).get('name'))
         if data.get('pubdate'):info['upload_date']=datetime.fromtimestamp(data['pubdate'],timezone.utc).strftime('%Y%m%d')
         params={'bvid':bvid,'cid':cid};endpoints=[]
         images=nav.get('wbi_img') or {}
@@ -72,6 +72,7 @@ def ingest(task,update,directory,metadata):
     result = task['result']
     metadata.update(title=result.get('title'), duration=result.get('duration'))
     detail = json.loads((directory / 'source.json').read_text(encoding='utf8')).get('detail', {})
+    metadata.update(channelId=(detail.get('author') or {}).get('sec_uid'),channelTitle=(detail.get('author') or {}).get('nickname'))
     metadata.update(cover=(detail.get('video', {}).get('cover', {}).get('url_list') or [None])[0], publishedDate=detail.get('create_time'), description=detail.get('desc'), tags=[x.get('hashtag_name') for x in detail.get('text_extra', []) if x.get('hashtag_name')])
     return result
 

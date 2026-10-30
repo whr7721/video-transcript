@@ -31,6 +31,9 @@ def prepare(local=None,offline=False):
         part.replace(dest)
     # The small VAD is pinned to the official upstream export; no replacement model.
     if not all(setup_models.verify(target).values()):raise RuntimeError('模型校验失败')
+    if (Path(__file__).parent/'full-package.json').exists():
+        import setup_speakers
+        setup_speakers.prepare(target,local,offline)
     print('Models verified: SenseVoice INT8 and Silero VAD.')
 
 if __name__=='__main__':

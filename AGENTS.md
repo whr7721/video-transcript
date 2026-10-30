@@ -93,3 +93,10 @@
 - 小宇宙179秒单集、小红书视频/图文均在runtime隔离真实出稿，混合批量3/3缓存完成；0付费调用。小红书扫码由用户确认，未迁移到真实data。
 - TikTok/X无HTTPS_PROXY且直连失败，等待可用代理；Spotify真实单集已验证RSS降级，完整公开音频正向样本未验；xhslink真实短链正向与新设置GUI待验。粤语配乐样本错字明显，不宣布ASR质量通过。见PLATFORM_EXTENSION_GUIDE.md及runtime/platform-extension-20261030/。
 - 新XHS认证/API自写，签名用MIT xhshow；Cookie/API受限、CDN无Cookie、Windows DACL与epoch；原core冻结、历史full ZIP未重建，本次同步构建源码/依赖。独立审查待用户转交，不自行关单。
+
+
+## 最新收尾状态（2026-10-30）
+
+- 平台扩展/归档：用户转达runtime/review-20261030/REVIEW-bbc4d08..cf17db7.md两段通过关单；保留G包下次交付前重建、xhslink真实短链样本两项P3。
+- 清零单本次明确授权说话人分离，覆盖旧P0“另立需求”状态：自动/指定人数真实双人样本、SRT标签已测，非多人复杂会议质量结论。XMind在线查看器已打开；三篇合集真实聚合2次调用（首次引用格式拒绝）、缓存零新增；频道筛选单测通过。见ZERO_GAP_GUIDE.md。
+- 清零单独立审查待转交；新控件GUI点验、更多说话人/重叠语音人工质量、更新full模型后真实离线重装未验。core仍冻结，历史G包未重建，旧种子缺说话人模型时明确拒绝离线构建。其余外部条件挂账不自动清除。

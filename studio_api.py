@@ -50,6 +50,15 @@ def export_mindmap(ident:str):
                     headers={'Content-Disposition':f'attachment; filename="mindmap-{ident}.md"'})
 
 
+@router.get('/generations/{ident}/mindmap.xmind')
+def export_xmind(ident:str):
+    import xmind_export
+    job=documents.generation_get(ident)
+    if not job or job.get('status')!='completed' or not job.get('mindmap'):raise HTTPException(404,'尚无可导出的思维导图')
+    task(job['task_id'])
+    return Response(xmind_export.export(job['mindmap']),media_type='application/octet-stream',headers={'Content-Disposition':f'attachment; filename="mindmap-{ident}.xmind"'})
+
+
 class Pin(BaseModel):
     value: bool
 

@@ -530,3 +530,12 @@ A档采用已安装yt-dlp的TikTok/TikTokVM/Twitter提取器（https://github.co
 B档参考原始项目 https://github.com/jerryqx/dsh-xiaoyuzhou 与 https://github.com/weisi-gu/xiaoyuzhou-podcast-notes 的公开__NEXT_DATA__单集enclosure解析，采用自写小解析器接既有RSS音频处理，不引入整套项目。Spotify官方 https://developer.spotify.com/documentation/web-api/reference/get-an-episode 的audio_preview_url不是完整单集；仅接受明确公开完整音频，DRM/预览/无直链降级RSS，音乐拒绝。小宇宙179秒真实单集已出稿，Spotify真实请求降级；不是宣称Spotify全量转写已通。
 
 C档实施前选定“自写认证/API/媒体编排 + MIT xhshow==0.2.0签名”，不vendor MediaCrawler小红书客户端。参考其原始client调用形态（https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/xhs/client.py），核对签名组件 https://github.com/cloxl/xhshow 的原源码/安装wheel许可与依赖；仅签名复用，固定API白名单、Cookie流向、解析和下载由拾文控制。新增私有依赖xhshow及其pycryptodome传递依赖，旧core冻结。复用自有B站DACL/epoch生命周期、图集OCR，不读取/改外部采集器配置。网页登录profile自然保有本站会话；显式认证HTTP仅发edith.xiaohongshu.com，媒体请求无Cookie。视频本地ASR与图文OCR真实出稿；粤语混配乐样本错字明显，链路通过不代表语义准确率。证据：PLATFORM_EXTENSION_GUIDE.md、runtime/platform-extension-20261030/。
+
+
+## 2026-10-30 复现表清零四项
+
+说话人采用现有sherpa-onnx官方Python diarization API（https://github.com/k2-fsa/sherpa-onnx/blob/master/python-api-examples/offline-speaker-diarization.py），不引入torch/librosa；音频复用既有ffmpeg 16k单声道PCM。官方release列表显示中文/中英CAM++约28.3MB几乎相同，选择中英一个embedding搭配1.54MB INT8分段。固定官方release来源、本机实测哈希；无API digest不伪称官方校验签名。模型许可保留压缩包CNRS MIT与3D-Speaker源Apache文本（https://github.com/modelscope/3D-Speaker），不把整套模型统称SenseVoice许可。
+
+XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）与官方SDK结构说明（https://github.com/xmindltd/xmind-sdk-js）作格式参照，不新增SDK依赖，标准库将既有验证树转JSON ZIP。首个ATools查看器选文件无显示，第二个Visora实际显示中文根节点/分支，保留反例与截图，不把ZIP检查冒充真实查看器。
+
+合集复用organizer.request_json与cli_summary文件锁，按指纹缓存与来源ID校验，长文逐块归纳/归并而非截断；不新增调度体系。真实2次中第1次引用格式拒绝、第2次生成，缓存零调用；首个失败usage缺失如实标注，不补烧调用取数。频道字段只采集平台已提供值，不自动联网回填旧稿。对应源码diarization/setup_speakers/xmind_export/collection_summary，操作和证据见ZERO_GAP_GUIDE.md。

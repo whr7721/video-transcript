@@ -55,7 +55,7 @@ def catalog():
         if directory and (directory/'summary.md').is_file():summary+='\n'+(directory/'summary.md').read_text(encoding='utf8')
         if summary:blocks.append({'id':'summary','text':summary})
         if drafts.get(tid):blocks.append({'id':'draft','text':drafts[tid]})
-        result.append({'uid':'audio:'+tid,'id':tid,'kind':'audio','title':t.get('title') or '未命名文稿','platform':(t.get('source') or {}).get('platform') or (t.get('source') or {}).get('kind') or ('douyin' if t.get('video_id') else 'local_file'),'created_at':t.get('created_at',0),'duration':t.get('duration') or (t.get('result') or {}).get('duration') or 0,'status':t.get('status','unknown'),'url':'/studio/?task='+tid,'blocks':blocks})
+        result.append({'uid':'audio:'+tid,'id':tid,'kind':'audio','title':t.get('title') or '未命名文稿','platform':(t.get('source') or {}).get('platform') or (t.get('source') or {}).get('kind') or ('douyin' if t.get('video_id') else 'local_file'),'channelId':(t.get('result') or {}).get('channelId'),'channelTitle':(t.get('result') or {}).get('channelTitle'),'created_at':t.get('created_at',0),'duration':t.get('duration') or (t.get('result') or {}).get('duration') or 0,'status':t.get('status','unknown'),'url':'/studio/?task='+tid,'blocks':blocks})
     for a in articles:
         if a.get('kind')=='images':
             import ocr_reading
@@ -104,18 +104,18 @@ def require(uid):
     return row
 
 @router.get('')
-def listing(q:str=Query('',max_length=200),starred:bool=False,collection_id:str|None=None):
+def listing(q:str=Query('',max_length=200),starred:bool=False,collection_id:str|None=None,channel_id:str|None=None):
     records=sync(); hits={}
     if q.strip():
         for p in retrieve(q,limit=10000):hits.setdefault(p['uid'],p['text'])
     with store.connect() as db:
         stars={r[0] for r in db.execute('SELECT uid FROM library_meta WHERE starred=1')}
         members={r[0]:r[1] for r in db.execute('SELECT uid,position FROM library_members WHERE collection_id=?',(collection_id,))} if collection_id else {}
-    items=[{**{k:v for k,v in r.items() if k!='blocks'},'starred':r['uid'] in stars,'snippet':hits.get(r['uid'],'')[:240]} for r in records if (not starred or r['uid'] in stars) and (not collection_id or r['uid'] in members) and (not q.strip() or r['uid'] in hits)]
+    items=[{**{k:v for k,v in r.items() if k!='blocks'},'starred':r['uid'] in stars,'snippet':hits.get(r['uid'],'')[:240]} for r in records if (not channel_id or str(r.get('channelId') or '')==channel_id) and (not starred or r['uid'] in stars) and (not collection_id or r['uid'] in members) and (not q.strip() or r['uid'] in hits)]
     items.sort(key=lambda r:members[r['uid']] if collection_id else -r['created_at'])
     platforms={}
     for r in records:platforms[r['platform']]=platforms.get(r['platform'],0)+1
-    return {'items':items,'stats':{'total':len(records),'duration':sum(r['duration'] for r in records if isinstance(r['duration'],(int,float))),'platforms':platforms,'recent':sum(r['created_at']>=time.time()-7*86400 for r in records)}}
+    return {'items':items,'channels':list({str(r['channelId']):{'id':str(r['channelId']),'title':r.get('channelTitle') or str(r['channelId'])} for r in records if r.get('channelId')}.values()),'stats':{'total':len(records),'duration':sum(r['duration'] for r in records if isinstance(r['duration'],(int,float))),'platforms':platforms,'recent':sum(r['created_at']>=time.time()-7*86400 for r in records)}}
 
 class Star(BaseModel):uid:str;value:bool
 @router.post('/star')
@@ -175,5 +175,21 @@ def export(ident:str):
             else:
                 name=f'{i:03}-source.txt';z.writestr(name,r['title']+'\n\n'+'\n\n'.join(b['text'] for b in r['blocks']));entry={'files':[name],'missing':[]}
             manifest.append({'uid':uid,**entry})
+        import collection_summary
+        aggregate=collection_summary.state(ident)
+        if aggregate:z.writestr('aggregate-summary.md',('# 聚合摘要'+('（来源已变化，需更新）' if aggregate['stale'] else '')+'\n\n'+aggregate['summary']))
         z.writestr('collection-manifest.json',json.dumps({**c,'items':manifest},ensure_ascii=False,indent=2))
     return Response(output.getvalue(),media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="shiwen-collection-{ident}.zip"'})
+
+@router.get('/collections/{ident}/summary')
+def aggregate_state(ident:str):
+    collection(ident)
+    import collection_summary
+    return collection_summary.state(ident)
+
+@router.post('/collections/{ident}/summary')
+def aggregate_generate(ident:str):
+    collection(ident)
+    import collection_summary
+    try:return collection_summary.generate(ident)
+    except (ValueError,RuntimeError) as exc:raise HTTPException(400,str(exc))

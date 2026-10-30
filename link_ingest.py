@@ -43,12 +43,12 @@ def export(directory, result, metadata):
             continue
         if s['end'] <= s['start'] or s['start'] < 0:
             raise ValueError('字幕时间轴无效')
-        rows.append({'startTime': s['start'], 'end': s['end'], 'text': s['text'], 'index': len(rows)})
+        rows.append({'startTime': s['start'], 'end': s['end'], 'text': s['text'], **({'speaker':s['speaker']} if s.get('speaker') else {}), 'index': len(rows)})
     result = {**result, **metadata, 'subtitlesArray': rows}
     store.atomic_json(directory / 'transcript.json', result)
     (directory / 'transcript.txt').write_text(result['text'], encoding='utf8')
     if rows:
-        (directory / 'transcript.srt').write_text('\n\n'.join((f"{i + 1}\n{stamp(s['startTime'])} --> {stamp(s['end'])}\n{s['text']}" for i, s in enumerate(rows))) + '\n', encoding='utf8')
+        (directory / 'transcript.srt').write_text('\n\n'.join((f"{i + 1}\n{stamp(s['startTime'])} --> {stamp(s['end'])}\n{('['+s['speaker']+'] ') if s.get('speaker') else ''}{s['text']}" for i, s in enumerate(rows))) + '\n', encoding='utf8')
     return result
 
 def ytdlp(url, directory, language, progress=lambda **f: None):
@@ -165,12 +165,13 @@ def prepare(args):
             return {'feed':feed}
         if not 1 <= args.episode <= len(feed['episodes']):
             raise ValueError('单集序号超出范围')
-        episode = feed['episodes'][args.episode - 1]
+        episode = {**feed['episodes'][args.episode - 1],'channelId':feed.get('feed_url') or args.url,'channelTitle':feed.get('title')}
     if is_file:
         with local.open('rb') as stream:
             identity = hashlib.file_digest(stream, 'sha256').hexdigest()
     else:
         identity = ('xiaohongshu:'+note_id) if kind=='xiaohongshu' else episode['id'] if episode else args.url
+    identity += ('|speakers-v1:'+str(getattr(args,'speakers',0))) if (getattr(args,'diarize',False) or getattr(args,'speakers',0)) else ''
     ident = hashlib.sha256((identity + '|' + args.language).encode()).hexdigest()[:16]
     return dict(kind=kind,episode=episode,ident=ident,local=local)
 
@@ -184,6 +185,17 @@ def add(args, progress=lambda **f: None):
     directory = store.DATA / 'jobs' / ident
     directory.mkdir(parents=True, exist_ok=True)
     if (directory / 'transcript.json').exists():
+        if getattr(args,'diarize',False) or getattr(args,'speakers',0):
+            cached=json.loads((directory/'transcript.json').read_text(encoding='utf8'))
+            if not cached.get('diarization_version') and not cached.get('diarization_notice'):
+                if str(cached.get('engine','')).startswith(('publisher','bilibili')) or cached.get('timing_precision')=='none':
+                    cached['diarization_notice']='字幕或图文来源无说话人信息，未执行说话人识别'
+                else:
+                    import diarization
+                    cached=diarization.annotate(cached,diarization.turns(directory/'audio.wav',getattr(args,'speakers',0)))
+                export(directory,cached,{})
+                existing=store.get(ident)
+                if existing:existing['result']=cached;store.save(existing)
         progress(stage='cached',message='已命中转写缓存',cached=True)
         print(directory / 'transcript.json')
         if getattr(args, 'summarize', False):
@@ -199,7 +211,7 @@ def add(args, progress=lambda **f: None):
         task.update(fields)
         store.save(task)
         progress(**fields)
-    metadata = {'sourceUrl': args.url, 'cover': None, 'duration': None, 'publishedDate': None, 'platform': kind}
+    metadata = {'sourceUrl': args.url, 'cover': None, 'duration': None, 'publishedDate': None, 'platform': kind,'channelId':None,'channelTitle':None}
     if kind == 'local_file':
         import shutil
         from media_io import extract_audio, probe_media
@@ -222,7 +234,7 @@ def add(args, progress=lambda **f: None):
             import article_fetch, podcast_feed, podcast_text
             e = episode
             progress(stage='subtitles',message='正在获取节目文字')
-            metadata.update(title=e['title'], publishedDate=e['published'], duration=e['duration_seconds'])
+            metadata.update(channelId=e.get('channelId'),channelTitle=e.get('channelTitle'),title=e['title'], publishedDate=e['published'], duration=e['duration_seconds'])
             for tr in e['transcripts']:
                 try:
                     chunks = []
@@ -244,7 +256,7 @@ def add(args, progress=lambda **f: None):
                     part.replace(media)
         else:
             info, result, media = ytdlp(args.url, directory, args.language, progress)
-            metadata.update(title=info.get('title'), author=info.get('uploader'), cover=info.get('thumbnail'), duration=info.get('duration'), publishedDate=info.get('upload_date'))
+            metadata.update(channelId=info.get('channel_id') or info.get('uploader_id'),channelTitle=info.get('channel') or info.get('uploader'),title=info.get('title'), author=info.get('uploader'), cover=info.get('thumbnail'), duration=info.get('duration'), publishedDate=info.get('upload_date'))
         if result is None:
             from media_io import extract_audio, probe_media
             from transcribe import local_transcribe
@@ -256,6 +268,15 @@ def add(args, progress=lambda **f: None):
             progress(stage='transcribing',message='正在本地转写')
             result = local_transcribe(audio, directory / 'local_chunks', lambda fraction,count,text: progress(stage='transcribing',progress=fraction,segment_count=count), language=args.language)
             metadata['duration'] = duration
+    if getattr(args,'diarize',False) or getattr(args,'speakers',0):
+        if str(result.get('engine','')).startswith(('publisher','bilibili')) or result.get('timing_precision')=='none':
+            metadata['diarization_notice']='字幕或图文来源无说话人信息，未执行说话人识别'
+        else:
+            import diarization
+            progress(stage='diarizing',message='正在本地识别说话人')
+            audio=directory/'audio.wav'
+            if not audio.is_file():raise ValueError('此本地转写缺少音频，无法识别说话人')
+            result=diarization.annotate(result,diarization.turns(audio,getattr(args,'speakers',0)))
     result = export(directory, result, metadata)
     update(status='completed', stage='completed', title=metadata.get('title'), duration=metadata.get('duration'), result=result)
     print(directory / 'transcript.json')

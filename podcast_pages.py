@@ -30,7 +30,7 @@ def parse_page(raw,url,kind):
    if isinstance(audio,str) and urlsplit(audio).scheme=='https' and not re.search('preview|\.m3u8|\.mpd',audio,re.I):candidates.append((row,audio))
  if not candidates:raise ValueError('请在小宇宙获取该播客的 RSS 地址订阅' if kind=='xiaoyuzhou' else 'Spotify未提供完整公开音频直链（可能为DRM或仅有预览）；请获取该播客的 RSS 地址订阅')
  row,audio=candidates[0];article_fetch.public_url(audio)
- return {'id':hashlib.sha256((kind+':'+ident).encode()).hexdigest()[:24],'guid':kind+':'+ident,'title':str(row.get('title') or row.get('name') or '播客单集')[:500],'published':row.get('pubDate') or row.get('datePublished'),'duration_seconds':row.get('duration') if isinstance(row.get('duration'),(int,float)) else None,'audio_url':audio,'transcripts':[],'chapters_url':None,'importable':True}
+ return {'id':hashlib.sha256((kind+':'+ident).encode()).hexdigest()[:24],'guid':kind+':'+ident,'title':str(row.get('title') or row.get('name') or '播客单集')[:500],'published':row.get('pubDate') or row.get('datePublished'),'duration_seconds':row.get('duration') if isinstance(row.get('duration'),(int,float)) else None,'audio_url':audio,'channelId':(row.get('podcast') or {}).get('pid') or (row.get('podcast') or {}).get('id'),'channelTitle':(row.get('podcast') or {}).get('title'),'transcripts':[],'chapters_url':None,'importable':True}
 
 def episode_page(url,kind):
  # Reject Spotify music before any request.

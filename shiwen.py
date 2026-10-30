@@ -10,10 +10,13 @@ def main(argv=None):
     p.add_argument('url');p.add_argument('--episode',type=int);p.add_argument('--language',choices=['auto','zh','en','ja','ko','yue'],default='auto')
     p.add_argument('--chapter',action='store_true',help='另用已有章节链生成语义章节导读，额外请求计入共享配额')
     p.add_argument('--json',action='store_true',help='stdout仅输出JSON；costDuration为本次耗时秒数，日志到stderr')
+    for command in ('add','summarize'):
+        sub.choices[command].add_argument('--diarize',action='store_true',help='本地识别说话人，自动估计人数')
+        sub.choices[command].add_argument('--speakers',type=int,choices=range(1,21),default=0,help='指定说话人数并开启识别')
     sub.add_parser('commands',help='列出本机命令和边界，不联网、不调用模型')
     args=parser.parse_args(argv)
     if args.command=='commands':
-        print(json.dumps({'commands':[{'name':'add','usage':'shiwen add <url|file> [--summarize] [--episode N] [--language auto|zh|en|ja|ko|yue]','effect':'本地转写免费；可选AI整理计入共享配额'},{'name':'summarize','usage':'shiwen summarize <url|file> [--chapter] [--json] [--episode N]','effect':'AI三层整理与导图；chapter额外语义章节请求，缓存不重复调用'},{'name':'commands','usage':'shiwen commands','effect':'只读命令清单'}],'requires':'需本机已部署拾文、本地工具','costDuration':'wall-clock seconds; not currency'},ensure_ascii=False,indent=2));return
+        print(json.dumps({'commands':[{'name':'add','usage':'shiwen add <url|file> [--summarize] [--diarize|--speakers N] [--episode N] [--language auto|zh|en|ja|ko|yue]','effect':'本地转写免费；可选AI整理计入共享配额'},{'name':'summarize','usage':'shiwen summarize <url|file> [--chapter] [--json] [--diarize|--speakers N] [--episode N]','effect':'AI三层整理与导图；chapter额外语义章节请求，缓存不重复调用'},{'name':'commands','usage':'shiwen commands','effect':'只读命令清单'}],'requires':'需本机已部署拾文、本地工具','costDuration':'wall-clock seconds; not currency'},ensure_ascii=False,indent=2));return
     started=time.monotonic()
     try:
         configure(os.environ.get('SHIWEN_PROFILE')!='core' and not (Path(__file__).parent/'customer-package.json').exists())
@@ -30,6 +33,7 @@ def main(argv=None):
                 chapter=cli_chapters.summarize(ident)
             else:chapter=None
         result={'id':ident,'summary':summary,'costDuration':round(time.monotonic()-started,3)}
+        result['xmind']=str((directory/'mindmap.xmind').resolve())
         if chapter is not None:result['chapters']=chapter
         if args.json:print(json.dumps(result,ensure_ascii=False))
         else:

@@ -165,6 +165,8 @@ def _summarize(directory,request):
         # Export from durable stages; missing assets or interrupted export costs no calls on retry.
         rendered=mindmap_html(job['bundle']['root'])
         atomic_text(directory/'summary.md',markdown(job,source))
+        import xmind_export
+        (directory/'mindmap.xmind').write_bytes(xmind_export.export(job['bundle']['root']))
         atomic_text(directory/'mindmap.md',mindmap.to_markdown(job['bundle']['root']))
         atomic_text(directory/'mindmap.html',rendered)
         job.update(status='completed',stage='done',completed_at=time.time());job.pop('error',None)

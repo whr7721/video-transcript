@@ -24,6 +24,8 @@ def render(b):
  body+='</section><section id="summary"><h2>摘要</h2><div class="prose">'+esc(b['summary'] or '尚未生成摘要')+'</div></section><section id="mindmap"><h2>思维导图</h2>'
  scripts=''
  if root:
+  import base64,xmind_export
+  body+='<a download="mindmap.xmind" href="data:application/octet-stream;base64,'+base64.b64encode(xmind_export.export(root)).decode()+'">导出 XMind</a>'
   assets=Path(__file__).resolve().parent/'cli_assets'
   scripts='\n'.join((assets/p).read_text(encoding='utf8') for p in ['d3-7.9.0.min.js','markmap-view-0.18.12.js']).replace('</script','<\\/script')
   data=json.dumps(tree(root),ensure_ascii=True).replace('<','\\u003c')

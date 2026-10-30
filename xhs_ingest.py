@@ -29,7 +29,7 @@ def detail(url):
  return ident,card
 
 def ingest(task,update,directory,metadata):
- ident,card=detail(task['url']);metadata.update(title=card.get('title') or (card.get('desc') or '小红书笔记')[:80],description=card.get('desc',''),publishedDate=card.get('time'),platform='xiaohongshu')
+ ident,card=detail(task['url']);metadata.update(channelId=(card.get('user') or {}).get('user_id'),channelTitle=(card.get('user') or {}).get('nickname'),title=card.get('title') or (card.get('desc') or '小红书笔记')[:80],description=card.get('desc',''),publishedDate=card.get('time'),platform='xiaohongshu')
  store.atomic_json(directory/'xhs-note.json',{'note_id':ident,'type':card.get('type'),'title':metadata['title']})
  if card.get('type')=='video':
   streams=((card.get('video') or {}).get('media') or {}).get('stream') or {}

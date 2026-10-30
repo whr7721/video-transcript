@@ -17,6 +17,8 @@ class Input(BaseModel):
     language:Literal['auto','zh','en','ja','ko','yue']='auto'
     episode:int|None=Field(default=None,ge=1,le=500)
     summarize:bool=False
+    diarize:bool=False
+    speakers:int=Field(default=0,ge=0,le=20)
 
 def normalize(text):
     urls=re.findall(r'https://[^\s<>"\']+',text)
@@ -52,6 +54,7 @@ def run(task,update):
         link_ingest.add(args,lambda **f:history(job,**f))
         path=store.DATA/'jobs'/task['id']
         result=json.loads((path/'transcript.json').read_text(encoding='utf8'))
+        job['notice']=result.get('diarization_notice')
         update(status='completed',stage='completed',result=result,title=result.get('title','文稿'),duration=result.get('duration'))
         with LOCK:
             job=documents.generation_get(job['id']) or job
@@ -125,7 +128,7 @@ def router(enqueue,allowed):
         try:
             url=normalize(body.url);kind=link_ingest.platform(url)
             if kind not in allowed:raise ValueError('此版本不支持抖音链接' if kind=='douyin' else '此版本不支持此平台链接')
-            args=SimpleNamespace(url=url,language=body.language,episode=body.episode,summarize=False,allowed=list(allowed))
+            args=SimpleNamespace(url=url,language=body.language,episode=body.episode,summarize=False,diarize=body.diarize,speakers=body.speakers,allowed=list(allowed))
             plan=link_ingest.prepare(args)
             if 'feed' in plan:return {'selection_required':True,'feed':plan['feed']}
         except ValueError as exc:raise HTTPException(400,str(exc))
@@ -134,7 +137,7 @@ def router(enqueue,allowed):
     @api.get('/{ident}/export/{filename}')
     def export(ident:str,filename:str):
         job=get(ident)
-        if filename not in {'summary.md','mindmap.html'}:raise HTTPException(404)
+        if filename not in {'summary.md','mindmap.html','mindmap.xmind'}:raise HTTPException(404)
         path=store.DATA/'jobs'/job['task_id']/filename
         if not path.is_file():raise HTTPException(404,'产物尚未生成')
         return FileResponse(path,filename=filename,media_type='application/octet-stream')
