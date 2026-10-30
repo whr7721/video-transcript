@@ -556,3 +556,6 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 
 ## 2026-10-30 四页工作区补漏
 路由检查确认Discovery/Knowledge/TopicLibrary/ArticleLibrary均由main.tsx直接渲染，绕过Home外壳。复用现有desk布局与原生动效，统一ProductApp路由，不复制侧栏、不新增依赖。Discovery=view=discovery图文资料，topics=发现话题，library=图文素材库。保留各页业务组件与查询参数。参考W3C地标指南https://www.w3.org/WAI/WCAG22/Techniques/aria/ARIA11，工具页沿用内部main，外壳改条件地标以避免嵌套main。四页新增路由回归测试；证据见runtime/ui-tool-pages-20261030/，95测试与构建通过，八张隔离截图不替代真实数据业务验收。
+
+## 2026-10-30 金句切片成片
+采用现有request_json+共享配额/费用预留、连续来源ID校验、ASS与ffmpeg直渲；不引入MoviePy/Anime/剪辑框架。FFmpeg滤镜官方文档 https://ffmpeg.org/ffmpeg-filters.html 与Aegisub ASS规则 https://aegisub.org/docs/latest/ass_tags/ 支持双语分样式与背景合成；GitHub LosslessCut https://github.com/mifi/lossless-cut (GPL-2.0) 仅作裁切产品路线参考，不复用其代码/依赖。烧录字幕需要重编码，不采用纯stream-copy。素材检查发现字幕快路/yt-dlp音频任务可能没有视频，因此显式媒体检查，有音频则明确提示纯色成片，无媒体拒绝。合集引用单篇generation、加入现有串行媒体队列，organizer恢复排除clips；大合集ZIP使用磁盘流式发送，避免多GB内存峰值。实证：隔离真实视频/播客各3条、两次模型请求、串行重渲复用挑选缓存、六条解码与真实播放器；测试350/98。证据runtime/clips-20261030/，使用CLIPS_GUIDE.md。段内分页时间均分而非逐字，金句/译文与ASR质量人工核对，49集压力未实跑。

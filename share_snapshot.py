@@ -34,13 +34,20 @@ def render(b):
  else:body+='<p>本篇尚无导图，快照不会自动付费生成。</p>'
  body+='</section><section><h2>笔记</h2>'
  for n in b['notes']:body+='<article><small>'+esc(n['block_id'] or '整篇')+' · '+stamp(n['timestamp'])+'</small><p>'+esc(n['text'])+'</p></article>'
- body+='</section></main><footer>由拾文生成 · 只读离线快照 · AI整理与原始内容请自行核对</footer>'
+ body+='</section>'
+ if b.get('clips'):
+  body+='<section><h2>金句切片清单</h2>'+''.join('<article><small>'+esc(stamp(r['start']))+'–'+esc(stamp(r['end']))+'</small><p>'+esc(r['zh'])+'</p><p>'+esc(r['en'])+'</p></article>' for r in b['clips'])+'</section>'
+ body+='</main><footer>由拾文生成 · 只读离线快照 · AI整理与原始内容请自行核对</footer>'
  license='\n'.join((Path(__file__).resolve().parent/'cli_assets'/n).read_text(encoding='utf8') for n in ['D3-LICENSE','MARKMAP-LICENSE']) if root else ''
  css='body{margin:0;background:#fff;color:#202026;font:16px/1.8 -apple-system,Segoe UI,Roboto,sans-serif}header,main,nav,footer{max-width:900px;margin:auto;padding:24px}h1{font-size:38px;line-height:1.3}h2{border-bottom:1px solid #eee}nav{display:flex;gap:24px;flex-wrap:wrap}a{color:#b52573;overflow-wrap:anywhere}.prose,p,pre{white-space:pre-wrap;overflow-wrap:anywhere}section{margin-bottom:40px}article{padding:12px 0;border-bottom:1px solid #eee}small,footer{color:#666}svg{width:100%;height:520px}button{padding:12px;border:1px solid #ddd;border-radius:8px;background:#fff}button:focus-visible,a:focus-visible{outline:2px solid #ce3080}@media(max-width:500px){header,main,nav,footer{padding:16px}h1{font-size:28px}svg{height:400px}}'
  return '<!doctype html><!-- '+license.replace('--','- -')+' --><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; base-uri \'none\'; form-action \'none\'"><title>'+esc(b['title'])+'</title><style>'+css+'</style></head><body>'+body+('<script>'+scripts+'</script>' if scripts else '')+'</body></html>'
 @router.post('/{ident}')
-def generate(ident:str):
- b=document_notes.bundle(ident);directory=store.DATA/'jobs'/ident;directory.mkdir(parents=True,exist_ok=True)
+def generate(ident:str,include_clips:bool=False):
+ b=document_notes.bundle(ident)
+ if include_clips:
+  import clips
+  b['clips']=(clips.current(ident) or {}).get('clips',[])
+ directory=store.DATA/'jobs'/ident;directory.mkdir(parents=True,exist_ok=True)
  path=directory/('share-'+ident+'.html');cli_summary.atomic_text(path,render(b))
  return {'filename':path.name,'download':'/api/share-snapshots/'+ident+'/download'}
 @router.get('/{ident}/download')

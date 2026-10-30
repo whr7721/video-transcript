@@ -1,8 +1,9 @@
 """Source-bound bilingual clips. Selection is paid; resumable ASS/ffmpeg rendering is local."""
-import hashlib,io,json,math,re,subprocess,threading,time,zipfile
+import hashlib,io,json,math,re,shutil,subprocess,threading,time,zipfile,tempfile
 from pathlib import Path
 from fastapi import APIRouter,HTTPException
 from fastapi.responses import FileResponse,Response
+from starlette.background import BackgroundTask
 from pydantic import BaseModel,Field
 import documents,organizer,personal_kb,settings,store,media_buffer
 from document_chat import task
@@ -21,7 +22,7 @@ def save(v):
     store.atomic_json(folder(v['task_id'])/'manifest.json',v)
 def safe(text):return re.sub(r'[<>:"/\\|?*\x00-\x1f]','_',text).strip(' .') or '金句'
 def probe(path):
-    r=subprocess.run(['ffprobe','-v','error','-protocol_whitelist','file','-show_entries','format=duration:stream=codec_type,width,height','-of','json',str(path)],capture_output=True,check=True,timeout=30)
+    r=subprocess.run(['ffprobe','-v','error','-protocol_whitelist','file','-show_entries','format=duration:stream=codec_type,width,height:stream_disposition=attached_pic','-of','json',str(path)],capture_output=True,check=True,timeout=30)
     v=json.loads(r.stdout);duration=float(v['format']['duration'])
     if not math.isfinite(duration) or duration<=0:raise ValueError('媒体时长无效')
     return duration,v['streams']
@@ -36,7 +37,7 @@ def media(ident):
         if path.is_file() and path.suffix not in {'.json','.part','.ytdl'}:
             try:
                 duration,streams=probe(path)
-                if any(s['codec_type']=='audio' for s in streams):found.append((path,duration,any(s['codec_type']=='video' and s.get('width',0)>0 for s in streams)))
+                if any(s['codec_type']=='audio' for s in streams):found.append((path,duration,any(s['codec_type']=='video' and s.get('width',0)>0 and not s.get('disposition',{}).get('attached_pic') for s in streams)))
             except (subprocess.SubprocessError,ValueError,KeyError):pass
     if not found:raise ValueError('有文稿但没有可用媒体，请补充源视频或音频；仅字幕不能生成切片。')
     return next((v for v in found if v[2]),found[0])
@@ -117,21 +118,28 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
         header+=f'Style: {name},{s["font"]},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,{s["outline"]},{s["shadow"]},{align},{s["margin"]},{s["margin"]},{margin},1\n'
     header+='[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n'
     for cue in clip['cues']:
-        start=max(0,cue['start']-clip['start']);end=min(clip['duration'],cue['end']-clip['start'])
-        zh=wrap(cue['text'],14);en=wrap(cue['en'],40)
-        # Allocate separate vertical bands based on actual wrapped Chinese lines.
-        lines=zh.count(r'\N')+1;en_y=1920-s['bottom']-lines*s['zh_size']*1.2-s['gap']
-        prefix=f'Dialogue: 0,{ass_time(start)},{ass_time(end)},'
-        header+=prefix+'ZH,,0,0,0,,'+zh+'\n'
-        header+=prefix+'EN,,0,0,0,,{\\an2\\pos(540,'+str(round(en_y))+')}'+en+'\n'
-        if cue.get('speaker'):header+=prefix+'Speaker,,0,0,0,,'+ass_text(cue['speaker'])+'\n'
+        # Segment endpoints are exact; within a long paragraph pages use evenly
+        # divided display intervals, not fabricated word-level ASR timestamps.
+        en_words=cue['en'].split();n=max(1,math.ceil(len(cue['text'])/42),math.ceil(len(cue['en'])/120))
+        for i in range(n):
+            zh=wrap(cue['text'][round(len(cue['text'])*i/n):round(len(cue['text'])*(i+1)/n)],14)
+            en=wrap(' '.join(en_words[round(len(en_words)*i/n):round(len(en_words)*(i+1)/n)]),40)
+            start=max(0,cue['start']+(cue['end']-cue['start'])*i/n-clip['start']);end=min(clip['duration'],cue['start']+(cue['end']-cue['start'])*(i+1)/n-clip['start'])
+            lines=zh.count(r'\N')+1;en_y=1920-s['bottom']-lines*s['zh_size']*1.2-s['gap']
+            prefix=f'Dialogue: 0,{ass_time(start)},{ass_time(end)},'
+            header+=prefix+'ZH,,0,0,0,,'+zh+'\n'
+            header+=prefix+'EN,,0,0,0,,{\\an2\\pos(540,'+str(round(en_y))+')}'+en+'\n'
+            if cue.get('speaker'):header+=prefix+'Speaker,,0,0,0,,'+ass_text(cue['speaker'])+'\n'
     return header
 
 def render(v,row):
     root=folder(v['task_id'])/v['key'];root.mkdir(parents=True,exist_ok=True)
     subtitle=root/f'{row["index"]:02}.ass';subtitle.write_text(ass(row,v['style']),encoding='utf-8-sig')
     output=root/row['filename'];partial=root/(output.stem+'.partial.mp4')
-    media_buffer.ensure_space(max(20_000_000,int(row['duration']*1_500_000)))
+    required=max(20_000_000,int(row['duration']*1_500_000))
+    if shutil.disk_usage(root).free<required+100_000_000:raise ValueError('磁盘空间不足，请释放空间后重试切片；原素材不会自动删除')
+    with store.connect() as db:
+        media_buffer.init(db);db.execute('UPDATE media_buffer SET lease_until=MAX(lease_until,?) WHERE id=?',(time.time()+max(180,row["duration"]*20)+60,v['task_id']))
     args=['ffmpeg','-nostdin','-v','error','-y','-ss',str(row['start']),'-protocol_whitelist','file','-i',v['source_path']]
     if v['video']:
         graph="[0:v]split[bg][fg];[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=30[blur];[fg]scale=1080:1920:force_original_aspect_ratio=decrease[front];[blur][front]overlay=(W-w)/2:(H-h)/2,setsar=1,ass="+subtitle.name+'[v]'
@@ -148,8 +156,11 @@ def render(v,row):
 
 def run(job_id):
     job=documents.generation_get(job_id)
-    if not job:return
+    if not job or job['status']!='queued':return public(current(job['task_id'])) if job else None
     v=read(folder(job['task_id'])/job['key']/'manifest.json')
+    if not v:
+        job.update(status='failed',error='切片清单缺失，请重新生成');documents.generation_save(job);return {'status':'failed','clips':[],'error':job['error']}
+    job['status']='running';documents.generation_save(job)
     try:
         # Recheck media/transcript identity before using a cached selection.
         fresh=prepare(v['task_id'],v['count'],v['style'])
@@ -171,11 +182,13 @@ def run(job_id):
 
 def public(v):
     if not v:return {'status':'empty','clips':[]}
-    return {k:value for k,value in v.items() if k not in {'source_path','segments'}}|{'clips':[{k:x for k,x in r.items() if k!='cues'}|{'url':f'/api/clips/{v["task_id"]}/file/{v["key"]}/{r["index"]}'} for r in v['clips']]}
+    return {k:value for k,value in v.items() if k not in {'source_path','segments'}}|{'clips':[dict(r)|{'url':f'/api/clips/{v["task_id"]}/file/{v["key"]}/{r["index"]}'} for r in v['clips']]}
 def submit(ident,count,enqueue,style=None):
     with LOCK:
         old=current(ident)
-        if old and old['status'] in {'queued','running'}:return public(old)
+        if old and old['status'] in {'queued','running'}:
+            if old['count']!=count or old['style']!={**STYLE,**(style or {})}:raise ValueError('此篇已有不同选项的切片任务，请完成后再提交')
+            return public(old)
         v=prepare(ident,count,style)
         if v['status']=='completed' and all((folder(ident)/v['key']/r['filename']).is_file() for r in v['clips']):return public(v)
         v.update(status='queued',stage='queued',error=None);save(v)
@@ -192,8 +205,8 @@ def recover(enqueue):
             if v:v.update(status='failed',error='服务重启中断切片，请手动重试；已挑选金句和成片保留');save(v)
             job['status']='failed';documents.generation_save(job)
 
-def zip_into(z,ident,prefix=''):
-    v=current(ident)
+def zip_into(z,ident,prefix='',key=None):
+    v=read(folder(ident)/key/'manifest.json') if key else current(ident)
     if not v:return {'task_id':ident,'missing':['manifest']}
     z.writestr(prefix+'manifest.json',json.dumps(public(v),ensure_ascii=False,indent=2));missing=[]
     for row in v['clips']:
@@ -201,6 +214,15 @@ def zip_into(z,ident,prefix=''):
         if row['status']=='completed' and path.is_file():z.write(path,prefix+row['filename'])
         else:missing.append(row['filename'])
     return {'task_id':ident,'status':v['status'],'missing':missing}
+
+def archive(write,name):
+    # 49 episodes must not be materialized as one multi-GB BytesIO in RAM.
+    cache=store.DATA/'clip-exports';cache.mkdir(parents=True,exist_ok=True)
+    f=tempfile.NamedTemporaryFile(dir=cache,suffix='.zip',delete=False);path=Path(f.name);f.close()
+    try:
+        with zipfile.ZipFile(path,'w',zipfile.ZIP_STORED) as z:write(z)
+        return FileResponse(path,media_type='application/zip',filename=name,background=BackgroundTask(path.unlink,missing_ok=True))
+    except Exception:path.unlink(missing_ok=True);raise
 
 class Options(BaseModel):
     count:int=Field(5,ge=1,le=20)
@@ -211,13 +233,24 @@ class Options(BaseModel):
 class BatchOptions(BaseModel):count:int=Field(3,ge=1,le=20)
 def router(enqueue):
     r=APIRouter(prefix='/api/clips')
+    @r.get('/collections/{ident}/preview')
+    def batch_preview(ident:str):
+        import library
+        from link_batches import quota
+        library.collection(ident);needed=0;items=[]
+        for uid in library.members(ident):
+            try:
+                if not uid.startswith('audio:'):raise ValueError('图文资料不支持切片')
+                v=prepare(uid[6:],3);needed+=0 if v.get('selected') else 1;items.append({'uid':uid,'available':True})
+            except (ValueError,HTTPException) as e:items.append({'uid':uid,'available':False,'reason':str(e)})
+        return {'requests':needed,'items':items,'quota':quota()}
     @r.get('/collections/{ident}')
     def batch_state(ident:str):
         import library
         library.collection(ident);snapshot=read(store.DATA/'collections'/ident/'clips.json')
         if not snapshot:return {'items':[],'status':'empty'}
-        snapshot['items']=[{**i,'result':public(current(i['task_id'])) if i.get('task_id') else None} for i in snapshot['items']]
-        snapshot['status']='running' if any(i['result'] and i['result']['status'] in {'queued','running'} for i in snapshot['items']) else 'completed'
+        snapshot['items']=[{**i,'result':public(read(folder(i['task_id'])/i['key']/'manifest.json')) if i.get('task_id') else None} for i in snapshot['items']]
+        snapshot['status']='running' if any(i['result'] and i['result']['status'] in {'queued','running'} for i in snapshot['items']) else 'partial' if any(i.get('error') or i['result'] and i['result']['status']=='failed' for i in snapshot['items']) else 'completed'
         return snapshot
     @r.post('/collections/{ident}')
     def batch_submit(ident:str,body:BatchOptions):
@@ -226,17 +259,18 @@ def router(enqueue):
         for uid in library.members(ident):
             if not uid.startswith('audio:'):items.append({'uid':uid,'error':'图文资料没有音视频，不支持切片'});continue
             tid=uid[6:]
-            try:result=submit(tid,body.count,enqueue);items.append({'uid':uid,'task_id':tid,'job_id':result['id']})
+            try:result=submit(tid,body.count,enqueue);items.append({'uid':uid,'task_id':tid,'job_id':result['id'],'key':result['key']})
             except (ValueError,HTTPException) as e:items.append({'uid':uid,'error':str(e) if isinstance(e,ValueError) else e.detail})
         store.atomic_json(store.DATA/'collections'/ident/'clips.json',{'items':items,'created_at':time.time()});return batch_state(ident)
     @r.get('/collections/{ident}/zip')
     def batch_zip(ident:str):
-        snapshot=batch_state(ident);out=io.BytesIO();listing=[]
-        with zipfile.ZipFile(out,'w',zipfile.ZIP_STORED) as z:
+        snapshot=batch_state(ident)
+        def write(z):
+            listing=[]
             for i,row in enumerate(snapshot['items'],1):
-                listing.append(zip_into(z,row['task_id'],f'{i:03}-{row["task_id"]}/') if row.get('task_id') else row)
+                listing.append(zip_into(z,row['task_id'],f'{i:03}-{row["task_id"]}/',row['key']) if row.get('task_id') else row)
             z.writestr('batch-manifest.json',json.dumps(listing,ensure_ascii=False,indent=2))
-        return Response(out.getvalue(),media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="shiwen-clips-{ident}.zip"'})
+        return archive(write,f'shiwen-clips-{ident}.zip')
     @r.get('/{ident}')
     def state(ident:str):
         task(ident);v=current(ident)
@@ -259,7 +293,8 @@ def router(enqueue):
         return FileResponse(path,media_type='video/mp4',filename=row['filename'])
     @r.get('/{ident}/zip')
     def download(ident:str):
-        task(ident);out=io.BytesIO()
-        with zipfile.ZipFile(out,'w',zipfile.ZIP_STORED) as z:listing=zip_into(z,ident);z.writestr('missing.json',json.dumps(listing,ensure_ascii=False))
-        return Response(out.getvalue(),media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="shiwen-clips-{ident}.zip"'})
+        task(ident)
+        def write(z):
+            listing=zip_into(z,ident);z.writestr('missing.json',json.dumps(listing,ensure_ascii=False))
+        return archive(write,f'shiwen-clips-{ident}.zip')
     return r

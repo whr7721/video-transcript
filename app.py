@@ -26,6 +26,7 @@ import link_ingest, link_jobs
 import xhs_auth
 import bilibili_auth
 import link_batches
+import clips
 import video_frames
 import share_snapshot
 import document_notes
@@ -76,6 +77,12 @@ def worker():
             TASKS.task_done()
             return
         link_batches.set_busy(True)
+        if isinstance(task_id,str) and task_id.startswith('clips:'):
+            try:clips.run(task_id[6:])
+            finally:
+                TASKS.task_done()
+                link_batches.set_busy(False)
+            continue
         with MUTEX:
             task = store.get(task_id)
         try:
@@ -118,6 +125,7 @@ async def lifespan(app):
     subscriptions.recover()
     document_chat.recover()
     video_frames.recover()
+    clips.recover(TASKS.put)
     for task in reversed(store.all_tasks()):
         if task["status"] in {"queued", "running"} and task.get("source",{}).get("kind")!="link":
             task.update(status="queued", message="正在恢复上次未完成的任务")
@@ -147,6 +155,7 @@ app.include_router(document_chat.router)
 app.include_router(library.router)
 app.include_router(subscriptions.router)
 app.include_router(source_expand.router)
+app.include_router(clips.router(TASKS.put))
 app.include_router(link_jobs.router(TASKS.put, ('youtube','bilibili','douyin','rss','tiktok','twitter','xiaoyuzhou','spotify','xiaohongshu')))
 
 class NewTask(BaseModel):
