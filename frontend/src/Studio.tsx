@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import ResearchPanel, {type Passage} from './ResearchPanel'
 import type {SourceUI} from './source-ui'
 import './styles.css'
+import './workbench-redesign.css'
 import ChapterNavigation from './ChapterNavigation'
 import type {MindmapNode} from './mindmap-render'
 const Mindmap=lazy(()=>import('./Mindmap'))
