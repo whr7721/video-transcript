@@ -17,3 +17,9 @@ test('failed stage can retry without submitting the link again',async()=>{
  vi.stubGlobal('fetch',vi.fn(async(path:string,init?:RequestInit)=>{if(init)calls.push(path);return {ok:true,json:async()=>path.endsWith('capabilities')?{platforms:['youtube']}:path.endsWith('/retry')?{id:'a',task_id:'doc',status:'completed'}:[{id:'a',task_id:'doc',status:'failed',error:'网络断开'}]}}))
  render(<LinkCapture onCreated={async()=>{}}/>);await screen.findByText('网络断开');fireEvent.click(screen.getByRole('button',{name:'重试失败阶段'}));await screen.findByText('处理完成');expect(calls).toEqual(['/api/link/a/retry'])
 })
+
+test('capability failures leave the skeleton and show a real error',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('offline')}))
+ render(<LinkCapture onCreated={async()=>{}}/>);await screen.findByText('提取能力暂时无法读取，请检查本地服务')
+ expect(screen.queryByRole('status',{name:'正在读取提取能力'})).toBeNull()
+})

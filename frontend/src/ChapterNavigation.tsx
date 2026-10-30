@@ -1,3 +1,4 @@
+import {Skeleton} from './Motion'
 import React, {useEffect, useRef, useState} from 'react'
 import type {Passage} from './ResearchPanel'
 type Section={review_required?:boolean;evidence?:{fragment_id:string;quote:string;status?:string}[];title:string;guide?:string;fragment_ids:string[];kind:string}
@@ -11,6 +12,7 @@ export default function ChapterNavigation({taskId,onLocate,onResearch,documentRe
  const [plan,setPlan]=useState<Plan|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[chosen,setChosen]=useState<number|null>(null),[ranges,setRanges]=useState<Range[]>([])
  const [job,setJob]=useState<Job|null>(null),[jobs,setJobs]=useState<Job[]>([]),[budget,setBudget]=useState<Budget|null>(null),[action,setAction]=useState<'directory'|'clean'>('directory')
  const [rename,setRename]=useState(''),[splitAt,setSplitAt]=useState(''),[editNotice,setEditNotice]=useState('')
+ const [readingChapter,setReadingChapter]=useState<number|null>(null)
  const alive=useRef(true),excerpt=useRef<HTMLDivElement>(null),selectionRequest=useRef(0)
  const base=`/api/studio/documents/${taskId}`
  useEffect(()=>{let stopped=false;alive.current=true
@@ -22,6 +24,7 @@ export default function ChapterNavigation({taskId,onLocate,onResearch,documentRe
  const timer=setInterval(()=>request<Job>(`${base}/chapter-jobs/${job.id}`).then(v=>{if(!stopped){setJob(v);setJobs(old=>[v,...old.filter(j=>j.id!==v.id)])}}).catch(e=>{if(!stopped)setError(e.message)}),1500)
  return()=>{stopped=true;clearInterval(timer)}
  },[base,job?.id,job?.status])
+ useEffect(()=>{const root=document.querySelector('.paper-scroll');if(!root||!plan?.sections.length||typeof IntersectionObserver==='undefined')return;const visible=new Map<Element,number>();const sections=plan.sections;const observer=new IntersectionObserver(entries=>{for(const entry of entries){if(entry.isIntersecting)visible.set(entry.target,entry.boundingClientRect.top);else visible.delete(entry.target)}const element=[...visible].sort((a,b)=>a[1]-b[1])[0]?.[0];if(!element)return;const id=element.id.replace('source-','');const index=sections.findIndex(section=>section.fragment_ids.some(fragment=>fragment===id||fragment.startsWith(id+':')));if(index>=0)setReadingChapter(index)}, {root,rootMargin:'-2% 0px -65% 0px',threshold:0});root.querySelectorAll('[id^="source-"]').forEach(el=>observer.observe(el));return()=>observer.disconnect()},[plan,taskId])
  async function perform(fn:()=>Promise<void>){setBusy(true);setError('');try{await fn()}catch(e){if(alive.current)setError((e as Error).message)}finally{if(alive.current)setBusy(false)}}
  async function persist(official=false,updated=plan){if(!updated)return
  await perform(async()=>{const value=await request<Plan>(`${base}/${official?'official-chapters':'chapters'}`,post({revision:updated.revision,plan:updated}));if(!alive.current)return;setPlan(value);setChosen(null);setRanges([]);setBudget(null);setEditNotice('已保存新目录版本，历史笔记仍引用原版本。')})}
@@ -52,10 +55,10 @@ export default function ChapterNavigation({taskId,onLocate,onResearch,documentRe
  const cleaned=jobs.find(j=>j.status==='completed'&&j.action==='clean'&&JSON.stringify(j.ranges)===JSON.stringify(ranges))
  return <details className="chapter-navigation"><summary>章节与导读 <small>按需生成，原稿保留</small></summary>
  {error&&<p role="alert">{error}</p>}{editNotice&&<p role="status">{editNotice}</p>}
- {!plan&&!error&&<p role="status">正在读取目录…</p>}
+ {!plan&&!error&&<Skeleton label="正在读取目录"/>}
  {plan&&<>{plan.stale?<p role="alert">目录对应旧原稿，请生成新目录；已有笔记未改动。</p>:<>
  <p className="muted-note">{plan.origin==='ai'?'AI语义章节 · 导读待核对':plan.origin==='official'?'节目官方目录 · 时间近似映射':plan.origin==='manual'?'人工修订目录':'本地阅读分段 · 按长度划分，不代表话题章节'} · {plan.revision?`版本 ${plan.revision}`:'尚未保存'}</p>
- <nav aria-label="原文阅读目录"><ol>{plan.sections.map((s,i)=><li key={i}><button disabled={busy} aria-current={chosen===i?'location':undefined} onClick={()=>choose(i)}>{s.title}</button>{s.guide&&<p className="chapter-guide">{s.guide}{s.review_required&&<small>（回查原话未精确匹配；仅定位原文，导读需核对）</small>}</p>}</li>)}</ol></nav>
+ <nav aria-label="原文阅读目录"><ol>{plan.sections.map((s,i)=><li key={i}><button disabled={busy} aria-current={(readingChapter??chosen)===i?'location':undefined} data-selected={chosen===i||undefined} onClick={()=>choose(i)}>{s.title}</button>{s.guide&&<p className="chapter-guide">{s.guide}{s.review_required&&<small>（回查原话未精确匹配；仅定位原文，导读需核对）</small>}</p>}</li>)}</ol></nav>
  {plan.warning&&<p>{plan.warning}</p>}
  <div className="chapter-actions"><button disabled={busy||plan.revision>0} onClick={()=>persist()}>保存阅读目录</button><button disabled={busy||active} onClick={()=>persist(true)}>加载节目官方目录</button><a href={`${base}/chapters/export/md`}>导出目录与整理稿</a></div>
  {chosen!==null&&<section className="chapter-excerpt" aria-label="所选章节精确原文"><h3>{plan.sections[chosen]?.title}</h3>

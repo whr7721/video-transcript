@@ -1,3 +1,4 @@
+import {Skeleton} from './Motion'
 import { useEffect, useState } from 'react'
 import { BookOpen, ExternalLink, LoaderCircle, Search, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,10 +32,11 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
  const [view,setView]=useState('research'),[topic,setTopic]=useState('我的学习与创作'),[personal,setPersonal]=useState('')
  const [topics,setTopics]=useState<Topic[]>([]),[notes,setNotes]=useState<Note[]>([]),[filter,setFilter]=useState(''),[editing,setEditing]=useState<Note|null>(null)
  const [editText,setEditText]=useState(''),[manualText,setManualText]=useState(''),[manualBusy,setManualBusy]=useState(false),[modelReady,setModelReady]=useState(true)
+ const [historyLoading,setHistoryLoading]=useState(true)
  const taskId=passage.taskId
  useEffect(()=>{setSelection(passage.selection);setSelectedBasis(passage)},[passage.selection,passage.basis,passage.revision,passage.generation_id,passage.chapter_revision,passage.chapter_index,passage.selection_start])
- useEffect(()=>{let disposed=false
-  Promise.all([api<ResearchJob[]>('/documents/'+taskId),api<Topic[]>('/topics'),api<Note[]>('/notes')]).then(([js,ts,ns])=>{if(!disposed){setJobs(js);setJob(js[0]||null);setTopics(ts);setNotes(ns)}}).catch(()=>setError('无法载入深入记录，请刷新页面重试。'))
+ useEffect(()=>{let disposed=false;setHistoryLoading(true)
+  Promise.all([api<ResearchJob[]>('/documents/'+taskId),api<Topic[]>('/topics'),api<Note[]>('/notes')]).then(([js,ts,ns])=>{if(!disposed){setJobs(js);setJob(js[0]||null);setTopics(ts);setNotes(ns)}}).catch(()=>{if(!disposed)setError('无法载入深入记录，请刷新页面重试。')}).finally(()=>{if(!disposed)setHistoryLoading(false)})
   return()=>{disposed=true}
  },[taskId])
  useEffect(()=>{let disposed=false;fetch('/api/settings').then(r=>r.json()).then(v=>{if(!disposed){setSearchReady(!!v.search_key_configured);setModelReady(v.key_configured!==false)}}).catch(()=>{});return()=>{disposed=true}},[taskId,settingsVersion])
@@ -58,7 +60,7 @@ export default function ResearchPanel({passage,onSettings,settingsVersion=0}:{pa
  useEffect(()=>{setClaimIds(job?.claims?.map(c=>c.id)||[]);setClaimKinds(Object.fromEntries(job?.claims?.map(c=>[c.id,c.kind])||[]))},[job?.id,job?.claims?.length])
  async function confirmClaims(){if(!job)return;setBusy(true);setError('');try{setJob(await api<ResearchJob>('/jobs/'+job.id+'/confirm',{method:'POST',body:JSON.stringify({claim_ids:claimIds,kinds:Object.fromEntries(claimIds.map(id=>[id,claimKinds[id]]))})}))}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  const pending=!!job&&['queued','running'].includes(job.status)
- return <section className="research-panel" aria-label="段落深入与专题笔记">
+ return <section className="research-panel" aria-label="段落深入与专题笔记">{(historyLoading||busy)&&<Skeleton label={historyLoading?'正在读取深入记录':'正在处理研究任务'}/>}
   <details className="manual-note-form"><summary>只记自己的理解 · 不调用 AI</summary><p className="research-hint">保存当前选段与来源版本，无需任何 Key。</p><label htmlFor="manual-topic" className="research-label">笔记专题</label><input id="manual-topic" name="manual_topic" autoComplete="off" maxLength={100} value={topic} onChange={e=>setTopic(e.target.value)}/><label htmlFor="manual-note" className="research-label">我的来源笔记</label><textarea id="manual-note" name="manual_note" maxLength={12000} value={manualText} onChange={e=>setManualText(e.target.value)} placeholder="用自己的话记录理解、疑问或下一步…"/><Button disabled={manualBusy||!manualText.trim()||!topic.trim()} onClick={saveManual}><Save size={14} aria-hidden="true"/>保存手动笔记</Button></details>
   {!modelReady&&<p className="research-hint">AI整理与深入需要硅基流动 Key。<button className="text-link" onClick={onSettings}>配置文本模型 Key</button> 手动笔记不受影响。</p>}
   <div className="research-navigation"><Button size="sm" variant={view==='research'?'default':'ghost'} aria-pressed={view==='research'} onClick={()=>setView('research')}><Search size={14} aria-hidden="true"/>深入一下</Button><Button size="sm" variant={view==='notes'?'default':'ghost'} aria-pressed={view==='notes'} onClick={()=>setView('notes')}><BookOpen size={14} aria-hidden="true"/>专题笔记</Button></div>
