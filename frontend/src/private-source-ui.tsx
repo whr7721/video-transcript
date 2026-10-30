@@ -1,3 +1,4 @@
+import Rewrite from './Rewrite'
 import Clips from './Clips'
 import XhsSettings from './XhsSettings'
 import VideoFrames from './VideoFrames'
@@ -18,6 +19,7 @@ function Capture({onCreated,notify}:{onCreated:(id:string)=>Promise<void>;notify
 return <div className="dialog-form"><label>提取方式<select name="capture_mode" autoComplete="off" value={mode} onChange={e=>setMode(e.target.value)}><option value="single">单条视频</option><option value="batch">博主批量</option></select></label>{mode==='batch'&&<div className="form-row"><label>本批数量<select name="batch_limit" autoComplete="off" value={limit} onChange={e=>setLimit(e.target.value)}>{['10','30','100'].map(v=><option key={v} value={v}>{v} 条</option>)}</select></label><label>视频最长<select name="max_duration" autoComplete="off" value={duration} onChange={e=>setDuration(e.target.value)}>{['600','1200','1800'].map(v=><option key={v} value={v}>{Number(v)/60} 分钟</option>)}</select></label></div>}{mode==='single'?<LinkCapture onCreated={onCreated}/>:<><label>抖音分享链接<textarea name="share_text" autoComplete="off" value={share} onChange={e=>setShare(e.target.value)} placeholder="粘贴链接，或从抖音复制的整段分享文字…" maxLength={5000} rows={4}/></label><p className="muted-note">素材进入5GB缓冲，待你确认最终稿；满额时先清理已确认素材，不足则暂停下载。</p><Button onClick={create} disabled={submitting}>{submitting?<LoaderCircle className="spin"/>:<Plus/>}开始提取</Button></>}</div>
 }
 export const sourceUI:SourceUI={
+ Rewrite,
  Clips,
  DocumentChat,
  DocumentTools,
