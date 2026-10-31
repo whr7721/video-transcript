@@ -137,6 +137,12 @@ class RewriteTests(unittest.TestCase):
   self.assertEqual([c.args[2] for c in m.call_args_list],[1600,min(8000,700+4*750),min(8000,700+4*750)])
   self.assertEqual([c.args[1] for c in b.call_args_list],[1600,min(8000,700+4*750),min(8000,700+4*750)]);self.assertEqual(s.call_count,3)
   self.assertLessEqual(sum(1+r.PLATFORM[style][3] for style in r.STYLES),12)
+ def test_duplicated_block_heading_is_stripped_from_body(self):
+  model=Model(self.outline(1,title='短文标题'),[self.part('### 第1节\n\n作者认为，注意力是有限的。')])
+  with patch.object(organizer,'request_json',side_effect=model):v=r.submit(self.id,'xiaohongshu')
+  self.assertEqual(v['status'],'completed');self.assertEqual(v['result']['body'],'作者认为，注意力是有限的。')
+  self.assertIn('1处重复的本块小标题已从正文去掉',''.join(v['result']['notes']))
+  self.assertEqual(r.strip_heading('**短文标题**\n\n正文','第1节','短文标题'),'正文');self.assertEqual(r.strip_heading('正文\n\n### 第1节','第1节'),'正文\n\n### 第1节');self.assertEqual(r.strip_heading('### 第1节','第1节'),'### 第1节')
  def test_legacy_v1_version_listed_without_false_stale(self):
   payload=r.context(self.id);legacy={'id':r.identity(self.id,'xiaohongshu',payload,'rewrite-v1'),'task_id':self.id,'style':'xiaohongshu','status':'completed','text':'# 旧标题\n\n旧正文','revision':0,'result':{'title':'旧标题','blocks':[],'reused_quotes':[],'notes':[]}}
   r.save(legacy);data=r.listing(self.id)
