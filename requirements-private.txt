@@ -1,5 +1,7 @@
 # Private app.py only; customer distribution dependencies remain frozen.
 -r requirements.txt
+# 图集/抖音图文的本地识字组件（主 venv 可直接运行 OCR；有 .venv-ocr 时仍优先用隔离环境）
+-r requirements-ocr.lock.txt
 playwright==1.64.0
 
 xhshow==0.2.0

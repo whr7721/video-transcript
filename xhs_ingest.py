@@ -2,7 +2,7 @@
 import json,re
 from urllib.parse import urlsplit,urljoin,parse_qs
 import httpx
-import article_fetch,articles,image_documents,store,xhs_auth
+import article_fetch,image_documents,store,xhs_auth
 
 def resolve(url):
  for _ in range(6):
@@ -49,25 +49,12 @@ def ingest(task,update,directory,metadata):
   return local_transcribe(audio,directory/'local_chunks',lambda f,n,t:update(progress=f,segment_count=n),language=task.get('language','auto'))
  images=card.get('image_list') or []
  if not images:raise ValueError('笔记没有可提取的视频或图片')
- checkpoint=directory/'xhs-article.json';old=json.loads(checkpoint.read_text()) if checkpoint.is_file() else {}
- item=articles.get(old.get('id','')) if old else None
- if not item:
-  item=image_documents.create(metadata['title'],len(images),source_url=task['url'],description=card.get('desc',''));store.atomic_json(checkpoint,{'id':item['id']})
- image_documents.update(item['id'],image_status='fetching',status='running')
- for index,image in enumerate(images):
-  block=next(b for b in articles.get(item['id'])['blocks'] if b.get('type')=='image' and b.get('page')==index+1)
-  if block.get('asset_status')=='saved':continue
+ urls=[]
+ for image in images:
   url=image.get('url_default') or next((r.get('url') for r in image.get('info_list',[]) if r.get('url')),None)
-  if not url:raise ValueError('笔记图片地址缺失，未将部分内容冒充完整')
-  data,_,_=article_fetch.fetch(url,limit=image_documents.MAX_IMAGE_BYTES,referer='https://www.xiaohongshu.com/')
-  image_documents.put_image(item['id'],index,data)
- update(stage='transcribing',message='正在本地图集OCR')
- image_documents.run_ocr(item['id']);item=articles.get(item['id'])
- if item.get('completeness')=='partial' or item.get('image_status')=='failed':raise ValueError('图集OCR未完整完成，请检查本地OCR组件后重试')
- blocks=[b for b in item['blocks'] if b.get('text','').strip() and b.get('type')!='image']
- text='\n\n'.join(b['text'] for b in blocks)
- if not text.strip():raise ValueError('图集未识别到可读文字')
- metadata['article_id']=item['id'];return {'text':text,'segments':[{'text':b['text']} for b in blocks],'engine':'image_ocr','timing_precision':'none'}
+  urls.append([url] if isinstance(url,str) else [])
+ text,blocks,article_id=image_documents.to_document(metadata['title'],urls,source_url=task['url'],checkpoint=directory/'xhs-article.json',referer='https://www.xiaohongshu.com/',description=card.get('desc',''),progress=update)
+ metadata['article_id']=article_id;return {'text':text,'segments':[{'text':b['text']} for b in blocks],'engine':'image_ocr','timing_precision':'none'}
 
 def register():
  import link_ingest

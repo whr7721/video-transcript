@@ -16,5 +16,5 @@ export type SourceUI={
  BatchCapture?:ComponentType<{onCreated:(id:string)=>Promise<void>}>
  PrivateSettings?:ComponentType
  SettingsLink:ComponentType
- SourceLink:ComponentType<{task:{video_id?:string;source?:{kind:string;original_name?:string;feed_url?:string;show_title?:string;ingest?:string}}}>
+ SourceLink:ComponentType<{task:{video_id?:string;media_kind?:string;source?:{kind:string;original_name?:string;feed_url?:string;show_title?:string;ingest?:string}}}>
 }

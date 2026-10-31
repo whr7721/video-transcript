@@ -174,8 +174,11 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
                 images = item.get('images') or []
                 if not isinstance(images, list) or not images:
                     raise RuntimeError('该作品未返回图集图片，请确认是图文作品。')
+                author = item.get('author') or {}
                 return {'status':'ok','id':video_id,'title':item.get('desc',''),
-                        'author':item.get('author',{}).get('nickname',''),
+                        'author':author.get('nickname',''),'sec_uid':author.get('sec_uid',''),
+                        'create_time':item.get('create_time'),
+                        'tags':[x.get('hashtag_name') for x in item.get('text_extra') or [] if isinstance(x,dict) and x.get('hashtag_name')],
                         'images':[{'index':i,'urls':[u for u in (image.get('url_list') or []) if isinstance(u,str)]}
                                   for i,image in enumerate(images)],'total':len(images)}
             from media_platform.douyin.media import extract_video_urls
