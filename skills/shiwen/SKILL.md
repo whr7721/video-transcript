@@ -18,6 +18,8 @@ description: 使用本机拾文把视频、播客链接或本地音视频转为�
 | 只要原文、字幕、转写 | `shiwen add "<url或本地文件>"` |
 | 摘要、精华、金句、导图 | `shiwen summarize "<url或本地文件>" --json` |
 | 按话题分章、章节导读 | `shiwen summarize "<url或本地文件>" --chapter --json` |
+| 金句切片成竖屏双语视频 | `shiwen clips <task_id> --count N` |
+| 多平台二创改写 | `shiwen rewrite <task_id> --style xiaohongshu\|gongzhonghao\|zhihu\|moments --json` |
 | 不确定参数 | `shiwen commands` 或 `shiwen summarize --help` |
 
 本地转写不调用付费模型；整理通常两次模型请求，章节模式额外请求，统一计入每日配额，成功缓存不重复调用。用户只要转写时不要擅自加整理。摘要需已配置硅基流动 Key，缺 Key 时引导在拾文设置填写，不能要求把 Key 粘贴到对话或命令日志。
