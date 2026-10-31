@@ -89,6 +89,7 @@ build_customer_package --full → build_full_package → full_delivery / full_en
 | `session.py` / `douyin_session_guard.py` / `bilibili_auth.py` | 只读来源会话→owned profile；抖音跨进程互斥/冷却，B站nav验证、受限Cookie流向。 |
 | `library.py` / `topic_search.py` / `query_expansion.py` | 派生词法索引与本地查询扩展；不得破坏篇/专题范围，词法召回不是通用语义翻译。 |
 | `document_chat.py` | 只依据本篇实际检索片段；历史/摘要非原文证据，逐字引用校验不等于语义证明。 |
+| `rewrite.py` | 二创两段式：1 次大纲定结构与块预算，分块各写一次；字数由服务端预算/截断/兜底守，逐字 evidence 验证器与 v1 一致；失败块缓存，重试只补缺块。 |
 | `document_notes.py` / `share_snapshot.py` | 笔记版本/锚点与显式导出；保护vault外部编辑，分享只用已有成果且离线自包含。 |
 | `video_frames.py` / `experiments/vision/client.py` | 抽帧与视觉调用分开，逐帧缓存、上限与预算；不把采样当完整理解。 |
 | `build_full_package.py` / `full_delivery/` | 代码/运行时允许列表式交付，路径注入及便携自检；不打包数据/凭据。 |
@@ -263,3 +264,8 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 
 ## 2026-10-30 AI二创（实现待审，真实素材待验）
 四平台风格、独立编辑版本、共享请求/费用保护、缓存、Markdown/CLI已接入；md2card仅预留数据接口。354后端/100前端测试与构建、1280/390隔离截图见runtime/rewrite-20261030/及REWRITE_GUIDE.md。未验：用户待提供“大麦哥”素材；真实四版内容/人称/延伸/金句抽查，最多4次请求，当前0次。机器来源存在校验不保证语义忠实。
+
+## 2026-10-31 AI二创 v2 两段式（实现+真实四版验收，待独立审查）
+修复单（`ba5b20c`）关单后留下的判词是：证据 0 编造、字数 2.3–3.9× 超写，属模型能力边界。本单按裁决方向 1 改造：**大纲 1 次 + 分块 N 次**，模型只在大纲里定结构/块预算，字数由服务端切、截、兜底。`plan()` 用最大余数法把块预算归一到平台上限并丢弃非法 ids；`merge()` 按块累计装填、句末优先截断、总额兜底；`checked()` 与 evidence 验证器一行未改（原 5 条验证器用例一条未动）；`v['plan']/v['parts']` 落盘，重试只补失败块；额度预检停在分块前，不烧完大纲卡死；缓存身份升 `rewrite-v2`，v1 记录按自身 version 判 stale 不误标。块数上限按“四版 ≤12 次”倒推（公众号3–4/知乎2/小红书1/朋友圈1），前端预估改为按块计。
+
+真实四版（大麦哥 `254234f520f18d2b`，7564 字）：公众号 2390/2500、小红书 477/500、知乎 1330/1500、朋友圈 88(+标题11)，全部入限；独立复核 evidence 编造 0、跨段未声明 0；原稿与 v1 记录字节未变。**实际请求 20 次 > 设计 12 次**：多出的 8 次是失败块（3 次“清洗式引用”、1 次 extension 空 ids、1 次缺（延伸）标注）与调参重跑（小红书 294/288 字、重复小标题），逐条列在审查请求里，未把重跑伪装成一次成功。挂账：四版非同一次提示词（朋友圈仍是第一轮提示词产物）、小红书/朋友圈正文重复小标题、未重拍 1280/390 截图、“同提示词冷跑 12 次”需额度重置后补。证据：`runtime/rewrite-v2-20261031/`（four_outputs_v2.json、verification 输出、backend/frontend/build、REVIEW-REQUEST.md）。客户包仍冻结，零新增依赖。
