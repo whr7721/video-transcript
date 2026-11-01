@@ -286,3 +286,9 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 3. **`douyin_search_bridge.py` 未删**：复核发现 `source_enumeration.py` 在 subprocess 里调用它做话题枚举，审计"全库零引用"结论有误（当时只查了 `import`）。文件保留，结论回执在审查请求里。
 
 验收：全量后端 376 passed / 1 failed（`test_core::test_batch_pause_resume_and_origin`，本机既有 Windows 临时库抖动）、前端 100 passed、构建通过；自用 8765 启动 `/api/health` ok（models_ready、collector_ready）、`/studio/` 200。证据：`runtime/slim-20261101/`（backend/frontend/build/health.txt、REVIEW-REQUEST.md）。
+
+## 2026-11-01 ASR 英文专名纠正（后处理层，待独立审查）
+
+真实问题：SenseVoice 把英文专名读成 `deep sickick` / `harnes` / `honess` / `snluma` / `snow鲁码`，污染搜索、引用与切片字幕。先调研：本机 sherpa-onnx 1.13.8 的 `from_sense_voice()` 无 `hotwords_file/hotwords_score`，官方文档明确只有 transducer 模型支持热词且需 `modified_beam_search`；`hr_*` 同音替换是拼音/词典级、管不了英文多词音译。故按裁决走后处理层 `asr_hotwords.py`：`data/hotwords.json`（首次落盘、用户可改、键大小写不敏感合并默认表）做规范写法→变体；匹配忽略大小写/空格/标点、长变体优先、拉丁边界保护、重叠跳过；`text`/`segments` 纠正，`raw_text` 保留原样，`corrections` 记明细，`review_note` 追加"已按专名表纠正 N 处"，`corrections` 存在即幂等跳过。接入 `link_ingest.export()` 与 `transcript_stage.finish_transcription()` 两处。
+
+实测：历史任务 `44dddd1bae6dab54`（1925 字）重放纠正 **14 处**、纠正后零残留、原稿字节未变；同一音频重新 ASR（1929 字/18 段）纠正 12 处、导出后零残留；用户给的样例 `254234f520f18d2b` 实测 **0 命中**（该任务为"人生哲学"，无英文专名，真噪声在 44dddd1bae6dab54）。挂账：表外新变体不会被猜，需用户补；已完成旧转写不自动重写（重放/重新导出才生效）；同音字变体靠穷举不靠拼音推断。证据：`runtime/hotwords-20261101/`、[ASR_HOTWORDS_GUIDE.md](ASR_HOTWORDS_GUIDE.md)。

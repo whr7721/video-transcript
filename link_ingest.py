@@ -37,6 +37,8 @@ def stamp(seconds):
     return f'{h:02}:{m:02}:{s:02},{ms:03}'
 
 def export(directory, result, metadata):
+    import asr_hotwords
+    result = asr_hotwords.apply(result)
     rows = []
     for s in result.get('segments', []):
         if 'start' not in s or 'end' not in s:

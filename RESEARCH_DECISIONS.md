@@ -562,3 +562,10 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 
 ## 2026-10-30 多平台AI二创
 现有creation.py强制卡片数组，保留不改；新增rewrite.py供Web/CLI共用，沿用request_json与费用保护，无新依赖。外部参考https://github.com/langgenius/dify（只参考工作流，不引入代码/依赖）与https://api-docs.deepseek.com/guides/json_mode/（结构化JSON须明确提示并应用层校验）。来源ID+逐字证据+金句核验、延伸分块显式标注；机器校验不替代语义忠实性判断。原始模型稿与人工修订分离，CAS保存避免覆盖，来源/金句/模型/提示版本参与缓存。短原文不为字数造事实，超长上下文明确拒绝。证据runtime/rewrite-20261030/，354后端/100前端与构建，双宽截图为隔离夹具；0次真实调用，待用户提供大麦哥素材后四次以内验收。见REWRITE_GUIDE.md。
+
+## 2026-11-01 ASR 英文专名纠正
+**否定：原生 hotwords。** 本机 sherpa-onnx 1.13.8，`OfflineRecognizer.from_sense_voice()` 签名里没有 `hotwords_file/hotwords_score`（`from_transducer()` 才有）；官方文档 https://k2-fsa.github.io/sherpa/onnx/hotwords/index.html 明确"only transducer models support hotwords… All other models don't support hotwords"，且需 `modified_beam_search`。SenseVoice 是 non-transducer，热词走不通。
+**否定：hr_* 同音替换。** 该版 SenseVoice 工厂虽暴露 `hr_dict_dir/hr_rule_fsts/hr_lexicon`，但它是面向中文拼音的音节级替换，需要模型专属词典/token，对"deep sickick→DeepSeek"这类英文多词音译无能为力，且不可计数、不可回溯。
+**采用：后处理纠正层**（`asr_hotwords.py`）。理由：需要用户可维护词表、可计数披露、原文可回溯，三件事在解码器内都做不到。匹配用 casefold+去空格标点后的规范化串，长变体优先、拉丁边界保护（`harnes` 不会吃掉 `harness` 的尾巴）、重叠跳过；词表 `data/hotwords.json` 首次使用时落盘，规范写法做键、变体做值，用户键大小写不敏感并与默认表合并。
+原文纪律：`text`/`segments` 纠正，`raw_text` 存未纠正文本，`corrections` 记逐条明细，`review_note` 追加"已按专名表纠正 N 处"；`corrections` 键存在即跳过，重复导出不会二次替换。接入点两处：`link_ingest.export()`（链接/本地/图文的统一出口）与 `transcript_stage.finish_transcription()`（视频与云端 ASR，写 md 前）。
+实测（任务 44dddd1bae6dab54"DeepSeek接入QQ"）：历史转写重放 14 处（SnoLuma 6 / harness 6 / DeepSeek 2），纠正后无残留变体，原稿字节未变；同一音频重新 ASR（1929 字/18 段）命 12 处、导出后同样零残留。任务 254234f520f18d2b 实测 0 命中——该单用户给的样例 ID 对应的是"人生哲学"视频，无英文专名，真正噪声在 44dddd1bae6dab54。证据 runtime/hotwords-20261101/、ASR_HOTWORDS_GUIDE.md。
