@@ -11,6 +11,7 @@ from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel,Field
 import article_fetch
 import local_files as files
+import job_retry
 import media_buffer
 import podcast_feed
 import podcast_text
@@ -121,9 +122,8 @@ def retry(ident:str):
     with files.LOCK:
         value=get('podcast_imports',ident)
         if value['status'] not in {'failed','interrupted','waiting_space','cancelled'}:raise HTTPException(409,'当前获取无需重试')
-        value.update(status='queued',stage='queued',bytes=0,error=None,message='等待重新获取，将校验已有内容')
-        save('podcast_imports',value);files.TASKS.put('podcast:'+ident)
-        return value
+        return job_retry.requeue(value,lambda record: save('podcast_imports',record),lambda: files.TASKS.put('podcast:'+ident),
+                                 status='queued',stage='queued',bytes=0,message='等待重新获取，将校验已有内容')
 
 
 def associate(task_id,source):

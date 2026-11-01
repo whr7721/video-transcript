@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import ClientDisconnect
 import store
+import job_retry
 import media_buffer
 import local_media
 from source_contract import FileSource
@@ -352,9 +353,8 @@ def retry(ident:str):
         value=store.get(ident)
         if not value or value.get('source',{}).get('kind') not in {'local_file','podcast'}: raise HTTPException(404,'本地任务不存在')
         if value['status'] not in {'failed','waiting_space'}: raise HTTPException(409,'此任务不需要重试')
-        update_task(ident,status='queued',stage='queued',error=None,message='等待继续，将复用已完成语音片段')
-        TASKS.put(ident)
-    return {'id':ident}
+        job_retry.requeue(value,store.save,lambda: TASKS.put(ident),status='queued',stage='queued',message='等待继续，将复用已完成语音片段')
+        return {'id':ident}
 
 
 def resume():

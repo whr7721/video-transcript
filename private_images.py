@@ -10,6 +10,7 @@ import httpx
 from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel,Field
 import articles
+import job_retry
 import article_fetch
 import image_documents
 from pipeline import input_url,MC_PY
@@ -112,5 +113,5 @@ def retry(ident:str):
     item=articles.get(ident)
     if not item or not item.get('source_share'):raise HTTPException(404,'图文采集任务不存在')
     if item.get('image_status') not in {'failed','partial'}:raise HTTPException(409,'当前任务无需重试')
-    image_documents.update(ident,image_status='fetching',status='running',error=None)
-    articles.EXECUTOR.submit(run,ident,item['source_share']);return articles.get(ident)
+    job_retry.requeue(item,articles.save,lambda: articles.EXECUTOR.submit(run,ident,item['source_share']),image_status='fetching',status='running')
+    return articles.get(ident)

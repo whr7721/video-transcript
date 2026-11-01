@@ -6,7 +6,7 @@ from typing import Literal
 from fastapi import APIRouter,HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel,Field
-import documents,store,link_ingest
+import documents,store,link_ingest,job_retry
 import httpx
 
 LOCK=threading.RLock()
@@ -157,6 +157,5 @@ def router(enqueue,allowed):
             task['link_job_id']=ident
             if task['status']!='completed':task.update(status='queued',stage='queued')
             store.save(task)
-            job.update(status='queued',error=None);documents.generation_save(job);enqueue(job['task_id'])
-        return job
+            return job_retry.requeue(job,documents.generation_save,lambda: enqueue(job['task_id']),status='queued')
     return api
