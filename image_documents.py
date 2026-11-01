@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 import uuid
 import articles
@@ -66,11 +67,61 @@ def put_image(ident, index, data):
         item['asset_bytes']=amount;articles.save(item);return item
 
 
+def to_document(title, urls_by_page, source_url='', checkpoint=None, referer='', author='', description='', progress=None):
+    """图集→原图→OCR→文字稿（小红书图文与抖音图文共用）。
+
+    urls_by_page 每页给出若干候选地址，按顺序尝试；已保存的页直接跳过，
+    重跑不会重复下载。返回 (text, blocks, article_id)。
+    """
+    import httpx
+    import article_fetch
+    report = progress or (lambda **fields: None)
+    count = len(urls_by_page)
+    if not 1 <= count <= MAX_IMAGES:
+        raise ValueError('本版支持1—64张图片；不会截取后宣布完整')
+    old = json.loads(checkpoint.read_text(encoding='utf8')) if checkpoint and checkpoint.is_file() else {}
+    item = articles.get(old.get('id', '')) if old.get('id') else None
+    if not item:
+        item = create(title, count, source_url=source_url, author=author, description=description)
+        if checkpoint:
+            store.atomic_json(checkpoint, {'id': item['id']})
+    ident = item['id']
+    update(ident, image_status='fetching', status='running', error=None)
+    for index, urls in enumerate(urls_by_page):
+        block = next(b for b in articles.get(ident)['blocks'] if b.get('type') == 'image' and b.get('page') == index + 1)
+        if block.get('asset_status') == 'saved':
+            continue
+        error = None
+        for url in [u for u in (urls or []) if isinstance(u, str)][:3]:
+            try:
+                data, _, _ = article_fetch.fetch(url, limit=MAX_IMAGE_BYTES, referer=referer)
+                put_image(ident, index, data)
+                error = None
+                break
+            except (ValueError, httpx.HTTPError, OSError) as exc:
+                error = exc if isinstance(exc, ValueError) else ValueError('图片下载失败，可重试缺失页')
+        if error is not None:
+            raise ValueError(f'第{index + 1}页图片获取失败（{error}），已保存的页保留，未将部分内容冒充完整')
+    report(stage='transcribing', message='正在本地图集OCR')
+    run_ocr(ident)
+    item = articles.get(ident)
+    if item.get('completeness') == 'partial' or item.get('image_status') == 'failed':
+        raise ValueError('图集OCR未完整完成，请检查本地OCR组件后重试')
+    blocks = [b for b in item['blocks'] if b.get('text', '').strip() and b.get('type') != 'image']
+    text = '\n\n'.join(b['text'] for b in blocks)
+    if not text.strip():
+        raise ValueError('图集未识别到可读文字')
+    return text, blocks, ident
+
+
 def worker_python():
     explicit=os.environ.get('SHIWEN_OCR_PYTHON')
     candidates=[Path(explicit)] if explicit else [store.ROOT/'.venv-ocr/Scripts/python.exe',store.ROOT/'runtime/image-ocr/venv/Scripts/python.exe',store.ROOT/'.venv-ocr/bin/python']
     for path in candidates:
         if path.is_file():return path
+    # 私有安装可把 rapidocr 直接装进主 venv（requirements-private.txt）；独立目录仍优先。
+    import importlib.util
+    if not explicit and importlib.util.find_spec('rapidocr'):return Path(sys.executable)
     raise ValueError('可选OCR组件未安装；请按图片识别说明准备组件，原图仍保留')
 
 

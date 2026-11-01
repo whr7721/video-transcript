@@ -89,6 +89,7 @@ build_customer_package --full → build_full_package → full_delivery / full_en
 | `session.py` / `douyin_session_guard.py` / `bilibili_auth.py` | 只读来源会话→owned profile；抖音跨进程互斥/冷却，B站nav验证、受限Cookie流向。 |
 | `library.py` / `topic_search.py` / `query_expansion.py` | 派生词法索引与本地查询扩展；不得破坏篇/专题范围，词法召回不是通用语义翻译。 |
 | `document_chat.py` | 只依据本篇实际检索片段；历史/摘要非原文证据，逐字引用校验不等于语义证明。 |
+| `pipeline.py` / `private_images.py` | 抖音视频与图文（note）同一入口分流：编号与类型同源解析，图文走图集+本地OCR文字稿，视频保持下载转写；两处 `extractor images` 各自持会话锁，暂不合并。 |
 | `rewrite.py` | 二创两段式：1 次大纲定结构与块预算，分块各写一次；字数由服务端预算/截断/兜底守，逐字 evidence 验证器与 v1 一致；失败块缓存，重试只补缺块。 |
 | `document_notes.py` / `share_snapshot.py` | 笔记版本/锚点与显式导出；保护vault外部编辑，分享只用已有成果且离线自包含。 |
 | `video_frames.py` / `experiments/vision/client.py` | 抽帧与视觉调用分开，逐帧缓存、上限与预算；不把采样当完整理解。 |
@@ -272,3 +273,7 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 真实四版（大麦哥 `254234f520f18d2b`，7564 字）：公众号 2390/2500、小红书 477/500、知乎 1330/1500、朋友圈 88(+标题11)，全部入限；独立复核 evidence 编造 0、跨段未声明 0；原稿与 v1 记录字节未变。**实际请求 20 次 > 设计 12 次**：多出的 8 次是失败块（3 次“清洗式引用”、1 次 extension 空 ids、1 次缺（延伸）标注）与调参重跑（小红书 294/288 字、重复小标题），逐条列在审查请求里，未把重跑伪装成一次成功。挂账：四版非同一次提示词（朋友圈仍是第一轮提示词产物）、小红书/朋友圈正文重复小标题、未重拍 1280/390 截图、“同提示词冷跑 12 次”需额度重置后补。证据：`runtime/rewrite-v2-20261031/`（four_outputs_v2.json、verification 输出、backend/frontend/build、REVIEW-REQUEST.md）。客户包仍冻结，零新增依赖。
 
 **2026-10-31 审查通过并追认 `8f7e2ff`**（dsh：四版字数全入限、0 编造、验证器零改动、诚实归因；公众号版 2401 字亲验）。同单记一条流程警告：本单未审先推 main，此后交付一律独立分支、不 push main、审查后合并（已写入 AGENTS 版本管理）。两项遗留不阻塞：①“同提示词冷跑 12 次”的证据待额度重置后补；②重复小标题小修——提示词改为“小标题不写进正文”，并在拼装处加代码去重（首行等于本块小标题/文章标题即去掉并披露），单测覆盖，真实效果随冷跑一并验。证据：[审查](runtime/review-20261031/REVIEW-rewrite-v2-ba5b20c..8f7e2ff.md)。
+
+## 2026-10-31 抖音图文（note）支持（实现+真实出稿，待独立审查）
+
+真实触发：`douyin.com/note/7702009006068248037` 分享链报“无法从分享链接取得作品编号”——抖音图文与视频共用编号空间，v1 只认 `/video/`，图文在入口即被判死。本单把图文接进既有链路：`id_from_url` 认 `/note/`、`/share/note/` 并给数字加右边界（23 位数字曾被截成 22 位）；`kind_from_url` 按路径定类型，`resolve()` 逐跳展开短链返回 `(id, kind)`；`_run_task` 写 `media_kind` 后图文直进 `_run_note`，不下载视频/不探时长/不抽音/不走 ASR；图集复用 `extractor images`（登录态只读、按作品缓存），并把小红书图文的“图集→OCR→文字”抽成 `image_documents.to_document()` 给两个平台共用；`requirements-private.txt` 纳入 `requirements-ocr.lock.txt`，主 venv 装 rapidocr 即可跑 OCR（`worker_python()` 回退当前解释器，模型 sha256 仍逐个校验）。真实验收：8 张原图、OCR 8/8、6478 字、298 个区域，任务 `media_kind=note` 且无音视频文件，元数据含作者 ID/发布时间/话题；隔离目录真实 138 秒视频仍出 SenseVoice 转写（731 字、10 段、srt），视频链零回归。挂账：OCR 按空间排序会把图标标签与数值打散（已在 `review_note`/warnings/GUIDE 披露，需人工对照原图）；手机端图文输入未点验；>64 张与图文混视频样本未测；隔离目录首次跑视频曾吃一次 130 秒冷启动超时（既有超时值，二次通过）。证据：`runtime/note-20261031/`、[DOUYIN_NOTE_GUIDE.md](DOUYIN_NOTE_GUIDE.md)。
