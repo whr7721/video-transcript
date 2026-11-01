@@ -1,22 +1,13 @@
 import argparse
-import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-import build_customer_package as builder
 import shiwen
 import store
 
 
 class CustomerPackage(unittest.TestCase):
-    def test_delivery_cli_has_no_private_import(self):
-        import ast
-        tree=ast.parse(builder.delivery_cli())
-        imports=[n.names[0].name for n in ast.walk(tree) if isinstance(n,ast.Import)]
-        self.assertNotIn('pipeline',imports)
-        self.assertIn('customer_env',imports)
-
     def test_local_file_transcription_and_repeat_cache(self):
         with tempfile.TemporaryDirectory(dir=store.ROOT/'runtime') as tmp:
             root=Path(tmp);audio=root/'原始音频.wav';audio.write_bytes(b'fixture audio')
@@ -54,3 +45,6 @@ class CustomerPackage(unittest.TestCase):
             with patch.object(models,'__file__',str(root/'delivery_models.py')),patch.object(models.setup_models,'FILES',expected):
                 with self.assertRaises(RuntimeError):models.prepare(src,True)
                 self.assertFalse((root/'models/test.onnx').exists())
+
+
+if __name__=='__main__':unittest.main()

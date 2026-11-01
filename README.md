@@ -30,7 +30,7 @@ CLI 可加 `--summarize`：原稿保存后生成同目录 `summary.md`（完整�
 
 可分享核心使用独立入口 `app_core:app` 与独立数据目录，不需要本仓库的私有来源工具。公开包部署说明见 [distribution/README.md](distribution/README.md)，测试记录表见 [DEPLOYMENT_ACCEPTANCE.md](distribution/DEPLOYMENT_ACCEPTANCE.md)。不要直接把整个私有仓库或历史公开。
 
-在已构建核心前端后运行 `.venv/Scripts/python.exe build_core_package.py`，生成白名单 ZIP，附预编译工作台、固定版本模型准备器、环境检查和第三方通知；不附模型或运行数据。独立 Windows 与无代理机器部署由外部测试者实测，暂时缺少环境，不能据本机演练宣布最终通过。以下旧段落记录私有入口及其历史能力，不作为核心包安装步骤。
+客户包已冻结：`build_core_package.py` / `build_customer_package.py` / `check_core.py` 于 2026-11-01 移入 `vendor-archive/`，不再随主线维护，需要时按该目录 README 取回。原先的白名单 ZIP 会附预编译工作台、固定版本模型准备器、环境检查和第三方通知，不附模型或运行数据。独立 Windows 与无代理机器部署由外部测试者实测，暂时缺少环境，不能据本机演练宣布最终通过。以下旧段落记录私有入口及其历史能力，不作为核心包安装步骤。
 
 ## 抖音话题发现 M1（2026-10-21）
 
