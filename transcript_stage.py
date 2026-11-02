@@ -22,6 +22,8 @@ def finish_transcription(task, update, directory, audio, duration, metadata, sta
     result.update({**metadata, "duration": duration,
                    "total_seconds": round(time.perf_counter() - start, 2), "created_at": time.time(),
                    "cost_yuan": 0, "review_note": "原文由语音识别生成，保留讲话内容；人名、数字和专有名词建议回听核对。未进行全文人工校对。"})
+    import asr_hotwords
+    result = asr_hotwords.apply(result)
     atomic_json(directory / "transcript.json", result)
     (directory / "transcript.txt").write_text(result["text"], encoding="utf-8")
     source_label = metadata.get('source_url') or metadata.get('source', {}).get('feed_url') or metadata.get('source', {}).get('original_name') or '本地素材'
