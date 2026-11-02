@@ -277,7 +277,7 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 ## 2026-10-31 抖音图文（note）支持（已审合并 `6102e51`）
 
 真实触发：`douyin.com/note/7702009006068248037` 分享链报“无法从分享链接取得作品编号”——抖音图文与视频共用编号空间，v1 只认 `/video/`，图文在入口即被判死。本单把图文接进既有链路：`id_from_url` 认 `/note/`、`/share/note/` 并给数字加右边界（23 位数字曾被截成 22 位）；`kind_from_url` 按路径定类型，`resolve()` 逐跳展开短链返回 `(id, kind)`；`_run_task` 写 `media_kind` 后图文直进 `_run_note`，不下载视频/不探时长/不抽音/不走 ASR；图集复用 `extractor images`（登录态只读、按作品缓存），并把小红书图文的“图集→OCR→文字”抽成 `image_documents.to_document()` 给两个平台共用；`requirements-private.txt` 纳入 `requirements-ocr.lock.txt`，主 venv 装 rapidocr 即可跑 OCR（`worker_python()` 回退当前解释器，模型 sha256 仍逐个校验）。真实验收：8 张原图、OCR 8/8、6478 字、298 个区域，任务 `media_kind=note` 且无音视频文件，元数据含作者 ID/发布时间/话题；隔离目录真实 138 秒视频仍出 SenseVoice 转写（731 字、10 段、srt），视频链零回归。挂账：OCR 按空间排序会把图标标签与数值打散（已在 `review_note`/warnings/GUIDE 披露，需人工对照原图）；手机端图文输入未点验；>64 张与图文混视频样本未测；隔离目录首次跑视频曾吃一次 130 秒冷启动超时（既有超时值，二次通过）。证据：`runtime/note-20261031/`、[DOUYIN_NOTE_GUIDE.md](DOUYIN_NOTE_GUIDE.md)。
-## 2026-11-01 瘦身单（ponytail-audit 前三项，已审合并）
+## 2026-11-01 瘦身单（ponytail-audit 前三项，已审合并 `79c518c`）
 
 按 `runtime/review-20261101/PONYTAIL-AUDIT.md` 执行前三项，one-shot 切除、不改行为：
 
@@ -287,8 +287,10 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 
 验收：全量后端 376 passed / 1 failed（`test_core::test_batch_pause_resume_and_origin`，本机既有 Windows 临时库抖动）、前端 100 passed、构建通过；自用 8765 启动 `/api/health` ok（models_ready、collector_ready）、`/studio/` 200。证据：`runtime/slim-20261101/`（backend/frontend/build/health.txt、REVIEW-REQUEST.md）。
 
-## 2026-11-01 ASR 英文专名纠正（后处理层，待独立审查）
+## 2026-11-01 ASR 英文专名纠正（后处理层，已审合并 `a82ff36`）
 
 真实问题：SenseVoice 把英文专名读成 `deep sickick` / `harnes` / `honess` / `snluma` / `snow鲁码`，污染搜索、引用与切片字幕。先调研：本机 sherpa-onnx 1.13.8 的 `from_sense_voice()` 无 `hotwords_file/hotwords_score`，官方文档明确只有 transducer 模型支持热词且需 `modified_beam_search`；`hr_*` 同音替换是拼音/词典级、管不了英文多词音译。故按裁决走后处理层 `asr_hotwords.py`：`data/hotwords.json`（首次落盘、用户可改、键大小写不敏感合并默认表）做规范写法→变体；匹配忽略大小写/空格/标点、长变体优先、拉丁边界保护、重叠跳过；`text`/`segments` 纠正，`raw_text` 保留原样，`corrections` 记明细，`review_note` 追加"已按专名表纠正 N 处"，`corrections` 存在即幂等跳过。接入 `link_ingest.export()` 与 `transcript_stage.finish_transcription()` 两处。
 
 实测：历史任务 `44dddd1bae6dab54`（1925 字）重放纠正 **14 处**、纠正后零残留、原稿字节未变；同一音频重新 ASR（1929 字/18 段）纠正 12 处、导出后零残留；用户给的样例 `254234f520f18d2b` 实测 **0 命中**（该任务为"人生哲学"，无英文专名，真噪声在 44dddd1bae6dab54）。挂账：表外新变体不会被猜，需用户补；已完成旧转写不自动重写（重放/重新导出才生效）；同音字变体靠穷举不靠拼音推断。证据：`runtime/hotwords-20261101/`、[ASR_HOTWORDS_GUIDE.md](ASR_HOTWORDS_GUIDE.md)。
+
+**2026-11-02 三单联合审查通过**（dsh：合并 391/1+100+构建；专名纠正 14 处零残留、原稿未变、导出幂等；审查方认账两处自身错误——样例 ID 给错、"大肥鱼"不该映射；历史 22 条任务维持不自动重写）。已按要求把两个合并与专名纠正一并推至 origin/main。证据：[审查](runtime/review-20261102/REVIEW-hotwords-d12cf1b.md)。
