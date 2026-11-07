@@ -26,6 +26,7 @@ import link_ingest, link_jobs
 import xhs_auth
 import bilibili_auth
 import link_batches
+import content_classification
 import rewrite
 import clips
 import video_frames
@@ -128,6 +129,7 @@ async def lifespan(app):
     video_frames.recover()
     clips.recover(TASKS.put)
     rewrite.recover()
+    content_classification.recover()
     for task in reversed(store.all_tasks()):
         if task["status"] in {"queued", "running"} and task.get("source",{}).get("kind")!="link":
             task.update(status="queued", message="正在恢复上次未完成的任务")
@@ -157,6 +159,7 @@ app.include_router(document_chat.router)
 app.include_router(library.router)
 app.include_router(subscriptions.router)
 app.include_router(source_expand.router)
+app.include_router(content_classification.router)
 app.include_router(rewrite.router)
 app.include_router(clips.router(TASKS.put))
 app.include_router(link_jobs.router(TASKS.put, ('youtube','bilibili','douyin','rss','tiktok','twitter','xiaoyuzhou','spotify','xiaohongshu')))

@@ -569,3 +569,6 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 **采用：后处理纠正层**（`asr_hotwords.py`）。理由：需要用户可维护词表、可计数披露、原文可回溯，三件事在解码器内都做不到。匹配用 casefold+去空格标点后的规范化串，长变体优先、拉丁边界保护（`harnes` 不会吃掉 `harness` 的尾巴）、重叠跳过；词表 `data/hotwords.json` 首次使用时落盘，规范写法做键、变体做值，用户键大小写不敏感并与默认表合并。
 原文纪律：`text`/`segments` 纠正，`raw_text` 存未纠正文本，`corrections` 记逐条明细，`review_note` 追加"已按专名表纠正 N 处"；`corrections` 键存在即跳过，重复导出不会二次替换。接入点两处：`link_ingest.export()`（链接/本地/图文的统一出口）与 `transcript_stage.finish_transcription()`（视频与云端 ASR，写 md 前）。
 实测（任务 44dddd1bae6dab54"DeepSeek接入QQ"）：历史转写重放 14 处（SnoLuma 6 / harness 6 / DeepSeek 2），纠正后无残留变体，原稿字节未变；同一音频重新 ASR（1929 字/18 段）命 12 处、导出后同样零残留。任务 254234f520f18d2b 实测 0 命中——该单用户给的样例 ID 对应的是"人生哲学"视频，无英文专名，真正噪声在 44dddd1bae6dab54。证据 runtime/hotwords-20261101/、ASR_HOTWORDS_GUIDE.md。
+
+## 2026-11-07 原文内容分类
+采用现有request_json而非新增零样本模型；Hugging Face ZeroShotClassificationPipeline需额外模型权重/推理栈（https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ZeroShotClassificationPipeline），暂缓。Karakeep（https://github.com/karakeep-app/karakeep，AGPL-3.0）自动标签仅借鉴交互，不引入代码/依赖；DeepSeek JSON输出https://api-docs.deepseek.com/guides/json_mode/作为结构化输出参考。固定六类+unknown，主次类型和话题分开，原文逐字引用校验；人工确认独立优先、revision防覆盖，旧AI建议不冒充更新原文。输入勾选后一次分类，默认不自动计费；失败独立可见，缓存免费。两份隔离真实文稿各1请求，符合观点/教程预期；证据runtime/classification-20261107/，使用CLASSIFICATION_GUIDE.md。未把引用匹配当分类语义质量证明。

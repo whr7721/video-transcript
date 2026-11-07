@@ -300,3 +300,6 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 实测：历史任务 `44dddd1bae6dab54`（1925 字）重放纠正 **14 处**、纠正后零残留、原稿字节未变；同一音频重新 ASR（1929 字/18 段）纠正 12 处、导出后零残留；用户给的样例 `254234f520f18d2b` 实测 **0 命中**（该任务为"人生哲学"，无英文专名，真噪声在 44dddd1bae6dab54）。挂账：表外新变体不会被猜，需用户补；已完成旧转写不自动重写（重放/重新导出才生效）；同音字变体靠穷举不靠拼音推断。证据：`runtime/hotwords-20261101/`、[ASR_HOTWORDS_GUIDE.md](ASR_HOTWORDS_GUIDE.md)。
 
 **2026-11-02 三单联合审查通过**（dsh：合并 391/1+100+构建；专名纠正 14 处零残留、原稿未变、导出幂等；审查方认账两处自身错误——样例 ID 给错、"大肥鱼"不该映射；历史 22 条任务维持不自动重写）。已按要求把两个合并与专名纠正一并推至 origin/main。证据：[审查](runtime/review-20261102/REVIEW-hotwords-d12cf1b.md)。
+
+## 2026-11-07 内容分类（待独立审查）
+新增原文AI主次类型、话题、理由/引用，人工修正与资料库主类筛选；新链接显式勾选后独立分类，失败不改成功原稿。SQLite附加表，零依赖；与专题组织分离，不自动搬迁资料。两次真实请求验证大麦哥观点、小程序教程，1280/390真实隔离页面筛选通过。见CLASSIFICATION_GUIDE.md及runtime/classification-20261107/REVIEW-REQUEST.md。

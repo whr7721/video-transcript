@@ -104,7 +104,7 @@ def require(uid):
     return row
 
 @router.get('')
-def listing(q:str=Query('',max_length=200),starred:bool=False,collection_id:str|None=None,channel_id:str|None=None):
+def listing(q:str=Query('',max_length=200),starred:bool=False,collection_id:str|None=None,channel_id:str|None=None,content_type:str|None=None):
     records=sync(); hits={}
     if q.strip():
         for p in retrieve(q,limit=10000):hits.setdefault(p['uid'],p['text'])
@@ -112,6 +112,15 @@ def listing(q:str=Query('',max_length=200),starred:bool=False,collection_id:str|
         stars={r[0] for r in db.execute('SELECT uid FROM library_meta WHERE starred=1')}
         members={r[0]:r[1] for r in db.execute('SELECT uid,position FROM library_members WHERE collection_id=?',(collection_id,))} if collection_id else {}
     items=[{**{k:v for k,v in r.items() if k!='blocks'},'starred':r['uid'] in stars,'snippet':hits.get(r['uid'],'')[:240]} for r in records if (not channel_id or str(r.get('channelId') or '')==channel_id) and (not starred or r['uid'] in stars) and (not collection_id or r['uid'] in members) and (not q.strip() or r['uid'] in hits)]
+    import content_classification as cc
+    with store.connect() as db:
+        cc.init(db);classes={r[0]:json.loads(r[1]) for r in db.execute('SELECT uid,payload FROM content_classes')}
+    filtered=[]
+    for item in items:
+        v=classes.get(item['uid'],{});label=cc.view(item['uid'],v,item).get('effective') if v else None
+        item['classification']=label
+        if not content_type or (label or {}).get('primary','unknown')==content_type:filtered.append(item)
+    items=filtered
     items.sort(key=lambda r:members[r['uid']] if collection_id else -r['created_at'])
     platforms={}
     for r in records:platforms[r['platform']]=platforms.get(r['platform'],0)+1

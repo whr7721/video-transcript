@@ -16,6 +16,7 @@ class Input(BaseModel):
     url:str=Field(min_length=1,max_length=5000)
     language:Literal['auto','zh','en','ja','ko','yue']='auto'
     episode:int|None=Field(default=None,ge=1,le=500)
+    classify:bool=False
     summarize:bool=False
     diarize:bool=False
     speakers:int=Field(default=0,ge=0,le=20)
@@ -72,6 +73,12 @@ def run(task,update):
         message=str(exc) if isinstance(exc,(ValueError,RuntimeError)) else '链接处理失败，请检查网络或登录状态后重试'
         job.update(status='failed',error=message);documents.generation_save(job)
         if not (store.DATA/'jobs'/task['id']/'transcript.json').exists():update(status='failed',stage='failed',error=message,message=message)
+    finally:
+        saved=documents.generation_get(job['id']) or job
+        if saved.get('classify') and (store.get(task['id']) or {}).get('status')=='completed':
+            import content_classification,organizer
+            content_classification.schedule('audio:'+task['id'])
+
 
 def recover():
     with store.connect() as db:
@@ -133,7 +140,14 @@ def router(enqueue,allowed):
             if 'feed' in plan:return {'selection_required':True,'feed':plan['feed']}
         except ValueError as exc:raise HTTPException(400,str(exc))
         except httpx.HTTPError:raise HTTPException(502,'无法读取播客，请检查网络后重试')
-        return submit(args,plan,body.summarize,enqueue)
+        job=submit(args,plan,body.summarize,enqueue)
+        if body.classify:
+            with LOCK:
+                job=documents.generation_get(job['id']) or job;job['classify']=True;documents.generation_save(job)
+            if (store.get(job['task_id']) or {}).get('status')=='completed':
+                import content_classification
+                content_classification.schedule('audio:'+job['task_id'])
+        return job
     @api.get('/{ident}/export/{filename}')
     def export(ident:str,filename:str):
         job=get(ident)
