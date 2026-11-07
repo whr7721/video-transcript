@@ -15,3 +15,15 @@ test('subscription page loads local state without automatically checking sources
  vi.stubGlobal('fetch',vi.fn(async(path:string,init?:RequestInit)=>{calls.push({path,method:init?.method});return {ok:true,json:async()=>path.endsWith('/channels')?[{id:'one',title:'我的播客',platform:'rss',status:'idle'}]:[]}}))
  render(<Subscriptions/>);await screen.findByRole('heading',{name:'我的播客'});expect(calls.every(c=>c.method==='GET')).toBe(true);fireEvent.click(screen.getByRole('button',{name:'检查更新'}));await waitFor(()=>expect(calls.some(c=>c.path.endsWith('/one/check')&&c.method==='POST')).toBe(true))
 })
+
+test('favorites source is explicit and automatic extraction requires a first preview',async()=>{
+ const calls:{path:string;body:any;method:string}[]=[]
+ vi.stubGlobal('fetch',vi.fn(async(path:string,init?:RequestInit)=>{calls.push({path,body:init?.body?JSON.parse(String(init.body)):null,method:init?.method||'GET'});return {ok:true,json:async()=>path.endsWith('/channels')?[{id:'saved',title:'我的抖音收藏',platform:'douyin_favorites',status:'idle'}]:path.endsWith('/feed?unread=true')?[]:{id:'saved'}}}))
+ render(<Subscriptions/>);await screen.findByRole('heading',{name:'我的抖音收藏'});fireEvent.click(screen.getByRole('button',{name:'添加我的抖音收藏'}));await waitFor(()=>expect(calls.some(c=>c.path.endsWith('/favorites')&&c.method==='POST')).toBe(true));fireEvent.click(screen.getByRole('button',{name:'收集设置'}));expect((screen.getByLabelText('新增内容自动提取（不整理）') as HTMLInputElement).disabled).toBe(true)
+})
+
+test('collection automation settings save without requesting AI summarization',async()=>{
+ const calls:any[]=[]
+ vi.stubGlobal('fetch',vi.fn(async(path:string,init?:RequestInit)=>{calls.push({path,method:init?.method,body:init?.body?JSON.parse(String(init.body)):null});return {ok:true,json:async()=>path.endsWith('/channels')?[{id:'saved',title:'我的抖音收藏',platform:'douyin_favorites',status:'idle',initialized:true}]:[]}}))
+ render(<Subscriptions/>);await screen.findByRole('heading',{name:'我的抖音收藏'});fireEvent.click(screen.getByRole('button',{name:'收集设置'}));fireEvent.click(screen.getByLabelText('开启定时检查'));fireEvent.click(screen.getByLabelText('新增内容自动提取（不整理）'));fireEvent.click(screen.getByRole('button',{name:'保存收集设置'}));await waitFor(()=>expect(calls.find(c=>c.method==='PUT')?.body).toEqual({enabled:true,auto_extract:true,interval_minutes:60,daily_limit:10,limit:20}))
+})

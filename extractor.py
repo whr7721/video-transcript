@@ -55,6 +55,10 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
                              "Accept": "application/json, text/plain, */*",
                              "Cookie": "; ".join(f"{k}={v}" for k, v in cookie_dict.items())})
 
+            if action == "favorites":
+                from douyin_favorites import collect
+                return await collect(page, context, limit)
+
             if action == "creator":
                 from media_platform.douyin.media import extract_video_urls
                 checkpoint = json.loads(Path(output).read_text(encoding="utf-8")) if Path(output).exists() else {}
@@ -192,7 +196,7 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["extract", "images", "login", "creator"])
+    parser.add_argument("action", choices=["extract", "images", "login", "creator", "favorites"])
     parser.add_argument("--id", default="")
     parser.add_argument("--sec-uid", default="")
     parser.add_argument("--limit", type=int, default=10)

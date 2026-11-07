@@ -572,3 +572,6 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 
 ## 2026-11-07 原文内容分类
 采用现有request_json而非新增零样本模型；Hugging Face ZeroShotClassificationPipeline需额外模型权重/推理栈（https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ZeroShotClassificationPipeline），暂缓。Karakeep（https://github.com/karakeep-app/karakeep，AGPL-3.0）自动标签仅借鉴交互，不引入代码/依赖；DeepSeek JSON输出https://api-docs.deepseek.com/guides/json_mode/作为结构化输出参考。固定六类+unknown，主次类型和话题分开，原文逐字引用校验；人工确认独立优先、revision防覆盖，旧AI建议不冒充更新原文。输入勾选后一次分类，默认不自动计费；失败独立可见，缓存免费。两份隔离真实文稿各1请求，符合观点/教程预期；证据runtime/classification-20261107/，使用CLASSIFICATION_GUIDE.md。未把引用匹配当分类语义质量证明。
+
+## 2026-11-07 收藏即收集
+采用现有Playwright登录态、session_guard与订阅/批量队列，新增收藏枚举而非引入第二采集框架。参考F2（Apache-2.0）https://github.com/Johnserf-Seed/f2/blob/main/f2/apps/douyin/crawler.py 与model.py，仅借鉴收藏/点赞分离和cursor语义；本机真实页面请求为form-urlencoded，JSON会导致游标不前进，故以网页实证修正。定时默认关闭，首次基线不自动提取，只有后续发现的新条目可自动入原队列且默认不调用AI。云端暂缓。真实20条基线、50条分页、用户新增1条自动转写与重复去重证据runtime/favorites-20261107/，使用FAVORITES_COLLECTION_GUIDE.md。

@@ -138,7 +138,9 @@ async def lifespan(app):
     thread = threading.Thread(target=worker, daemon=True, name="shiwen-worker")
     thread.start()
     link_batches.start(TASKS.put,TASKS.empty)
+    subscriptions.start()
     yield
+    subscriptions.stop()
     link_batches.stop()
     await bilibili_auth.stop()
     await xhs_auth.stop()

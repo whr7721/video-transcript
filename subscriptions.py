@@ -7,7 +7,8 @@ from urllib.parse import urlsplit,urlunsplit,quote
 from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel,Field
 import store,source_enumeration as sources,link_ingest,link_jobs,link_batches
-router=APIRouter(prefix='/api/subscriptions');EXECUTOR=ThreadPoolExecutor(max_workers=1,thread_name_prefix='source-check');LOCK=threading.RLock()
+router=APIRouter(prefix='/api/subscriptions');STOP=threading.Event();THREAD=None
+EXECUTOR=ThreadPoolExecutor(max_workers=1,thread_name_prefix='source-check');LOCK=threading.RLock()
 def init():
  with store.connect() as db:
   db.execute('CREATE TABLE IF NOT EXISTS channels(id TEXT PRIMARY KEY,url TEXT UNIQUE NOT NULL,platform TEXT NOT NULL,payload TEXT NOT NULL)')
@@ -29,15 +30,20 @@ def check(ident,limit):
    current=db.execute('SELECT payload FROM channels WHERE id=?',(ident,)).fetchone()
    if not current:return
    c=json.loads(current[0])
+   if c['platform']=='douyin_favorites' and c.get('identity') and c['identity']!=result['identity']:raise ValueError('收藏登录账号已变化，请退订后重新添加收藏源，已有文稿会保留')
    aliases=[json.loads(r[0]) for r in db.execute('SELECT payload FROM channels WHERE platform=? AND id!=?',(c['platform'],ident))]
    if any(a.get('identity')==result['identity'] for a in aliases):raise ValueError('该频道已有另一URL订阅，请使用已有订阅并退订此别名')
+   first_check=not c.get('initialized')
+   if not first_check and result.get('window_has_more') and result['items'] and not any(db.execute('SELECT 1 FROM feed_items WHERE channel_id=? AND content_id=?',(ident,r['id'])).fetchone() for r in result['items']):
+    result.update(status='partial',message='最近检查窗口内全部是新收藏，可能还有未覆盖的新内容；请提高检查条数或缩短间隔，本次未宣称同步完整收藏')
    for row in reversed(result['items']):
     old=db.execute('SELECT payload FROM feed_items WHERE channel_id=? AND content_id=?',(ident,row['id'])).fetchone()
     if old:
      oldrow=json.loads(old[0]);oldrow.update(row);db.execute('UPDATE feed_items SET payload=? WHERE channel_id=? AND content_id=?',(json.dumps(oldrow,ensure_ascii=False),ident,row['id']))
-    db.execute('INSERT OR IGNORE INTO feed_items(channel_id,content_id,payload) VALUES (?,?,?)',(ident,row['id'],json.dumps({**row,'read':False,'discovered_at':time.time()},ensure_ascii=False)))
-   c.update(title=result['title'],identity=result['identity'],status='idle' if result.get('status')=='ok' else 'partial',last_success=time.time() if result.get('status')=='ok' else c.get('last_success'),error=result.get('message') if result.get('status')!='ok' else None)
+    db.execute('INSERT OR IGNORE INTO feed_items(channel_id,content_id,payload) VALUES (?,?,?)',(ident,row['id'],json.dumps({**row,'read':False,'discovered_at':time.time(),'auto_pending':bool(not first_check and c.get('automation',{}).get('auto_extract'))},ensure_ascii=False)))
+   c.update(initialized=True,title=result['title'],identity=result['identity'],status='idle' if result.get('status')=='ok' else 'partial',last_success=time.time() if result.get('status')=='ok' else c.get('last_success'),error=result.get('message') if result.get('status')!='ok' else None)
    db.execute('UPDATE channels SET payload=? WHERE id=?',(json.dumps(c,ensure_ascii=False),ident))
+  dispatch_auto(ident)
  except Exception as e:
   with LOCK:
    try:c=get(ident)
@@ -85,6 +91,32 @@ def subscribe(body:Subscribe):
   if old:return json.loads(old[0])
   c={'id':uuid.uuid4().hex[:16],'url':url,'platform':kind,'title':('话题：'+query if query else url),'query':query,'added_at':time.time(),'last_check':None,'last_success':None,'cursor':0,'status':'idle','error':None}
   db.execute('INSERT INTO channels VALUES (?,?,?,?)',(c['id'],url,kind,json.dumps(c,ensure_ascii=False)));return c
+@router.post('/favorites')
+def favorites():
+ admit();init()
+ with LOCK,store.connect() as db:
+  old=db.execute("SELECT payload FROM channels WHERE url='douyin-favorites:self'").fetchone()
+  if old:return json.loads(old[0])
+  c={'id':uuid.uuid4().hex[:16],'url':'douyin-favorites:self','platform':'douyin_favorites','title':'我的抖音收藏','added_at':time.time(),'last_check':None,'last_success':None,'cursor':0,'status':'idle','error':None}
+  db.execute('INSERT INTO channels VALUES (?,?,?,?)',(c['id'],c['url'],c['platform'],json.dumps(c,ensure_ascii=False)));return c
+
+class Automation(BaseModel):
+ enabled:bool=False
+ interval_minutes:int=Field(default=60,ge=15,le=1440)
+ limit:int=Field(default=20,ge=10,le=50)
+ auto_extract:bool=False
+ daily_limit:int=Field(default=10,ge=1,le=50)
+
+@router.put('/channels/{ident}/automation')
+def automation(ident:str,body:Automation):
+ admit()
+ if body.limit not in {10,20,50}:raise HTTPException(400,'请选择10/20/50条')
+ with LOCK:
+  c=get(ident)
+  if body.auto_extract and not c.get('initialized'):raise HTTPException(400,'请先检查一次并预览历史内容，再开启自动提取')
+  c['automation']=body.model_dump();c['next_check']=time.time()+body.interval_minutes*60 if body.enabled else None;save(c)
+ return c
+
 @router.delete('/channels/{ident}')
 def unsubscribe(ident:str):
  admit();get(ident)
@@ -167,3 +199,61 @@ def batch(body:Extract):
  admit();rows=rows_for(body.seqs)
  preview=link_batches.preview(link_batches.Preview(rows=[link_batches.Row(text=r['url'],episode_id=r.get('episode_id'),episode_guid=r.get('episode_guid'),feed_seq=seq,summarize=body.summarize) for seq,r in rows]))
  return preview
+
+
+def dispatch_auto(ident):
+ """Persist batch references before starting; replay starts the same batch after a crash."""
+ with LOCK:
+  c=get(ident);config=c.get('automation',{})
+  if not config.get('enabled') or not config.get('auto_extract'):return
+  # Resume only drafts reserved by this source; paused/stopped batches stay stopped.
+  with store.connect() as db:
+   rows=[(r['seq'],json.loads(r['payload'])) for r in db.execute('SELECT seq,payload FROM feed_items WHERE channel_id=? ORDER BY seq',(ident,))]
+  for bid in {r.get('auto_batch') for _,r in rows if r.get('auto_batch')}:
+   b=link_batches.get(bid)
+   if b['status']=='draft':link_batches.control(bid,'start')
+  from datetime import datetime,timezone,timedelta
+  day=datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
+  used=c.get('auto_count',0) if c.get('auto_day')==day else 0
+  remaining=max(0,config.get('daily_limit',10)-used)
+  pending=[(seq,r) for seq,r in rows if r.get('auto_pending') and not r.get('auto_batch')][:remaining]
+  if not pending:return
+  preview=batch(Extract(seqs=[seq for seq,_ in pending],summarize=False))
+  if any(i['status']=='selection' for i in preview['items']):raise ValueError('自动收集遇到需手选的条目，请在时间线手动提取')
+  with store.connect() as db:
+   for seq,_ in pending:
+    current=db.execute('SELECT payload FROM feed_items WHERE seq=? AND channel_id=?',(seq,ident)).fetchone()
+    if current:
+     r=json.loads(current[0]);r.update(auto_batch=preview['id'],auto_pending=False)
+     db.execute('UPDATE feed_items SET payload=? WHERE seq=?',(json.dumps(r,ensure_ascii=False),seq))
+   c=get(ident);c.update(auto_day=day,auto_count=used+len(pending),last_auto_batch=preview['id'])
+   db.execute('UPDATE channels SET payload=? WHERE id=?',(json.dumps(c,ensure_ascii=False),ident))
+  link_batches.control(preview['id'],'start')
+
+def tick(now=None):
+ if __import__('os').environ.get('SHIWEN_PUBLIC')=='1':return
+ now=time.time() if now is None else now
+ for c in channels():
+  config=c.get('automation',{})
+  if config.get('enabled') and c.get('status')!='checking' and (c.get('next_check') or 0)<=now:
+   with LOCK:
+    current=get(c['id'])
+    config=current.get('automation',{})
+    if not config.get('enabled') or current.get('status')=='checking' or (current.get('next_check') or 0)>now:continue
+    current['next_check']=now+config.get('interval_minutes',60)*60;save(current)
+    start_check(c['id'],config.get('limit',20))
+
+def start():
+ global THREAD
+ if THREAD and THREAD.is_alive():return
+ STOP.clear()
+ def loop():
+  while not STOP.is_set():
+   try:tick()
+   except Exception:__import__('logging').getLogger(__name__).exception('订阅定时检查未完成')
+   STOP.wait(15)
+ THREAD=threading.Thread(target=loop,daemon=True,name='shiwen-subscriptions');THREAD.start()
+
+def stop():
+ STOP.set()
+ if THREAD:THREAD.join(timeout=2)

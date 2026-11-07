@@ -55,6 +55,21 @@ def enumerate_source(kind,url,limit=20,*,_directory=None,_max_duration_sec=600):
    if len(videos)<30:break
    time.sleep(2)
   return {'identity':mid,'title':title,'items':rows[:limit],'status':'ok'}
+ if kind=='douyin_favorites':
+  from douyin_session_guard import session_guard
+  from pipeline import MC_PY,ROOT
+  from session import prepare_session
+  from douyin_favorites import metadata
+  folder=store.DATA/'enumerations'/uuid.uuid4().hex;folder.mkdir(parents=True,exist_ok=True);output=folder/'result.json'
+  with session_guard():
+   prepare_session()
+   env={k:v for k,v in os.environ.items() if k.lower() not in {'http_proxy','https_proxy','all_proxy'}}
+   env.update(SHIWEN_DATA_DIR=str(store.DATA),SHIWEN_SESSION_LOCK_HELD='1')
+   metadata_process([str(MC_PY),'-B','-X','utf8',str(ROOT/'extractor.py'),'favorites','--limit',str(limit),'--output',str(output)],env,ROOT)
+   if not output.exists():raise ValueError('收藏读取未完成，请检查登录状态后重试')
+   result=json.loads(output.read_text(encoding='utf8'))
+  if result.get('status')!='ok':raise ValueError(result.get('error') or '收藏读取失败，请检查登录状态后重试')
+  return metadata(result)
  if kind in {'douyin','douyin_topic'}:
   from douyin_session_guard import session_guard
   from pipeline import MC_PY,ROOT
@@ -71,7 +86,6 @@ def enumerate_source(kind,url,limit=20,*,_directory=None,_max_duration_sec=600):
    else:
     request=folder/'request.json';request.write_text(json.dumps({'schema_version':1,'request_id':folder.name,'topic':url,'queries':[url],'sort':'latest','published_within':'unlimited','max_candidates_total':limit,'channel':'video','metadata_only':True,'resume_token':None}),encoding='utf8')
     command=[str(MC_PY),'-B','-X','utf8',str(ROOT/'douyin_search_bridge.py'),'--request',str(request),'--output',str(output)]
-   import os
    env={k:v for k,v in os.environ.items() if k.lower() not in {'http_proxy','https_proxy','all_proxy'}};env['SHIWEN_DATA_DIR']=str(store.DATA);env['SHIWEN_SESSION_LOCK_HELD']='1'
    metadata_process(command,env,ROOT)
    if not output.exists():raise ValueError('抖音列表组件未完成，请检查安装依赖或登录状态')
