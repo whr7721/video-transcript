@@ -575,3 +575,6 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 
 ## 2026-11-07 收藏即收集
 采用现有Playwright登录态、session_guard与订阅/批量队列，新增收藏枚举而非引入第二采集框架。参考F2（Apache-2.0）https://github.com/Johnserf-Seed/f2/blob/main/f2/apps/douyin/crawler.py 与model.py，仅借鉴收藏/点赞分离和cursor语义；本机真实页面请求为form-urlencoded，JSON会导致游标不前进，故以网页实证修正。定时默认关闭，首次基线不自动提取，只有后续发现的新条目可自动入原队列且默认不调用AI。云端暂缓。真实20条基线、50条分页、用户新增1条自动转写与重复去重证据runtime/favorites-20261107/，使用FAVORITES_COLLECTION_GUIDE.md。
+
+## 2026-11-10 知识闭环第二轮实测
+采用方向：先产品化来源锚定知识卡/专题范围/ID回填引用/分段创作，不先加平台或引完整笔记应用。5篇真实资料提取15卡、分3个预设候选专题，跑现有助手、本机卡原型、Hindsight chunks组合的综合/教程分离/拒答/创作。现有助手综合与草稿各仅剩1节；ID回填避免抄引句失败。Hindsight无范围召回漏教程、混入支付，加tag范围和预算后覆盖齐；不能据不等条件推算法胜负。模型两路草稿仍超长，完整句预算实验编辑后330/331字，非一次成功。30次文本+11embedding+6rerank，可记录保守估算¥2.13503、rerank未知非免费，不是账单。5稿哈希未变，无产品代码或新依赖；实验未发布。官方https://hindsight.vectorize.io/developer/api/documents 与configuration；全部证据runtime/knowledge-loop-20261110/REPORT.md，原型脚本同目录。Hindsight默认retain/reflect上轮身份错误保留为历史对照，本轮未复测默认模式。
