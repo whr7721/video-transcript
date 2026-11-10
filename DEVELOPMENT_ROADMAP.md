@@ -306,3 +306,6 @@ wsl.exe -d Ubuntu-24.04 --exec env SHIWEN_DATA_DIR=/mnt/d/zcode1/video-transcrip
 
 ## 2026-11-07 收藏即收集与本机定时
 私有版新增当前抖音账号收藏源，手选博主订阅共用到期计划；首次仅预览、按作品去重、每日自动入队上限、原批量引用和串行媒体队列。真实新增1条已本地转写，历史20条未提取，0付费调用。见FAVORITES_COLLECTION_GUIDE.md、runtime/favorites-20261107/。未验/边界：自然15分钟长跑、真实图文收藏OCR自动入队、命名收藏夹不支持；云端未改；同数据目录仅运行单实例。审查待与前单一起进行，不自行宣布通过。
+
+## 2026-11-10 Codex creator-workbench
+新增Codex专用skill与stdlib薄工具：latest/ingest/init/status/pack；封存下游默认调用，不删除旧产品。两条真实发布包、缓存复用、文件/图片检查已验；不代表新会话自动触发、所有平台登录、平台优质/奖励资格或自动发布已验。外部actwatch两脚本局部修复及补丁见runtime/creator-workbench-20261110/actwatch-codex.patch。说明CREATOR_WORKBENCH_GUIDE.md，待独立审查；DSH技能未改。

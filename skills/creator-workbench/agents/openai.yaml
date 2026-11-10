@@ -1,0 +1,4 @@
+interface:
+  display_name: "自媒体创作工作流"
+  short_description: "用本机采集工具取真实资料，由Codex直接创作图文并交付可续做的发布包"
+  default_prompt: "用 $creator-workbench 根据真实素材制作一篇自媒体图文，核对来源、图片与配乐后交付发布包。"

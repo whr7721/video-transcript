@@ -578,3 +578,6 @@ XMind候选xmindpy现代格式实现（https://github.com/innotools/xmindpy）�
 
 ## 2026-11-10 知识闭环第二轮实测
 采用方向：先产品化来源锚定知识卡/专题范围/ID回填引用/分段创作，不先加平台或引完整笔记应用。5篇真实资料提取15卡、分3个预设候选专题，跑现有助手、本机卡原型、Hindsight chunks组合的综合/教程分离/拒答/创作。现有助手综合与草稿各仅剩1节；ID回填避免抄引句失败。Hindsight无范围召回漏教程、混入支付，加tag范围和预算后覆盖齐；不能据不等条件推算法胜负。模型两路草稿仍超长，完整句预算实验编辑后330/331字，非一次成功。30次文本+11embedding+6rerank，可记录保守估算¥2.13503、rerank未知非免费，不是账单。5稿哈希未变，无产品代码或新依赖；实验未发布。官方https://hindsight.vectorize.io/developer/api/documents 与configuration；全部证据runtime/knowledge-loop-20261110/REPORT.md，原型脚本同目录。Hindsight默认retain/reflect上轮身份错误保留为历史对照，本轮未复测默认模式。
+
+## 2026-11-10 Codex自用自媒体工作流
+采用creator-workbench skill，宿主读原稿和创作，工具只采集/本地执行。不新建前端，不做DSH skill。现有Agent Skills规范https://agentskills.io/specification 支持SKILL.md/scripts/references；借鉴https://github.com/namddp/social-media-agent-skills 的取材/分镜/检查职责，未复制或安装其代码。封存既有内置LLM下游与两前端但不删文件，保留简历用途；clips含模型步骤不当作纯工具。新增结构化取材/作品包脚本无AI客户端；修actwatch命令退出码、快手POST登录验证与check-only。大麦哥真实查最新+原稿缓存+旧图打包；活动规则→宿主原创→4张原生生图→打包均实跑，外部文本AI0次。测试435全量/9定向，证据runtime/creator-workbench-20261110/；CREATOR_WORKBENCH_GUIDE.md说明边界。
