@@ -45,6 +45,26 @@ def grab(url, language="auto", episode=None):
     return ident
 
 
+def guard_channel(url):
+    """频道链接喂给单条入口时，报错要说人话。
+
+    底层只会说「无法取得作品编号」，读起来像链接坏了，agent 会反复重试。
+    这里提前拦下，直接告诉它该用哪个入口。
+    """
+    try:
+        import source_enumeration as sources
+        kind, _ = sources.identify(url)
+    except Exception:
+        return
+    hint = {"douyin": "抖音博主主页", "youtube": "YouTube 频道",
+            "bilibili": "B站 UP 主主页", "rss": "RSS / 播客订阅源"}.get(kind)
+    if hint:
+        raise SystemExit(
+            f"这是{hint}，不是单条作品，所以取不到作品编号。\n"
+            f"  看它有哪些内容、最新一条是什么：follow.py add \"{url}\" 然后 follow.py\n"
+            f"  只转其中一条：把那条作品的链接给我")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="链接 → 转写 + 概览（自用）")
     parser.add_argument("url", help="视频/播客链接，或本地音视频路径")
@@ -56,6 +76,7 @@ def main(argv=None):
     parser.add_argument("--json", action="store_true", help="只输出 JSON")
     args = parser.parse_args(argv)
 
+    guard_channel(args.url)
     ident = grab(args.url, args.lang, args.episode)
 
     import store
