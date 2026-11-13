@@ -133,6 +133,37 @@ for f in Path('.').glob('*.py'):
 
 只搜 `xxx.py` 字面量会漏掉 `from xxx import` 这种写法——`batch_rules` 就是这样漏掉的。
 
+## 抖音链路的三个外部依赖
+
+代码补齐之后还报「采集启动失败（Error）」，原因是**运行环境**，不是代码。抖音这条路要三样东西同时在场，缺任何一样都失败：
+
+| 依赖 | 位置 | 检查方式 |
+|---|---|---|
+| MediaCrawler | `D:\zcode1\mediacrawler`（1.2 GB） | 目录存在即可 |
+| 独立 Python 环境 | `mediacrawler\.venv\Scripts\python.exe` | `SHIWEN_MC_PYTHON` 可覆盖 |
+| **Playwright Chromium** | `%LOCALAPPDATA%\ms-playwright\chromium-1248\` | 见下 |
+
+第三条最容易漏——它是二进制下载，不在任何仓库里，清理工具或重装系统后会消失，而报错信息只说「采集启动失败（Error）」，看起来像登录问题。
+
+**判据**：
+
+```powershell
+D:\zcode1\mediacrawler\.venv\Scripts\python.exe -c "from playwright.sync_api import sync_playwright; from pathlib import Path; p=sync_playwright().start(); e=Path(p.chromium.executable_path); print(e, e.exists())"
+```
+
+返回 `False` 就装：
+
+```powershell
+cd D:\zcode1\mediacrawler
+.\.venv\Scripts\python.exe -m playwright install chromium
+```
+
+约 118 MB，国内直连 `cdn.playwright.dev` 可下，不需要镜像。
+
+**登录态**：`data\browser`（不是 MediaCrawler 那个 profile）。`session.py` 从 `D:\zcode1\mediacrawler\browser_data\dy_user_data_dir` 复制一次 Identity / Network / Local Storage，之后所有写入只落在 `data\browser`，不动原采集浏览器。Cookie 实际在 `Default\Network\Cookies`（新版 Chromium 位置），不要在 `Default\Cookies` 找。
+
+登录失效时 `extractor.py login` 会开有头窗口等人工扫码，过期只能手动重登——这条没法自动化。
+
 ---
 
 ## 给 agent 的 Skill
