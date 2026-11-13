@@ -4,7 +4,7 @@
 20~40 条能直接开工的分镜素材，每条带时间码，方便回听核对。
 
 用法：
-    python facts.py <job_id|任务目录> [--top 40] [--json]
+    python facts.py <job_id|任务目录> [--top 40] [--json] [--recorrect]
 """
 import argparse
 import json
@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
 
 # 权重：越靠前越像「可被画出来的事实」
 RULES = [
@@ -107,6 +108,25 @@ def render(job, data, rows):
     return "\n".join(body)
 
 
+def recorrect(directory, data):
+    """用当前 hotwords.json 重新纠正已有稿子。
+
+    两个坑必须绕开：① 缓存命中时 link_ingest 不会重新 export，老稿子永远带旧错字；
+    ② asr_hotwords.apply 见到 corrections 字段就直接返回，补的新词进不去。
+    所以这里先丢掉 corrections、从 raw_text 重来，再整份重写。
+    """
+    import asr_hotwords
+    import link_ingest
+
+    base = {k: v for k, v in data.items() if k != "corrections"}
+    if base.get("raw_text"):
+        base["text"] = base.pop("raw_text")
+    fixed = asr_hotwords.apply(base)
+    link_ingest.export(directory, fixed, {})
+    applied = {item["term"]: item["count"] for item in fixed.get("corrections") or []}
+    return json.loads((directory / "transcript.json").read_text(encoding="utf-8")), applied
+
+
 def locate(target):
     path = Path(target)
     if path.is_dir():
@@ -122,6 +142,8 @@ def main(argv=None):
     parser.add_argument("target", help="任务 ID 或 data/jobs/<id> 目录")
     parser.add_argument("--top", type=int, default=40)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--recorrect", action="store_true",
+                        help="用当前 hotwords.json 重新纠正已有稿子的专名，再重写 transcript")
     args = parser.parse_args(argv)
 
     directory = locate(args.target)
@@ -129,6 +151,15 @@ def main(argv=None):
     if not source.is_file():
         raise SystemExit(f"缺少 transcript.json：{source}")
     data = json.loads(source.read_text(encoding="utf-8"))
+
+    if args.recorrect:
+        data, applied = recorrect(directory, data)
+        if applied:
+            print("已重新纠正：" + "、".join(f"{term}×{n}" for term, n in applied.items()),
+                  file=sys.stderr)
+        else:
+            print("本轮没有命中任何变体；检查 data/hotwords.json 里的写法", file=sys.stderr)
+
     rows = build(data.get("segments") or [], args.top)
 
     if args.json:

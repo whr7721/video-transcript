@@ -79,6 +79,14 @@ git worktree add ../shiwen-portfolio v1.0-portfolio
 
 修一次专名，永久受益：把该片里的变异补进 `data/hotwords.json`（键是规范写法，值是识别变体），下一条转写就生效。`asr_hotwords.py` 已经实现了这层后处理，只是表里词太少。
 
+**已经转过的稿子不会自己变。** 两个原因叠在一起：缓存命中时 `link_ingest.add` 直接 return，不走 `export`；而 `asr_hotwords.apply` 开头有 `if 'corrections' in result: return result`，补的新词进不去。所以补完词表要显式跑一次：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 facts.py <job_id> --recorrect
+```
+
+它丢弃 `corrections`、从 `raw_text` 重新纠正，再整份重写 `transcript.json` / `.txt` / `.srt`，并把命中的词和次数打到 stderr。**没有命中就说明词表写法有问题**，别当成已经修好。
+
 **三个踩过的坑，写在这里省得再踩：**
 
 1. **变体规范化后不足 4 字符会被静默跳过。** `保森`（2 字）、`波尔顿`（3 字）写进去也不会生效。要么写成更长的片段（`保森 commonmon`），要么承认它只能人工改。
@@ -96,6 +104,19 @@ git worktree add ../shiwen-portfolio v1.0-portfolio
 | 文件 | 行数 | 做什么 |
 |---|---|---|
 | `grab.py` | ~80 | 链接 → 转写 → 事实卡，一条命令 |
-| `facts.py` | ~160 | 转写稿 → 带时间码的事实卡（可单独跑） |
+| `facts.py` | ~180 | 转写稿 → 带时间码的事实卡；`--recorrect` 重跑专名纠正 |
 
 两者只读调用现有模块（`link_ingest` / `transcribe` / `store`），**不修改任何原有代码**。删掉这两个文件，产品版不受任何影响。
+
+---
+
+## 给 agent 的 Skill
+
+`skills/shiwen/SKILL.md` 已同步改成自用版（`dsh-plugin/skills/shiwen/` 是同一份的分发副本）：
+
+- 只讲一条命令 `grab.py` 和产出文件在哪
+- 明确列出**不该调用**的：`summarize` / `clips` / `rewrite` / `app.py` / 前端 / 云端 ASR
+- 写清误差边界：数字可信、专名必核，以及 `--recorrect` 这一步
+- 默认动作从「转写 → 调摘要接口」改成「转写 → 读全文 → agent 自己判断」
+
+原来的 skill 是给"不接 AI 的用户"写的，教 agent 去调工具里固化的加工链；自用场景下那条链正是要被绕过的部分。

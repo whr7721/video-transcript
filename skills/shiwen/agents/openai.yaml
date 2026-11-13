@@ -1,4 +1,4 @@
 interface:
-  display_name: "拾文本地阅读"
-  short_description: "调用已部署的拾文本地工具，将视频和音频整理成可回查的摘要、章节与导图"
-  default_prompt: "使用 $shiwen 读取这段音视频并保留原文引用。"
+  display_name: "拾文（自用）"
+  short_description: "把视频和播客转成带时间码的文字与事实卡片，后续加工交给 agent"
+  default_prompt: "用 $shiwen 转写这段音视频，保留时间码；专有名词我来核。"
