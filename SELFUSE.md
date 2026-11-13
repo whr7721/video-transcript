@@ -84,6 +84,51 @@ AI 配音怎么做，我是怎么做视频的
 
 ---
 
+## 关注源
+
+产品版里这块叫 `subscriptions.py`：FastAPI 路由 + 前端 `Subscriptions.tsx` + 一个后台线程按 interval 检查。精简时连同前端一起删了，但功能本身是我在用的——固定要看的人（Michael大麦哥），不想每次贴链接。
+
+恢复成一条命令，逻辑不动，只换了外壳：
+
+```powershell
+follow.py add "<主页链接>"     # 记住一个人
+follow.py                      # 扫一遍：共几条、最新哪条、有没有新的
+follow.py new                  # 看还有哪些没转
+follow.py run --seq 3          # 显式要转，才转
+follow.py list / rm
+```
+
+**扫描和转写是两件事。** 我要的多数时候只是"他更新了吗、最新的是哪条"，一条 30 分钟的作品转起来一分多钟，顺手把主页全跑一遍是最糟的设计。所以不带子命令只扫，`run` 才动转写。
+
+数据仍然落在 `tasks.sqlite3` 的 `channels` / `feed_items` 两张表，字段沿用原版（`id / url / platform / payload`，`UNIQUE(channel_id,content_id)`）。表一直在，只是空着——精简时删的是代码不是数据。
+
+### 作品总数得从页面读
+
+`/aweme/v1/web/user/profile/other/` 这个接口现在对抓取账号返回 `DataFetchError: account blocked`，但 `/aweme/v1/web/aweme/post/`（作品列表）正常。所以昵称和作品总数改成从主页页面上读：
+
+```js
+const m = document.body.innerText.match(/作品\s*(\d+)/)
+const el = document.querySelector('[data-e2e="user-title"]')
+```
+
+读不到就退回兜底（缓存里的昵称、不显示总数），不因为一个数字让整个扫描失败。接口那条路留着——没被风控时它更准（`aweme_count`）。
+
+### 第一次扫描不转写
+
+这个决定不能省。新加一个人，主页上 21 条作品，其中 30 分钟的长视频转一条要一分半——全转完一个多小时，而且他三年的历史我不是每条都要。
+
+所以 `initialized` 之前只入库、标记已见，一条不转；之后按作品 id 比对，`feed_items` 里没见过的才算新的。代价是：**加人的那一刻，他现有的作品我不会告诉你**，想要就 `follow.py new` 里挑着转，`run --seq` 支持指定。
+
+### 和原版的三处差别
+
+1. **没有后台线程。** 原来服务活着就自己按 `interval_minutes` 轮询。现在靠外部定时任务调 `follow.py`——重复跑不会重复转，是幂等的。
+2. **没有收藏源。** `douyin_favorites` 那条分支还在 `source_enumeration.py` 里能跑，但 `follow add` 只收主页；收藏是"我点了喜欢"而不是"我固定要看的人"，混在一起反而乱。
+3. **去掉了话题源。** 原版支持把关键词当持续追踪的抖音搜索，依赖的 `douyin_search_bridge.py` 在精简时删了，那块也没再用过。
+
+`source_enumeration.py` 从封存版恢复时改了两处：`link_jobs.normalize`（4 行，抽链接）内联进来，避免为它拖回 `link_jobs.py` 那 175 行和 `documents` / `job_retry` / FastAPI 一整套；`douyin_topic` 分支删除。其余原样，包括抖音那条 `--metadata-only` 的参数——它让列表只取元数据，不下载视频。
+
+---
+
 ## 刻意不做的事
 
 摘要、精华、金句、二创改写、导图、章节导读、切片 —— **这些以前固化在 `rewrite.py` / `clips.py` / `summary` 里（现已从工作区移除），现在全部交给 agent。**
@@ -150,11 +195,10 @@ git worktree add ../shiwen-portfolio v1.0-portfolio
 |---|---|---|
 | `grab.py` | ~105 | 链接 → 转写 → 概览，一条命令 |
 | `facts.py` | ~380 | 概览统计、事实卡、操作流；`--recorrect` 重跑专名纠正 |
+| `follow.py` | ~250 | 关注源 → 新作品 → 转写；第一次只建基线 |
+| `source_enumeration.py` | ~99 | 列出某个源最近 N 条（抖音主页 / RSS / YouTube / B站），从封存版恢复 |
 
-两个文件都只读调用现有模块（`link_ingest` / `transcribe` / `store`），**不修改任何原有代码**。
-
-
-两者只读调用现有模块（`link_ingest` / `transcribe` / `store`），**不修改任何原有代码**。删掉这两个文件，产品版不受任何影响。
+四个文件都只读调用现有模块（`link_ingest` / `transcribe` / `store` / `session`），**不修改任何原有代码**。删掉它们，封存版不受任何影响。
 
 ---
 

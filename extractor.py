@@ -83,13 +83,33 @@ async def run(action, video_id, sec_uid="", output=None, limit=10, max_duration_
                 except Exception:
                     pass
                 await asyncio.sleep(3)
+                # user/profile/other 接口经常被风控（account blocked），但主页本身会把
+                # 昵称和作品数印在页面上，读页面比读接口稳。
+                page_total, page_name = None, ""
+                try:
+                    info = await page.evaluate("""() => {
+                      const t = document.body.innerText.slice(0, 6000);
+                      const m = t.match(/作品\\s*(\\d+)/);
+                      const el = document.querySelector('[data-e2e="user-title"]');
+                      return {total: m ? parseInt(m[1]) : null,
+                              name: (el && el.innerText) ||
+                                    (document.title || '').replace(/的(抖音|主页).*$/, '').replace(/ - 抖音$/, '')};
+                    }""")
+                    page_total = info.get("total")
+                    page_name = (info.get("name") or "").strip()
+                except Exception:
+                    pass
+                persist(total=page_total, author=page_name or checkpoint.get("author", ""),
+                        status="collecting")
                 client = await make_client()
                 try:
                     profile = await client.get_user_info(sec_uid)
                     user = profile.get("user", {})
-                    persist(author=user.get("nickname") or checkpoint.get("author", ""), status="collecting")
-                except Exception:
-                    persist(status="collecting")
+                    persist(author=user.get("nickname") or page_name or checkpoint.get("author", ""),
+                            total=user.get("aweme_count") or page_total,
+                            status="collecting")
+                except Exception as exc:
+                    persist(status="collecting", profile_error=f"{type(exc).__name__}: {exc}"[:200])
                 while sum(classify_post(p, float('inf') if metadata_only else max_duration_sec)[0] in {"eligible", "unknown"} for p in posts) < limit:
                     response = None
                     for attempt in range(1 if metadata_only else 3):

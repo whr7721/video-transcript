@@ -19,6 +19,23 @@
 .\.venv\Scripts\python.exe -X utf8 facts.py <job_id> --steps   # 操作流：操作句按时间排开
 ```
 
+## 关注源
+
+记住一批在跟的人，每次只处理新作品：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 follow.py add "https://www.douyin.com/user/MS4w..."  # 加一个
+.\.venv\Scripts\python.exe -X utf8 follow.py          # 扫一遍：共几条、最新一条、有没有新的
+.\.venv\Scripts\python.exe -X utf8 follow.py new      # 看有哪些新的还没转
+.\.venv\Scripts\python.exe -X utf8 follow.py run      # 要转才转（--seq 3 只转某条）
+.\.venv\Scripts\python.exe -X utf8 follow.py list     # 看关注了谁，以及各建没建基线
+.\.venv\Scripts\python.exe -X utf8 follow.py sync     # 扫 + 转，一次跑完
+```
+
+第一次扫描只建基线，不转历史；之后按作品 id 比对，只把没见过的记成新的。**扫描默认不转写**，转写要显式要。
+
+支持抖音博主主页、RSS / 播客、YouTube 频道、B站 UP 主。状态存在 `data/tasks.sqlite3` 的 `channels` / `feed_items` 表，转写完把 `job_id` 写回对应条目。
+
 转完打印里带 `original.mp4` 的绝对路径。口播在描述画面（「点这里」「选这个」）时可读性会明显发虚，那部分信息在画面里，自己抽帧看。
 
 平台：抖音 / 小红书 / B站 / YouTube / TikTok / X / 小宇宙 / Spotify / RSS / 本地文件。抖音和小红书走本机已有登录态，验证码或登录过期请用户本人处理。
