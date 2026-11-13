@@ -1,24 +1,22 @@
-"""转写稿 → 分类型产出：教程出「步骤单」，案例出「事实卡」，观点出「判定」。
+"""转写稿 → 概览 / 事实卡 / 步骤流。只做提取，不判断用途。
 
-先判类型再决定输出什么，因为这两类稿子的用法完全不同：
+音频转文字是唯一不可替代的一步；剩下的都是可选视图，想要哪个显式要，
+默认只打印概览和文件路径。
 
-- **教程**（怎么点、怎么配、参数多少）→ 我要的是能照着做的流程，不是拿它二创。
-  所以按时间顺序铺开操作，标出参数和坑，谁来做由我看完再定。
-- **案例**（某年某人干了某事）→ 我要的是可画的事实块，用来洗稿做知识动画。
-  所以按"人+年+数+动作"打分，取前 N 条。
-- **观点**（金句、鸡汤、方法论）→ 既没物象也没步骤，做动画会退化成会动的海报，先亮明。
+    python facts.py <job_id>                  # 概览：时长、字数、视频/音频在哪
+    python facts.py <job_id> --facts          # 带时间码的事实卡 → facts.md
+    python facts.py <job_id> --steps          # 操作流 → steps.md
+    python facts.py <job_id> --recorrect      # 用当前 hotwords 重跑专名纠正
 
-只读 transcript.json，不下载、不调用模型、不计配额。
+不给的东西：类型判定、用途建议、该洗稿还是该照着做。这些读一遍文字就有答案，
+写死在规则里只会挡住别的用法。
 
-用法：
-    python facts.py <job_id|任务目录>                # 自动判类型
-    python facts.py <job_id> --type tutorial         # 强制按教程出
-    python facts.py <job_id> --all                   # 两种都出
-    python facts.py <job_id> --recorrect             # 重跑专名纠正
+也不替你做抽帧：视频路径直接印出来，怎么抽、抽哪几帧，按你要看的东西定。
 """
 import argparse
 import json
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -29,9 +27,6 @@ sys.path.insert(0, str(ROOT))
 # ---------------------------------------------------------------- 切句
 
 SPLIT = re.compile(r"(?<=[。！？；\n])")
-# 教程口播一个逗号一个动作，粗切会把六件事捏成一句，照着做时没法跟。
-# 但不能见逗号就切：切太碎会把「不过要注意，想把字幕导出成文件，要开会员」劈成两条，
-# 前半条成了没头没尾的坑、后半条漏进流程。所以只拆超长的。
 SPLIT_FINE = re.compile(r"(?<=[。！？；，,\n])")
 FINE_MAX = 45
 
@@ -39,11 +34,8 @@ FINE_MAX = 45
 def sentences_of(segments, min_chars=6, fine=False):
     """把 VAD 段切成句，按字符比例估算每句的起始时间。
 
-    min_chars 默认 6 适合事实卡（碎片句没信息）；判类型和抽步骤时传 4，
-    因为教程里的操作句本来就短（"点这里"「选第二个」），门槛高了会漏。
-
-    fine=True 时，超过 FINE_MAX 字的句子再按逗号拆一层。短句保持完整，
-    长句才拆——这样「坑」不会和它的前提分家。
+    min_chars 默认 6 适合事实卡（碎片句没信息）；抽步骤时传 4，因为操作句本来就短。
+    fine=True 时超过 FINE_MAX 字的句子再按逗号拆一层——短句拆开会丢主语。
     """
     out = []
     for seg in segments:
@@ -68,7 +60,6 @@ def sentences_of(segments, min_chars=6, fine=False):
 
 # ---------------------------------------------------------------- 信号
 
-# 教程：手上有动作、眼前有界面、嘴里有参数
 OP = re.compile(r"(?:打开|点击|点开|双击|右键|选中|勾选|取消勾选|输入|填上|填入|粘贴|拖到|拖进|"
                 r"上传|导入|导出|保存|复制|删除|新建|添加|设置|改为|改成|调成|调到|切换到|选择|挑一|"
                 r"注册|登录|安装|下载|重启|刷新|发布|生成|运行|执行|按下|按住|滑动|滚动|"
@@ -78,7 +69,7 @@ SEQ = re.compile(r"(?:第一步|第二步|第三步|第四步|首先|其次|然�
                  r"现在我们来|我们先把|我们先|再来|再把|在这里|之后呢|最后)")
 UI = re.compile(r"(?:按钮|菜单|选项|面板|窗口|界面|工具栏|下拉|弹窗|设置页|标签页|输入框|"
                 r"时间轴|轨道|图层|画布|文件夹|路径|官网|后台|控制台|账号|登录态|快捷键)")
-# 只要带数值的规格。「参数」「默认值」这种没有值的裸词别进表——列出来等于没列。
+# 只要带数值的规格。「参数」「默认值」这种没有值的裸词不算数——列出来等于没列。
 PARAM = re.compile(r"(?:\d+(?:\.\d+)?\s*(?:px|像素|帧|fps|kb|mb|gb|hz|khz|db|%|倍|k\b))|"
                    r"(?:\d{3,4}\s*[*x×]\s*\d{3,4})|(?:\d+\s*:\s*\d+)|"
                    r"(?:\d+(?:\.\d+)?\s*(?:秒|分钟|小时|元|块))|(?:\d+(?:\.\d+)?\s*[bB]参数)",
@@ -91,19 +82,16 @@ TOOL = re.compile(r"(?:剪映|即梦|可灵|通义|千问|豆包|ChatGPT|Claude|
                   r"Coze|扣子|n8n|Dify|API|Token|Plugin|MCP|Skill|Prompt|提示词|小程序|智能体|"
                   r"Obsidian|Notion|Excel|WPS|Blender|After\s?Effects)", re.I)
 
-# 案例：有年份、有数字、有人死了、有东西炸了
 YEAR = re.compile(r"(?:1[5-9]\d{2}|20[0-2]\d)\s*年")
 NUM = re.compile(r"\d+(?:\.\d+)?\s*(?:万|亿|千|百|米|公里|吨|美元|加元|英镑|欧元|人|名|天|小时|分钟|岁|层)")
 NAR = re.compile(r"(?:爆炸|沉没|失窃|倒塌|去世|出生|抢|炸|烧|逃|救|判决|起诉|签署|发明|发现|"
                  r"遇难|死亡|幸存|辞职|拒|签字|营救|追捕|拍卖|赠|夺|拦|投降|破产|上市|失踪|绑架)")
-STO = re.compile(r"(?:故事|传说|据说|当年|那一年|曾经|后来|真实发生|历史上|一辈子|临终|回忆)")
 QUOTE = re.compile(r"[「“\"][^」”\"]{2,40}[」”\"]")
+INFO = re.compile(r"(?:1[5-9]\d{2}|20[0-2]\d)\s*年|"
+                  r"\d+(?:\.\d+)?\s*(?:万|亿|千|百|米|公里|吨|美元|加元|英镑|欧元|元|人|名|天|"
+                  r"小时|分钟|秒|%|倍|岁|帧|px)")
 
-TITLE_TUT = re.compile(r"(?:教程|保姆|手把手|教你|教学|实战|零基础|入门|步骤|流程|接入|搭建|"
-                       r"配置|实测|指南|攻略|从0|从零|怎么(?:做|弄|用|接|配|搭|装|开|玩|搞)|"
-                       r"如何(?:做|用|接|配|搭|装|开))")
-
-# 事实卡打分：越靠前越像「可被画出来的事实」
+# 事实卡打分：越靠前越像「能被复述出来的具体东西」
 RULES = [
     ("年份", re.compile(r"(?:1[5-9]\d{2}|20[0-2]\d)\s*年?"), 4),
     ("数字", re.compile(r"\d+(?:\.\d+)?\s*(?:万|亿|千|百|米|公里|千米|吨|美元|加元|英镑|欧元|人|名|天|年|小时|分钟|秒|%|倍|层|岁)"), 3),
@@ -117,90 +105,60 @@ RULES = [
 
 NOISE = re.compile(r"(?:我们下期|感谢收听|感谢观看|订阅|点赞|关注|广告|赞助|三连|转发|评论区|一键三连)")
 
-KIND_CN = {"tutorial": "教程", "case": "案例", "note": "观点", "unknown": "判不出"}
-MIN_SCORE = 0.42          # 低于这个分，两类都不算，归「观点」
+
+# ---------------------------------------------------------------- 概览
+
+def _share(sents, pattern):
+    return sum(1 for s in sents if pattern.search(s)) / max(len(sents), 1)
 
 
-# ---------------------------------------------------------------- 分类
+def profile(segments):
+    """客观描述这条稿子的文字长什么样。不下结论，不指方向。
 
-def _share(sents, pred):
-    return sum(1 for s in sents if pred(s)) / len(sents)
-
-
-def classify(segments, title=""):
-    """靠句子密度判类型。返回连续分 + 命中句数，判错了也能看出为什么。
-
-    两条经验：① 「首先/然后」不能单独当教程证据——观点稿列举论点时满篇都是，
-    必须和操作词共现才算步骤；② 标题里的「保姆级/手把手」只是先验，最多加 0.45，
-    真正决定的是操作密度，标题党骗不过去。
+    只报三个比例和一个计数。读完这几行大概知道文字本身够不够用，
+    够不够用取决于要拿它干什么——那件事不归这里管。
     """
     sents = [s["text"] for s in sentences_of(segments, min_chars=4)]
-    n = len(sents)
-    if n < 5:
-        return {"kind": "unknown", "tutorial": 0.0, "case": 0.0, "level": "低",
-                "signal": {}, "count": n,
-                "reason": "句子太少，判不出来；看全文比看分数靠谱"}
-
-    op = _share(sents, lambda s: bool(OP.search(s)))
-    seq = _share(sents, lambda s: bool(SEQ.search(s) and OP.search(s)))
-    ui = _share(sents, lambda s: bool(UI.search(s) or TOOL.search(s)))
-    par = _share(sents, lambda s: bool(PARAM.search(s)))
-    warn = _share(sents, lambda s: bool(WARN.search(s)))
-    yr = _share(sents, lambda s: bool(YEAR.search(s)))
-    num = _share(sents, lambda s: bool(NUM.search(s)))
-    nar = _share(sents, lambda s: bool(NAR.search(s)))
-    sto = _share(sents, lambda s: bool(STO.search(s)))
-    quote = _share(sents, lambda s: bool(QUOTE.search(s)))
-
-    ui_n, par_n, seq_n = round(ui * n), round(par * n), round(seq * n)
-    tool_n = len({m.group(0).lower() for s in sents for m in TOOL.finditer(s)})
-
-    bonus = 0.0
-    if TITLE_TUT.search(title or ""):
-        bonus += 0.30
-    if re.search(r"(?:教程|保姆|手把手|教你|实战|从零|从0)", title or ""):
-        bonus += 0.15
-
-    tutorial = 3.0 * op + 1.5 * seq + 1.0 * ui + 0.6 * par + 0.6 * warn + bonus
-    case = 2.5 * nar + 2.0 * yr + 1.0 * num + 1.5 * sto + 0.2 * quote
-
-    # 光有动作词不够。观点稿里「先去实验」「换掉」「加上」也能凑十几句，
-    # 但没界面、没参数、没具名工具——说明他没在操作任何东西，只是在讲道理。
-    # 教程至少得摸到其中一样。
-    anchors = sum([ui_n >= 3, par_n >= 3, tool_n >= 2, seq_n >= 3])
-    if tutorial >= MIN_SCORE and anchors < 1:
-        tutorial *= 0.5
-    elif anchors >= 2:
-        tutorial += 0.15
-
-    if tutorial >= MIN_SCORE and tutorial >= case:
-        kind = "tutorial"
-    elif case >= MIN_SCORE and case > tutorial:
-        kind = "case"
-    else:
-        kind = "note"
-
-    top = tutorial if kind == "tutorial" else case
-    high, mid = (0.9, 0.55) if kind == "tutorial" else (0.75, 0.45)
-    level = "高" if top >= high else ("中" if top >= mid else "低")
-    if kind == "tutorial" and anchors < 1:
-        level = "低"      # 分数够但一样实操锚点都没有，别让人照着做
-
+    n = len(sents) or 1
+    chars = sum(len(s) for s in sents) or 1
+    info = sum(len(INFO.findall(s)) for s in sents)
+    tools = Counter()
+    for s in sents:
+        for m in TOOL.finditer(s):
+            tools[m.group(0)] += 1
     return {
-        "kind": kind,
-        "tutorial": round(tutorial, 2),
-        "case": round(case, 2),
-        "level": level,
-        "count": n,
-        "anchor": anchors,
-        "signal": {
-            "操作句": round(op * n), "步骤句": seq_n, "界面句": ui_n,
-            "参数句": par_n, "告诫句": round(warn * n), "工具数": tool_n,
-            "年份句": round(yr * n), "数字句": round(num * n),
-            "叙事句": round(nar * n), "故事句": round(sto * n),
-        },
-        "bonus": round(bonus, 2),
+        "sentences": n,
+        "chars": chars,
+        "op": round(_share(sents, OP), 3),
+        "seq": round(_share(sents, SEQ), 3),
+        "nar": round(_share(sents, NAR), 3),
+        "info": info,
+        "info_per_100": round(info * 100 / chars, 1),
+        "tools": tools.most_common(8),
     }
+
+
+def form_line(p):
+    """只报数字，不贴标签——同一个数在不同用法下含义完全不同。"""
+    return (f"操作句 {p['op'] * 100:.0f}% ｜ 顺序词 {p['seq'] * 100:.0f}% ｜ "
+            f"叙事句 {p['nar'] * 100:.0f}% ｜ 具体信息 {p['info']} 处"
+            f"（每百字 {p['info_per_100']}）")
+
+
+# ---------------------------------------------------------------- 媒体
+
+MEDIA_SKIP = {".part", ".json", ".ytdl", ".wav", ".txt", ".srt", ".md"}
+
+
+def find_media(directory):
+    """任务目录里的原始媒体。original.* 是下载的源，podcast.audio 是播客。"""
+    for path in sorted(directory.glob("original.*")):
+        if path.suffix.lower() not in MEDIA_SKIP:
+            return path
+    podcast = directory / "podcast.audio"
+    if podcast.is_file():
+        return podcast
+    return None
 
 
 # ---------------------------------------------------------------- 事实卡
@@ -215,8 +173,7 @@ def score(text):
 
 
 def build(segments, top=40, min_score=4):
-    rows = []
-    seen = set()
+    rows, seen = [], set()
     for item in sentences_of(segments):
         text = item["text"]
         if len(re.sub(r"[^一-鿿A-Za-z0-9]", "", text)) < 8:
@@ -235,20 +192,32 @@ def build(segments, top=40, min_score=4):
     return rows[:top]
 
 
-# ---------------------------------------------------------------- 步骤单
+def render(job, data, rows):
+    strong = [r for r in rows if r["score"] >= 8]
+    body = [f"# 事实卡 · {_title(data)}", ""]
+    body += _head(data)
+    body.append(f"- 强候选（人+年+数，能直接复述）：**{len(strong)}** 条　全部候选：{len(rows)} 条")
+    body.append("")
+    body.append("| # | 时间 | 内容 | 命中 | 分 |")
+    body.append("|---|---|---|---|---|")
+    for i, row in enumerate(rows, 1):
+        text = row["text"].replace("|", "／")
+        body.append(f"| {i} | {stamp(row['t'])} | {text} | {'/'.join(row['hits'])} | {row['score']}")
+    body.append("")
+    body.append("> 识别稿有错字，人名地名尤其容易错；数字通常比专名可靠。")
+    return "\n".join(body)
+
+
+# ---------------------------------------------------------------- 步骤流
 
 def build_steps(segments):
-    """按时间顺序铺开操作，不按分数排序——教程的步骤顺序本身就是信息。
+    """按时间顺序铺开操作。不排序、不去重——顺序本身就是内容。
 
-    教程不能去重：同一个动作重复三遍（换三个素材各做一次）是真实流程，
     只在 8 秒内出现逐字相同的句子时才当识别抖动丢掉。
-
-    分类只放真心是告诫的句子。只有参数、既没动作又没告诫的句子直接丢，
-    不然「坑」那一节会塞满「1秒60帧」这种描述，把真坑埋了。
+    只有参数、既没动作又没告诫的句子丢掉，不然「告诫」那节会被描述句填满。
     """
-    flow, warns = [], []
+    flow, warns, params_rows = [], [], []
     tools = Counter()
-    params_rows = []
     prev = None
     for item in sentences_of(segments, min_chars=4, fine=True):
         text = item["text"]
@@ -275,6 +244,43 @@ def build_steps(segments):
             "tools": tools.most_common(10), "params": params_rows}
 
 
+def render_steps(job, data, pack):
+    flow, warns, tools, params = pack["flow"], pack["warns"], pack["tools"], pack["params"]
+    body = [f"# 操作流 · {_title(data)}", ""]
+    body += _head(data)
+    body.append(f"- 操作 {len(flow)} 条　告诫 {len(warns)} 条　参数 {len(params)} 处"
+                + (f"　提到 {len(tools)} 个工具" if tools else ""))
+    body.append("")
+    if tools:
+        body.append("## 提到的工具")
+        body.append("　".join(f"`{n}` ×{c}" for n, c in tools))
+        body.append("")
+    body.append(f"## 按时间顺序（{len(flow)} 条，未合并）")
+    body.append("")
+    for i, row in enumerate(flow, 1):
+        mark = " **⚠**" if row["warn"] else ""
+        body.append(f"{i}. `{stamp(row['t'])}`{mark} {row['text']}")
+    if warns:
+        body.append("")
+        body.append("## 不带动作的告诫句")
+        body.append("")
+        for row in warns:
+            body.append(f"- `{stamp(row['t'])}` {row['text']}")
+    if len(params) >= 3:
+        body.append("")
+        body.append("## 带数值的地方")
+        body.append("")
+        body.append("| 时间 | 值 |")
+        body.append("|---|---|")
+        for row in params:
+            body.append(f"| {stamp(row['t'])} | {' · '.join(row['params'])} |")
+    body.append("")
+    body.append("> 这是转写稿里的操作句按时间排开，不是原作者的分步。"
+                "口播在描述画面时（「点这里」「选这个」），这里只剩半句——"
+                "那部分信息在画面里，用 `--frames` 抽出来看。")
+    return "\n".join(body)
+
+
 # ---------------------------------------------------------------- 排版
 
 def stamp(seconds):
@@ -295,12 +301,9 @@ def _title(data, limit=42):
     return text if len(text) <= limit else text[:limit] + "…"
 
 
-def _head(data, kind, cls):
+def _head(data):
     src = data.get("source_url") or data.get("url") or "本地文件"
-    forced = "（强制）" if cls.get("kind") and cls["kind"] != kind else ""
     return [
-        f"- 类型：**{KIND_CN.get(kind, kind)}**{forced}　教程分 {cls.get('tutorial', 0):.2f} / "
-        f"案例分 {cls.get('case', 0):.2f}　置信{cls.get('level', '低')}",
         f"- 来源：{src}",
         f"- 标题：{_title(data, 60)}",
         f"- 时长：{stamp(data.get('duration') or 0)}　段数：{len(data.get('segments') or [])}　"
@@ -308,85 +311,7 @@ def _head(data, kind, cls):
     ]
 
 
-def render(job, data, rows, cls=None):
-    """事实卡片的 Markdown 表示；grab.py 与命令行共用同一份排版。"""
-    strong = [r for r in rows if r["score"] >= 8]
-    body = [f"# 事实卡片 · {job}", ""]
-    body += _head(data, "case", cls or {})
-    body.append(f"- 强候选（人+年+数，可直接开工）：**{len(strong)}** 条　全部候选：{len(rows)} 条")
-    body.append("")
-    body.append("| # | 时间 | 事实 | 命中 | 分 |")
-    body.append("|---|---|---|---|---|")
-    for i, row in enumerate(rows, 1):
-        text = row["text"].replace("|", "／")
-        body.append(f"| {i} | {stamp(row['t'])} | {text} | {'/'.join(row['hits'])} | {row['score']}")
-    body.append("")
-    body.append("> 识别稿可能有错字，人名地名尤其容易错；上屏前按时间码回听核对。数字通常比专名可靠。")
-    return "\n".join(body)
-
-
-def render_steps(job, data, cls, pack):
-    flow, warns, tools, params = pack["flow"], pack["warns"], pack["tools"], pack["params"]
-    body = [f"# 操作步骤 · {_title(data)}", ""]
-    body += _head(data, "tutorial", cls)
-    body.append(f"- 内容量：操作 {len(flow)} 条　坑 {len(warns)} 条　参数 {len(params)} 处"
-                + (f"　工具 {len(tools)} 个" if tools else ""))
-    body.append("")
-    if tools:
-        body.append("## 提到的工具")
-        body.append("　".join(f"`{n}` ×{c}" for n, c in tools))
-        body.append("")
-    body.append(f"## 流程（{len(flow)} 条，按时间顺序，未合并）")
-    body.append("")
-    for i, row in enumerate(flow, 1):
-        mark = " **⚠**" if row["warn"] else ""
-        body.append(f"{i}. `{stamp(row['t'])}`{mark} {row['text']}")
-    if warns:
-        body.append("")
-        body.append("## 坑和前提（不带动作的告诫句，原文照录）")
-        body.append("")
-        for row in warns:
-            body.append(f"- `{stamp(row['t'])}` {row['text']}")
-    if len(params) >= 3:
-        body.append("")
-        body.append("## 参数速查（照着做时最容易漏的就是这些）")
-        body.append("")
-        body.append("| 时间 | 值 |")
-        body.append("|---|---|")
-        for row in params:
-            body.append(f"| {stamp(row['t'])} | {' · '.join(row['params'])} |")
-    body.append("")
-    body.append("> 顺序和时间码来自转写稿，是真的；**步骤边界是我按操作词和顺序词推的**，"
-                "不一定等于原作者的分步。要照着做之前，按时间码回看那一段最稳。")
-    return "\n".join(body)
-
-
-def render_note(job, data, cls):
-    sig = cls.get("signal") or {}
-    body = [f"# 判定：观点稿 · {_title(data)}", ""]
-    body += _head(data, "note", cls)
-    body.append("")
-    if cls.get("kind") == "unknown":
-        body.append(f"> {cls.get('reason')}")
-    else:
-        body.append("没有可画的事实，也没有可照做的步骤。")
-        body.append("")
-        body.append("这类稿子是论点不是案例——拿去做知识动画，会退化成会动的海报："
-                    "每屏只有一句话，没有物象可演。当选题灵感用可以，当素材源不行。")
-    if sig:
-        body.append("")
-        body.append("信号（命中句数 / 共 "
-                    f"{cls.get('count', 0)} 句）：" +
-                    "　".join(f"{k} {v}" for k, v in sig.items() if v))
-    body.append("")
-    body.append("## 开头几句，先看看是什么货色")
-    body.append("")
-    for item in sentences_of(data.get("segments") or [], min_chars=4)[:8]:
-        body.append(f"- `{stamp(item['t'])}` {item['text']}")
-    return "\n".join(body)
-
-
-# ---------------------------------------------------------------- 重跑纠正
+# ---------------------------------------------------------------- 维护
 
 def recorrect(directory, data):
     """用当前 hotwords.json 重新纠正已有稿子。
@@ -417,25 +342,30 @@ def locate(target):
     raise SystemExit(f"找不到任务目录：{target}")
 
 
-def analyze(data, force="auto"):
-    """判类型 + 抽取。grab.py 和命令行共用这个入口。"""
-    segments = data.get("segments") or []
-    cls = classify(segments, data.get("title") or "")
-    kind = cls["kind"] if force == "auto" else force
-    if kind == "tutorial":
-        return kind, cls, build_steps(segments)
-    if kind == "case":
-        return kind, cls, build(segments)
-    return kind, cls, None
+def overview(directory, data, prof):
+    """转完之后打印这几行。只有事实，没有建议。"""
+    media = find_media(directory)
+    lines = [f"\n{_title(data)}",
+             f"{stamp(data.get('duration') or 0)} ｜ "
+             f"{len(data.get('segments') or [])} 段 ｜ {len(data.get('text') or '')} 字"]
+    if prof:
+        lines.append(form_line(prof))
+    lines.append("")
+    lines.append(f"全文：{directory / 'transcript.txt'}")
+    if media:
+        size = media.stat().st_size / 1024 / 1024
+        lines.append(f"媒体：{media.resolve()}（{size:.0f} MB）")
+    else:
+        lines.append("本机没留媒体文件，只有转写稿。")
+    return "\n".join(lines)
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="转写稿 → 分类型产出（不调用模型）")
+    parser = argparse.ArgumentParser(description="转写稿 → 文本 / 事实卡 / 步骤流 / 抽帧")
     parser.add_argument("target", help="任务 ID 或 data/jobs/<id> 目录")
-    parser.add_argument("--top", type=int, default=40, help="案例：输出多少条事实卡")
-    parser.add_argument("--type", dest="force", default="auto",
-                        choices=["auto", "tutorial", "case", "note"], help="强制类型，默认自动判")
-    parser.add_argument("--all", action="store_true", help="步骤单和事实卡都出，不做二选一")
+    parser.add_argument("--facts", action="store_true", help="生成带时间码的事实卡 facts.md")
+    parser.add_argument("--top", type=int, default=40, help="事实卡条数，默认 40")
+    parser.add_argument("--steps", action="store_true", help="生成操作流 steps.md")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--recorrect", action="store_true",
                         help="用当前 hotwords.json 重新纠正已有稿子的专名，再重写 transcript")
@@ -455,41 +385,29 @@ def main(argv=None):
         else:
             print("本轮没有命中任何变体；检查 data/hotwords.json 里的写法", file=sys.stderr)
 
-    kind, cls, payload = analyze(data, args.force)
+    prof = profile(data.get("segments") or [])
+    written = []
+
+    rows = build(data.get("segments") or [], args.top) if args.facts else None
+    if args.facts:
+        (directory / "facts.md").write_text(render(directory.name, data, rows), encoding="utf-8")
+        written.append(directory / "facts.md")
+
+    pack = build_steps(data.get("segments") or []) if args.steps else None
+    if args.steps:
+        (directory / "steps.md").write_text(
+            render_steps(directory.name, data, pack), encoding="utf-8")
+        written.append(directory / "steps.md")
 
     if args.json:
-        print(json.dumps({"job": directory.name, "kind": kind, "classify": cls,
-                          "payload": payload}, ensure_ascii=False, indent=2))
+        print(json.dumps({"job": directory.name, "dir": str(directory), "profile": prof,
+                          "media": str(find_media(directory) or ""),
+                          "facts": rows, "steps": pack}, ensure_ascii=False, indent=2))
         return
 
-    written = []
-    if args.all:
-        steps = render_steps(directory.name, data, cls, build_steps(data.get("segments") or []))
-        (directory / "steps.md").write_text(steps, encoding="utf-8")
-        written.append(directory / "steps.md")
-        facts = render(directory.name, data, build(data.get("segments") or [], args.top), cls)
-        (directory / "facts.md").write_text(facts, encoding="utf-8")
-        written.append(directory / "facts.md")
-        print(steps)
-        print("\n" + "=" * 60 + "\n")
-        print(facts)
-    elif kind == "tutorial":
-        text = render_steps(directory.name, data, cls, payload)
-        (directory / "steps.md").write_text(text, encoding="utf-8")
-        written.append(directory / "steps.md")
-        print(text)
-    elif kind == "case":
-        text = render(directory.name, data, payload, cls)
-        (directory / "facts.md").write_text(text, encoding="utf-8")
-        written.append(directory / "facts.md")
-        print(text)
-    else:
-        text = render_note(directory.name, data, cls)
-        (directory / "note.md").write_text(text, encoding="utf-8")
-        written.append(directory / "note.md")
-        print(text)
-
-    print("\n已写入：" + "、".join(str(p) for p in written), file=sys.stderr)
+    print(overview(directory, data, prof))
+    if written:
+        print("\n已写入：" + "、".join(str(p) for p in written), file=sys.stderr)
 
 
 if __name__ == "__main__":
