@@ -110,13 +110,39 @@ git worktree add ../shiwen-portfolio v1.0-portfolio
 
 ---
 
+## 精简时漏掉的一类依赖
+
+删掉 51 个产品层模块时用的是静态 import 闭包，它能算出 `import x` 形式的依赖，**算不出下面两种**：
+
+1. **字符串路径调用**：`subprocess.run([MC_PY, str(ROOT / "extractor.py"), ...])`。`extractor.py` 不是被 import 的，是被当文件名执行的，所以没进闭包——而抖音的下载全靠它。
+2. **间接依赖**：`extractor.py` 里有 `from batch_rules import classify_post`，但 `extractor.py` 当时已被删，所以 `batch_rules` 也从没进过闭包。
+
+后果：抖音链接会直接报「采集组件未能启动」，其他平台不受影响——**只有抖音这一条路是断的，而且报错信息看起来像环境问题，不像缺文件。**
+
+已从 `v1.0-portfolio` 恢复 3 个文件：`extractor.py`、`batch_rules.py`、`douyin_favorites.py`。抖音依赖闭包共 4 个（另加 `douyin_session_guard.py`），当前 41 个模块、按 import 语句逐个核过、断链为 0。
+
+**可复用的排查法**（比字符串搜索可靠）：
+
+```python
+# 对每个被删模块名，检查是否仍被保留代码 import
+tag = {p[:-3] for p in git_ls_tree('v1.0-portfolio') if '/' not in p and p.endswith('.py')}
+for f in Path('.').glob('*.py'):
+    for m in re.finditer(r'^(?:\s*from|\s*import)\s+([A-Za-z_]\w*)', f.read_text(), re.M):
+        if m.group(1) in tag and m.group(1) not in disk_modules: report(f, m.group(1))
+```
+
+只搜 `xxx.py` 字面量会漏掉 `from xxx import` 这种写法——`batch_rules` 就是这样漏掉的。
+
+---
+
 ## 给 agent 的 Skill
 
 `skills/shiwen/SKILL.md` 已同步改成自用版（`dsh-plugin/skills/shiwen/` 是同一份的分发副本）：
 
 - 只讲一条命令 `grab.py` 和产出文件在哪
-- 明确列出**不该调用**的：`summarize` / `clips` / `rewrite` / `app.py` / 前端 / 云端 ASR
 - 写清误差边界：数字可信、专名必核，以及 `--recorrect` 这一步
 - 默认动作从「转写 → 调摘要接口」改成「转写 → 读全文 → agent 自己判断」
 
 原来的 skill 是给"不接 AI 的用户"写的，教 agent 去调工具里固化的加工链；自用场景下那条链正是要被绕过的部分。
+
+**不写禁令表**：产品层文件已经移除，agent 扫目录本来也找不到 `summarize` / `app.py`；把它们列进文档反而把不存在的名字塞进上下文，遇到内容像"摘要"的任务时更容易被联想起来。只写「转完之后的事由你直接读 `transcript.txt` 完成」这一句正向分工就够。
