@@ -155,9 +155,15 @@ def check_one(channel, limit):
     fresh = 0
     with store.connect() as db:
         for row in reversed(result["items"]):     # 旧→新入库，seq 顺序即时间顺序
-            exists = db.execute("SELECT 1 FROM feed_items WHERE channel_id=? AND content_id=?",
+            exists = db.execute("SELECT payload FROM feed_items WHERE channel_id=? AND content_id=?",
                                 (channel["id"], row["id"])).fetchone()
             if exists:
+                # 热度会变，每次扫描刷新；read / job_id 这些本地状态不能丢。
+                kept = json.loads(exists[0])
+                kept.update({k: row.get(k) for k in
+                             ("likes", "collects", "comments", "shares", "top", "duration", "published")})
+                db.execute("UPDATE feed_items SET payload=? WHERE channel_id=? AND content_id=?",
+                           (json.dumps(kept, ensure_ascii=False), channel["id"], row["id"]))
                 continue
             payload = {**row, "read": False, "discovered_at": time.time(),
                        "job_id": None, "transcribed_at": None}
@@ -200,7 +206,7 @@ def cmd_check(args):
         newest = latest_of(result)
         if newest:
             dur = f"　{newest['duration'] / 60:.0f} 分钟" if newest.get("duration") else ""
-            print(f"    最新　{stamp(newest.get('published'))}{dur}")
+            print(f"    最新　{stamp(newest.get('published'))}{dur}　{heat(newest)}")
             print(f"          {short(newest['title'], 52)}")
         if first:
             print(f"    首次扫描：记下这 {fresh} 条当基线，一条也没转")
@@ -232,6 +238,25 @@ def short(text, n=44):
     return line if len(line) <= n else line[:n] + "…"
 
 
+def num(n):
+    """播放量抖音已经不给（恒为 0），点赞收藏还在，这是判断哪条值得做的唯一现成信号。"""
+    if n is None:
+        return "—"
+    if n >= 10000:
+        return f"{n / 10000:.1f}万".replace(".0万", "万")
+    return str(n)
+
+
+def heat(row):
+    bits = []
+    if row.get("top"):
+        bits.append("置顶")
+    bits.append(f"赞 {num(row.get('likes'))}")
+    if row.get("collects") is not None:
+        bits.append(f"藏 {num(row.get('collects'))}")
+    return "　".join(bits)
+
+
 def cmd_new(args):
     rows = pending()
     if not rows:
@@ -242,6 +267,7 @@ def cmd_new(args):
         dur = f"{r['duration'] / 60:.0f} 分钟" if r.get("duration") else "时长未知"
         print(f"[{r['seq']}] {stamp(r.get('published'))}　{names.get(r['channel_id'], '?')}　{dur}")
         print(f"      {short(r['title'])}")
+        print(f"      {heat(r)}")
     print(f"\n共 {len(rows)} 条。follow.py run 转写。")
 
 

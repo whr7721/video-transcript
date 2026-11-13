@@ -92,7 +92,11 @@ def enumerate_source(kind,url,limit=20,*,_directory=None,_max_duration_sec=600):
    if not output.exists():raise ValueError('抖音列表组件未完成，请检查安装依赖或登录状态')
    result=json.loads(output.read_text(encoding='utf8'))
   status=result.get('status')
-  rows=[{'id':str(e['aweme_id']),'title':e.get('desc') or '未命名视频','url':'https://www.douyin.com/video/'+str(e['aweme_id']),'published':e.get('create_time'),'duration':(e.get('video',{}).get('duration') or 0)/1000} for e in result.get('posts',[]) if isinstance(e.get('video'),dict) and not e.get('images')]
+  def stat(e):
+   s=e.get('statistics') or {}
+   return {'likes':s.get('digg_count'),'collects':s.get('collect_count'),
+           'comments':s.get('comment_count'),'shares':s.get('share_count'),'top':bool(e.get('is_top'))}
+  rows=[{'id':str(e['aweme_id']),'title':e.get('desc') or '未命名视频','url':'https://www.douyin.com/video/'+str(e['aweme_id']),'published':e.get('create_time'),'duration':(e.get('video',{}).get('duration') or 0)/1000,**stat(e)} for e in result.get('posts',[]) if isinstance(e.get('video'),dict) and not e.get('images')]
   title=result.get('author') or next((p.get('author',{}).get('nickname') for p in result.get('posts',[]) if p.get('author',{}).get('nickname')),None) or url
   if status not in {'ok','partial'} and not rows:raise ValueError('抖音检查未完成：'+str(status)+'；请检查登录或稍后重试')
   return {'identity':ident,'title':title,'items':rows[:limit],'total':result.get('total'),'raw_count':len(result.get('posts',[])),'excluded_nonvideo':len(result.get('posts',[]))-len(rows),'status':'ok' if status=='ok' else 'partial','message':result.get('error') or result.get('stopped_reason') or ('仅返回部分结果，请稍后手动检查' if status!='ok' else None)}
