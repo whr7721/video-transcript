@@ -16,7 +16,7 @@ D:\zcode1\video-transcript\.venv\Scripts\python.exe -X utf8 D:\zcode1\video-tran
 
 不带参数 0.1 秒，读本地记录；加 `--live` 约 3 秒，解密 cookie 直接问服务端"还认不认"。
 
-**`--live` 才是真判断。** 本地 cookie 没过期，不代表服务端还认——小红书就是活例子：`web_session` 标称有效期到 2027 年，本地看着好好的，一请求 `302 /login`。只看 cookie 会得出"登录有效"的错结论。
+**`--live` 才是真判断。** 本地 cookie 没过期，不代表服务端还认——小红书给过活例子：`web_session` 标称有效期到 2027 年，本地看着好好的，一请求却是 `302 /login`。只看 cookie 会得出"登录有效"的错结论。这类"本地库看着正常、服务端已判废"的情况只能靠 `--live` 抓出来。
 
 用户说"抓不动""登录态好像掉了"，先跑 `--live`，别猜。
 
@@ -133,7 +133,7 @@ Michael大麦哥　共 210 条作品　本次看最近 20 条
 | 站点 | 走什么 | 实测（2026-11-14） | 说明 |
 | --- | --- | --- | --- |
 | 抖音 | 浏览器 + `data/browser` profile | **可用** | 搜索页返回真实笔记；`a_bogus` / `msToken` 由页面 JS 算 |
-| 小红书 | 浏览器 / cookie + 签名 | **已失效，要重登** | 本地 `web_session` 标到 2027，服务端 `302 /login` |
+| 小红书 | 浏览器 + `data/browser` profile | **可用** | 2026-11-14 重登；`loggedIn=true`，`/explore` 200 |
 | B站 | cookie + httpx | **游客态，照常能用** | 无 `SESSDATA`，但公开接口、评论、热门榜不登录也能读 |
 | 微博 | — | 未登录 | |
 
@@ -146,9 +146,20 @@ Michael大麦哥　共 210 条作品　本次看最近 20 条
 
 **为什么抖音不能只存 cookie。** 它拦的是 JS 算出来的签名（`a_bogus`），不是 TLS 指纹。把 `sessionid` 抠出来塞给 `httpx` 或 `curl_cffi`，拿回的是 `403 Blocked by ArgusSecurityPlugin`——现象很像"登录态失效"，实际是绕过了算签名的那一层。所以抖音必须留 profile，用浏览器开页面。
 
-**反过来，B站 / 小红书 / 微博这类只要 cookie 就能过的站，导成 JSON 更省事**：不用每次起浏览器，`httpx` 带着 cookie 直连就行。这就是 `data/cookies/` 那套的用途，和抖音的 profile 不是二选一，是各走各的。
+**反过来，B站 / 小红书 / 微博这类页面读取只要 cookie 就能过，导成 JSON 更省事**：不用每次起浏览器，`httpx` 带着 cookie 直连就行。这就是 `data/cookies/` 那套的用途，和抖音的 profile 不是二选一，是各走各的。注意小红书只有**页面级**能这么干，搜索接口仍要 `x-s` 签名，那条还是得走浏览器。
 
-遇到验证码或登录过期，请用户本人完成；MediaCrawler / meme-lab 的配置与定时任务由它们各自维护，改动交回用户。
+遇到验证码或登录过期，请用户本人完成。**重登一条命令**（窗口里扫码，不用回终端按键）：
+
+```powershell
+.venv\Scripts\python.exe -X utf8 scrape.py --login "https://www.xiaohongshu.com/explore" --login-auto 180
+```
+
+`--login-auto` 每 2 秒比一次登录相关 cookie（session / sess / sid / token / auth / uid 这类名字），
+变了就等 3 秒落盘、自动关窗口、返回 0。所以 agent 会话也能直接调，不需要人手按回车。
+**已经登录的站重跑会报 timeout，那是正常的**——cookie 本来就不变，不代表失败；
+判断到底登没登，看 `status.py --live`，不看这条命令的退出码。
+
+MediaCrawler / meme-lab 的配置与定时任务由它们各自维护，改动交回用户。
 
 RSS 未指定 `--episode` 时只列出节目，等用户选定再处理。
 

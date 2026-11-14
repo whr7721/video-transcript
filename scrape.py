@@ -12,6 +12,7 @@
     python scrape.py <url> --fast                            # 不开浏览器，直接拿正文
     python scrape.py <url> --selector ".item" --pages 10 --next "a.next"   # 翻页并去重
     python scrape.py --login <url>                           # 新建登录态，扫码后回车
+    python scrape.py --login <url> --login-auto 180          # 同上但不用回车，登录成功自动保存关闭
 
 公共参数：--profile（默认 data/browser）、--wait 秒、--json、--out 文件。
 
@@ -26,6 +27,7 @@ import asyncio
 import json
 import re
 import sys
+import time
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -307,6 +309,33 @@ async def run(args):
             if args.login:
                 await page.goto(args.url, wait_until="domcontentloaded", timeout=60000)
                 print(f"已打开 {args.url}", file=sys.stderr)
+                if args.login_auto > 0:
+                    # 无交互：登录成功后自动保存并关闭，供 agent 会话调用
+                    print(f"请在那个窗口里扫码登录。轮询 cookie，最多等 {int(args.login_auto)} 秒。",
+                          file=sys.stderr)
+                    await asyncio.sleep(8)          # 让页面自身的匿名 cookie 先落定
+                    base = await _auth_snapshot(ctx)
+                    deadline = time.time() + args.login_auto
+                    while time.time() < deadline:
+                        await asyncio.sleep(2)
+                        if page.is_closed():
+                            print("[warn] 窗口被手动关闭，按已保存处理", file=sys.stderr)
+                            break
+                        cur = await _auth_snapshot(ctx)
+                        changed = [k for k, v in cur.items() if base.get(k) != v]
+                        if changed:
+                            print(f"[ok] 检测到登录 cookie 变化：{', '.join(changed[:4])}，等 3 秒落盘",
+                                  file=sys.stderr)
+                            await asyncio.sleep(3)
+                            break
+                    else:
+                        print("[timeout] 没检测到登录 cookie 变化，未确认登录成功", file=sys.stderr)
+                        print("        已登录的站重跑也会这样（cookie 本来就不变）；扫码没结束就加大 SEC 重跑",
+                              file=sys.stderr)
+                        return 1
+                    await ctx.close()
+                    print(f"登录态已存到 {profile}", file=sys.stderr)
+                    return 0
                 print("在那个窗口里登录（扫码 / 验证码），完成后回终端按回车。", file=sys.stderr)
                 await asyncio.get_event_loop().run_in_executor(None, input)
                 print(f"登录态已存到 {profile}", file=sys.stderr)
@@ -403,12 +432,27 @@ async def run(args):
     return 0
 
 
+AUTH_HINTS = ("session", "sess", "login", "token", "sid", "auth", "ticket", "passport", "uid")
+
+
+async def _auth_snapshot(ctx):
+    """只取与登录相关的 cookie，避免页面自身的埋点 cookie 造成误判。"""
+    out = {}
+    for c in await ctx.cookies():
+        name = (c.get("name") or "").lower()
+        if any(h in name for h in AUTH_HINTS):
+            out[f"{c.get('domain','')}:{c.get('name','')}"] = c.get("value") or ""
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="登录态浏览器抓页面")
     ap.add_argument("url", help="页面地址")
     ap.add_argument("--profile", default=str(DEFAULT_PROFILE),
                     help=f"浏览器用户目录，默认 {DEFAULT_PROFILE}")
     ap.add_argument("--login", action="store_true", help="有头打开，登录后回车保存登录态")
+    ap.add_argument("--login-auto", type=float, default=0, metavar="SEC",
+                    help="配合 --login：不用按回车，检测到登录 cookie 变化就自动保存并关闭，最多等 SEC 秒")
     ap.add_argument("--headed", action="store_true", help="有头运行，看得见窗口")
     ap.add_argument("--wait", type=float, default=6, help="首屏等待秒数，默认 6")
     ap.add_argument("--scroll", type=int, default=0, help="向下滚动次数，每次 3000px")
