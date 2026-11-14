@@ -135,7 +135,16 @@ Michael大麦哥　共 210 条作品　本次看最近 20 条
 | 抖音 | 浏览器 + `data/browser` profile | **可用** | 搜索页返回真实笔记；`a_bogus` / `msToken` 由页面 JS 算 |
 | 小红书 | 浏览器 + `data/browser` profile | **可用** | 2026-11-14 重登；`loggedIn=true`，`/explore` 200 |
 | B站 | cookie + httpx | **游客态，照常能用** | 无 `SESSDATA`，但公开接口、评论、热门榜不登录也能读 |
+| 快手 | 浏览器 + `data/browser` profile | **可用** | 2026-11-14 接入；`rest/v/search/feed` 拦得到 11 条/屏，纯请求一律被签名挡回 |
 | 微博 | — | 未登录 | |
+
+**快手怎么抓（2026-11-14 接通）。** 登录态和其他站共用 `data/browser`，一次扫码即可；但所有接口都要 `__NS_hxfalcon` 签名，纯请求一律 `result=50 签名验证失败`。所以抓内容必须开浏览器、拦页面自己发的请求：
+
+```powershell
+python scrape.py "https://www.kuaishou.com/search/video?searchKey=甜品" --xhr "rest/v/search/feed" --wait 10
+```
+
+返回的 `body` 是 JSON，`feeds[]` 里每条含作者昵称、文案、以及 `photo.manifestH265` 下的 mp4 直链（`kwaicdn.com`）。**needle 要写 `rest/v/search/feed`**，写 `/graphql` 会 0 条——快手 web 已经不用 graphql 抓内容了。
 
 **三档状态，别只看"登没登"：**
 - **可用** — 带登录态抓，能看到关注流、私密内容

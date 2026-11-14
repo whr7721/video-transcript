@@ -69,6 +69,14 @@ SITES = {
         "login": 'python scrape.py --login "https://weibo.com"',
         "probe": None,
     },
+    "kuaishou.com": {
+        "name": "快手",
+        "keys": ("kuaishou.server.webday7_st", "kuaishou.server.webday7_ph",
+                 "kuaishou.server.web_st", "userId"),
+        "login": 'python scrape.py --login "https://www.kuaishou.com/new-reco" --login-auto 300',
+        "probe": "kuaishou",
+        "note": "graphql 要 __NS_sig3 签名，纯请求只有热榜这类白名单查询能过；抓内容走浏览器",
+    },
 }
 
 STATE_LABEL = {
@@ -145,12 +153,20 @@ def _cookie_rows(profile):
         fd, tmp = tempfile.mkstemp(suffix=".db")
         os.close(fd)
         shutil.copy2(db_path, tmp)
+        # 复制成功后再用只读连接打开，避免在浏览器运行时被 WAL 锁住
         with sqlite3.connect(tmp) as db:
             rows = db.execute(
                 "SELECT host_key, name, expires_utc, last_access_utc, encrypted_value FROM cookies"
             ).fetchall()
     except sqlite3.Error:
         return []
+    except PermissionError:
+        # Windows 上 Chromium 打开 profile 时会独占 Cookies 文件
+        raise SystemExit(
+            "cookie 库被浏览器独占：有 Chromium（拾文登录窗口 / 抓取进程）正在用\n"
+            f"  {db_path}\n"
+            "把那个窗口关掉再跑，或者等抓取结束。"
+        )
     finally:
         if tmp and os.path.exists(tmp):
             try:
@@ -207,7 +223,92 @@ def probe_bili(jar):
     return "expired", f"nav code={data.get('code')} isLogin={payload.get('isLogin')}"
 
 
-PROBES = {"xhs": probe_xhs, "bili": probe_bili}
+def probe_kuaishou(jar):
+    """快手：所有接口都要 __NS_hxfalcon 签名，纯请求只能看出"有没有身份"，看不出"认不认"。
+
+    实测（2026-11-14）：带 cookie 打 /rest/wd/user/profile 返回
+    result=2001 antispam need captcha；打 /rest/v/profile/get 返回
+    {"result":50,"error_msg":"签名验证失败"}。两者都不是"登录有效"的证据，
+    所以这里只做诚实判断，真正的确认要开浏览器看 profile/get 的 result 是否为 1。
+    """
+    has_id = any(k.startswith("kuaishou.server.") for k in jar) or "userId" in jar
+    if not has_id:
+        return "none", "无 kuaishou.server.webday7_st 与 userId"
+    from curl_cffi import requests as creq
+    try:
+        r = creq.get("https://www.kuaishou.com/rest/wd/user/profile",
+                     params={"userId": jar.get("userId", "")},
+                     cookies=jar, impersonate="chrome", timeout=15,
+                     headers={"User-Agent": UA, "Referer": "https://www.kuaishou.com/",
+                              "Accept": "application/json, text/plain, */*"})
+        body = r.json()
+    except Exception as exc:
+        return "unknown", f"探测失败：{type(exc).__name__}"
+    res = body.get("result")
+    if res == 2001:
+        return "unknown", ("本地有登录 cookie，接口回 2001 antispam（缺 __NS_hxfalcon 签名）"
+                           "——纯请求判不了，浏览器开 profile 页看是否显示「登录即可享受」")
+    if res == 2:
+        return "expired", "接口回 result=2，服务端不认这份 cookie"
+    return "unknown", f"接口回 result={res}，判不了"
+
+
+def probe_kuaishou_browser(profile):
+    """快手真正的判活：开浏览器，读页面自身发的 rest/v/profile/get 的 result。
+
+    纯请求一律 50（签名验证失败）或 2001（antispam），只有页面里算得出的
+    __NS_hxfalcon 才过。实测 result=1 是真登录、109 是未登录。
+    """
+    import asyncio
+    import json as _json
+
+    got = {}
+
+    async def run():
+        from playwright.async_api import async_playwright
+        async with async_playwright() as p:
+            ctx = await p.chromium.launch_persistent_context(
+                str(profile), headless=True, args=["--no-proxy-server"],
+                viewport={"width": 1440, "height": 900}, locale="zh-CN")
+            try:
+                page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+
+                async def on_resp(r):
+                    if "rest/v/profile/get" in r.url:
+                        try:
+                            got["body"] = _json.loads(await r.text())
+                        except Exception:
+                            pass
+
+                page.on("response", on_resp)
+                await page.goto("https://www.kuaishou.com/new-reco",
+                                wait_until="domcontentloaded", timeout=45000)
+                for _ in range(20):
+                    await asyncio.sleep(1)
+                    if got.get("body"):
+                        break
+            finally:
+                await ctx.close()
+
+    try:
+        asyncio.run(run())
+    except Exception as exc:
+        return "unknown", f"浏览器探测失败：{type(exc).__name__}"
+
+    body = got.get("body") or {}
+    res = body.get("result")
+    if res == 1:
+        return "ok", (f"profile/get result=1，{body.get('userName') or '已登录'}"
+                      f" · 粉丝 {body.get('fans')} · 关注 {body.get('follows')}")
+    if res == 109:
+        return "expired", "profile/get result=109，服务端不认这份登录态（需重登）"
+    if res == 50:
+        return "unknown", "profile/get result=50 签名验证失败（浏览器被识别）"
+    return "unknown", f"profile/get result={res}，判不了"
+
+
+PROBES = {"xhs": probe_xhs, "bili": probe_bili, "kuaishou": probe_kuaishou}
+BROWSER_PROBES = {"kuaishou": probe_kuaishou_browser}
 
 
 # ---------------------------------------------------------------- 实测记录
@@ -245,7 +346,7 @@ def ago(iso):
 
 # ---------------------------------------------------------------- 汇总
 
-def collect(live=False):
+def collect(live=False, browser=False):
     rows = _cookie_rows(PROFILE)
     key = _aes_key(PROFILE) if live else None
     known = load_known()
@@ -282,16 +383,28 @@ def collect(live=False):
             item["checked"] = prev.get("at")
 
         if live and cfg["probe"]:
-            jar = {}
-            for host, name, _exp, _acc, enc in rows:
-                if domain in host:
-                    val = _decrypt(enc, host, key)
-                    if val:
-                        jar[name] = val
-            try:
-                state, evidence = PROBES[cfg["probe"]](jar)
-            except Exception as exc:  # 网络错误不该让整条命令挂掉
-                state, evidence = "unknown", f"探测失败：{type(exc).__name__}"
+            if cfg["probe"] in BROWSER_PROBES and browser:
+                try:
+                    state, evidence = BROWSER_PROBES[cfg["probe"]](PROFILE)
+                except Exception as exc:
+                    state, evidence = "unknown", f"浏览器探测失败：{type(exc).__name__}"
+            elif cfg["probe"] in BROWSER_PROBES:
+                state, evidence = ("unknown",
+                                   "签名站，纯请求判不了；加 --browser 开浏览器做真实探测")
+            else:
+                jar = {}
+                for host, name, _exp, _acc, enc in rows:
+                    if domain in host:
+                        val = _decrypt(enc, host, key)
+                        if val:
+                            jar[name] = val
+                try:
+                    state, evidence = PROBES[cfg["probe"]](jar)
+                except Exception as exc:  # 网络错误不该让整条命令挂掉
+                    state, evidence = "unknown", f"探测失败：{type(exc).__name__}"
+            # 探测不出结论（签名站、网络抖）时，不要覆盖掉之前人工确认过的结论
+            if state == "unknown" and prev and prev.get("state") in ("ok", "guest"):
+                state, evidence = prev["state"], prev.get("evidence", "")
             item["state"], item["evidence"] = state, evidence
             item["checked"] = time.strftime("%Y-%m-%dT%H:%M")
             known[domain] = {"state": state, "evidence": evidence, "at": item["checked"]}
@@ -455,7 +568,7 @@ def main(argv=None):
         return 0
 
     live = "--live" in argv
-    sites = collect(live=live)
+    sites = collect(live=live, browser="--browser" in argv)
     if "--json" in argv:
         print(json.dumps({"live": live, "sites": sites}, ensure_ascii=False, indent=2))
     else:

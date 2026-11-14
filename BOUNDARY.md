@@ -58,7 +58,27 @@ scrape.py "https://xxx.com" --xhr "/api/"   # 或者直接拦它的接口，更�
 
 Cloudflare / DataDome / 国内风控会返回验证页。`--fast` 认 `Just a moment`、`安全验证` 这类特征，命中直接降级。
 
-国内平台（抖音、快手）拦的不是 TLS 而是 JS 算的签名（`a_bogus` / `x-s`），`curl_cffi` 过不去，只有浏览器能算。
+国内平台（抖音、快手）拦的不是 TLS 而是 JS 算的签名（`a_bogus` / `x-s` / `__NS_hxfalcon`），`curl_cffi` 过不去，只有浏览器能算。
+
+**快手实测（2026-11-14）**：web 端所有接口都挂在 `https://www.kuaishou.com/rest/v/*` 下，签名参数是 `__NS_hxfalcon`（不是老资料里的 `sig3`）。同一个接口，三种身份三种结果：
+
+| 请求方式 | `rest/v/profile/get` | `rest/wd/user/profile` |
+|---|---|---|
+| 不带 cookie | `{"result":50,"error_msg":"签名验证失败"}` | `{"result":2}` |
+| 带 cookie、无签名 | 同上 `50` | `{"result":2001,"error_msg":"[2001] antispam need captcha"}` |
+| 浏览器页面自己发 | `{"result":1,...}` 带昵称粉丝 | 不调 |
+
+所以**快手的登录态纯请求验不了**：`2001` 只能证明"你的 cookie 被带上了"，不能证明"服务端认"。唯一可靠的口径是让页面自己发一次请求。`status.py --live --browser` 做的就是这件事，判据是 `result=1`（真登录）/ `109`（未登录）。
+
+抓内容同样走浏览器，但不用读 DOM，拦接口更稳：
+
+```bash
+python scrape.py "https://www.kuaishou.com/search/video?searchKey=甜品" --xhr "rest/v/search/feed" --wait 10
+```
+
+实测返回 1 条匹配、147KB，`body` 里是标准 JSON：`result=1`、`pcursor`、`feeds[]`，每条含作者昵称、文案、以及 `photo.manifestH265` 里的**视频直链**（`kwaicdn.com` 的 mp4，可直接下载）。
+
+**注意 `--xhr` 匹配的是 URL 不是响应体**，所以 needle 要写 `rest/v/search/feed` 这种路径片段；写 `/graphql` 会 0 条——快手 web 早就不用 graphql 了（`graphql` 端点还在，但只剩热榜这类白名单查询能过）。
 
 ### 3. 需要登录 —— 一次性扫码，长期复用
 

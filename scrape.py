@@ -432,7 +432,8 @@ async def run(args):
     return 0
 
 
-AUTH_HINTS = ("session", "sess", "login", "token", "sid", "auth", "ticket", "passport", "uid")
+AUTH_HINTS = ("session", "sess", "login", "token", "sid", "auth", "ticket", "passport",
+              "uid", "userid", "web_st", "web_ph", "bduss", "stoken")
 
 
 async def _auth_snapshot(ctx):
