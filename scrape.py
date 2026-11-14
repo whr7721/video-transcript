@@ -10,6 +10,7 @@
     python scrape.py <url> --js "document.title"             # 任意提取
     python scrape.py <url> --scroll 5 --shot page.png        # 边滚边截图
     python scrape.py <url> --fast                            # 不开浏览器，直接拿正文
+    python scrape.py <url> --selector ".item" --pages 10 --next "a.next"   # 翻页并去重
     python scrape.py --login <url>                           # 新建登录态，扫码后回车
 
 公共参数：--profile（默认 data/browser）、--wait 秒、--json、--out 文件。
@@ -26,7 +27,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_PROFILE = ROOT / "data" / "browser"
@@ -119,12 +120,119 @@ def clean_needle(text):
     return text.strip("/\\")
 
 
+def key_of(item, field=None):
+    """去重用的键。给了字段就按字段，否则按整条内容。"""
+    if isinstance(item, dict):
+        if field:
+            return str(item.get(field, ""))
+        return json.dumps(item, sort_keys=True, ensure_ascii=False)
+    return str(item)
+
+
+def with_page(url, param, page_no):
+    """把 URL 里的 page 参数换成指定页码，其余参数原样保留。"""
+    u = urlsplit(url)
+    q = [(k, v) for k, v in parse_qsl(u.query, keep_blank_values=True) if k != param]
+    q.append((param, str(page_no)))
+    return urlunsplit((u.scheme, u.netloc, u.path, urlencode(q), u.fragment))
+
+
+async def grab(page, args):
+    """只取值，不负责导航和等待。"""
+    if args.js:
+        return await page.evaluate(args.js)
+    if args.selector:
+        return await page.evaluate(PICK, [args.selector, args.attr])
+    return await page.evaluate("document.body.innerText")
+
+
+async def click_next(page, args):
+    if args.next:
+        loc = page.locator(args.next).first
+        try:
+            await loc.scroll_into_view_if_needed(timeout=6000)
+            await loc.click(timeout=10000)
+        except Exception as exc:
+            raise SystemExit(
+                f"点不到下一页元素 {args.next!r}：{type(exc).__name__}: {exc}\n"
+                "先 --selector 数一下这个选择器能不能选中，或者改用 --page-param 翻页。")
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=20000)
+        except Exception:                      # 单页应用不触发 load，靠下面的等待兜底
+            pass
+        await page.wait_for_timeout(800)
+    else:
+        await page.mouse.wheel(0, 20000)       # 无限滚动：滚到底，等新内容加载
+        await page.wait_for_timeout(2500)
+
+
+async def paginate(page, args):
+    """翻页 + 去重。返回 (本次新增, 统计, 全量)。
+
+    去重是逐条做的：本页内重复、跨页重复、跟 --seen 基准重复，都算重复。
+    某页返回 0 条就停——继续点下去只会拿到同一批东西或者错误页。
+    """
+    base = []
+    seen = set()
+    if args.seen:
+        sp = Path(args.seen).expanduser()
+        if sp.exists():
+            try:
+                old = json.loads(sp.read_text(encoding="utf-8"))
+            except Exception:
+                old = []
+            if isinstance(old, dict):
+                old = old.get("data", [])
+            base = old if isinstance(old, list) else []
+            seen = {key_of(x, args.dedupe) for x in base}
+            print(f"[seen] 基准 {len(seen)} 条", file=sys.stderr)
+
+    fresh, dupes, done = [], 0, 0
+    for i in range(args.pages):
+        if i == 0:
+            await page.goto(args.url, wait_until=args.until, timeout=60000)
+        elif args.page_param:
+            await page.goto(with_page(args.url, args.page_param, args.page_start + i - 1),
+                            wait_until=args.until, timeout=60000)
+        else:
+            await click_next(page, args)
+
+        await page.wait_for_timeout(int(args.wait * 1000))
+        for _ in range(args.scroll):
+            await page.mouse.wheel(0, 3000)
+            await page.wait_for_timeout(1200)
+
+        chunk = await grab(page, args)
+        if isinstance(chunk, (str, dict)):
+            chunk = [chunk]
+        chunk = [x for x in (chunk or []) if x not in (None, "")]
+
+        new_here = 0
+        for x in chunk:
+            k = key_of(x, args.dedupe)
+            if k in seen:
+                dupes += 1
+                continue
+            seen.add(k)
+            fresh.append(x)
+            new_here += 1
+
+        done = i + 1
+        print(f"[page {done}/{args.pages}] 本页 {len(chunk)} 条，新增 {new_here}，"
+              f"重复 {len(chunk) - new_here}", file=sys.stderr)
+        if not chunk:
+            print("[page] 本页 0 条，停止翻页（选择器可能失效，或已到末页）", file=sys.stderr)
+            break
+
+    return fresh, {"pages": done, "dupes": dupes, "new": len(fresh)}, base + fresh
+
+
 async def run(args):
     guard_ua(args.url, args.ua)
 
-    # 只有纯文字模式才走快路径：要选择器 / 要接口 / 要截图，都必须有浏览器。
+    # 只有纯文字模式才走快路径：要选择器 / 要接口 / 要截图 / 要翻页，都必须有浏览器。
     pure_text = not (args.selector or args.js or args.xhr or args.xhr_list or args.shot)
-    if args.fast and pure_text and not args.login:
+    if args.fast and pure_text and args.pages == 1 and not args.login:
         payload, reason = fast_fetch(args.url, args.fast)
         if payload:
             text = json.dumps(payload, ensure_ascii=False, indent=2) if args.json else payload["data"]
@@ -144,6 +252,7 @@ async def run(args):
     profile.mkdir(parents=True, exist_ok=True)
     captured = []
     hits = [0]
+    extra = {}
 
     async with async_playwright() as p:
         ctx = await p.chromium.launch_persistent_context(
@@ -188,48 +297,59 @@ async def run(args):
 
                 page.on("response", on_response)
 
-            await page.goto(args.url, wait_until=args.until, timeout=60000)
-            await page.wait_for_timeout(int(args.wait * 1000))
-            for _ in range(args.scroll):
-                await page.mouse.wheel(0, 3000)
-                await page.wait_for_timeout(1200)
-
-            if args.xhr or args.xhr_list:
-                await page.wait_for_timeout(1500)
-                print(f"[监听] {hits[0]} 个响应，匹配 {len(captured)} 条", file=sys.stderr)
-                if args.xhr_list:
-                    data = captured
-                elif args.xhr_parse:
-                    data = []
-                    for item in captured:
-                        try:
-                            parsed = json.loads(item["body"])
-                        except Exception:
-                            parsed = item["body"]
-                        data.append({"url": item["url"], "status": item.get("status"),
-                                     "error": item.get("error"), "body": parsed})
-                else:
-                    data = captured
-            elif args.js:
-                data = await page.evaluate(args.js)
-            elif args.selector:
-                data = await page.evaluate(PICK, [args.selector, args.attr])
+            # --seen 单独用也有意义：单页增量（这个列表页有没有新东西），所以一并走批量分支。
+            if args.pages > 1 or args.seen:
+                if args.pages > 1 and (args.xhr or args.xhr_list):
+                    raise SystemExit(
+                        "--pages 不能和 --xhr 一起用：翻页会连续触发请求，多页的接口数据混在\n"
+                        "一起分不清先后。先用 --xhr-list 找到接口地址，再用 --page-param 直接改 URL 翻页。")
+                data, extra, merged = await paginate(page, args)
+                title = await page.title()
+                if args.seen:
+                    sp = Path(args.seen).expanduser()
+                    sp.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
+                    print(f"基准已更新 {sp.resolve()}（{len(merged)} 条）", file=sys.stderr)
+                if not args.only_new:
+                    data = merged
             else:
-                data = await page.evaluate("document.body.innerText")
+                await page.goto(args.url, wait_until=args.until, timeout=60000)
+                await page.wait_for_timeout(int(args.wait * 1000))
+                for _ in range(args.scroll):
+                    await page.mouse.wheel(0, 3000)
+                    await page.wait_for_timeout(1200)
 
-            title = await page.title()
-            if args.shot:
-                await page.screenshot(path=args.shot, full_page=False)
-                print(f"截图 {Path(args.shot).resolve()}", file=sys.stderr)
+                if args.xhr or args.xhr_list:
+                    await page.wait_for_timeout(1500)
+                    print(f"[监听] {hits[0]} 个响应，匹配 {len(captured)} 条", file=sys.stderr)
+                    if args.xhr_list:
+                        data = captured
+                    elif args.xhr_parse:
+                        data = []
+                        for item in captured:
+                            try:
+                                parsed = json.loads(item["body"])
+                            except Exception:
+                                parsed = item["body"]
+                            data.append({"url": item["url"], "status": item.get("status"),
+                                         "error": item.get("error"), "body": parsed})
+                    else:
+                        data = captured
+                else:
+                    data = await grab(page, args)
+
+                title = await page.title()
+                if args.shot:
+                    await page.screenshot(path=args.shot, full_page=False)
+                    print(f"截图 {Path(args.shot).resolve()}", file=sys.stderr)
         finally:
             await ctx.close()
 
     if isinstance(data, list):
         mode = "xhr" if (args.xhr or args.xhr_list) else ("js" if args.js else "selector")
         envelope = {"url": args.url, "title": title, "mode": mode,
-                    "count": len(data), "data": data}
+                    "count": len(data), "data": data, **extra}
     else:
-        envelope = {"url": args.url, "title": title, "mode": "text", "data": data}
+        envelope = {"url": args.url, "title": title, "mode": "text", "data": data, **extra}
 
     if args.json or isinstance(data, (list, dict)):
         text = json.dumps(envelope, ensure_ascii=False, indent=2)
@@ -266,6 +386,13 @@ def main():
     ap.add_argument("--shot", help="截图路径")
     ap.add_argument("--fast", nargs="?", const=15, type=float,
                     help="先不开浏览器直接抓正文，可选超时秒数（默认 15），失败自动降级")
+    ap.add_argument("--pages", type=int, default=1, help="抓几页，默认 1")
+    ap.add_argument("--next", help="翻页元素选择器；不给则用滚动加载")
+    ap.add_argument("--page-param", help="URL 翻页参数名（如 page），比点按钮稳")
+    ap.add_argument("--page-start", type=int, default=2, help="--page-param 时第二页的编号，默认 2")
+    ap.add_argument("--dedupe", help="去重字段名；不给则按整条内容去重")
+    ap.add_argument("--seen", help="跨次去重基准文件（JSON 数组），跑完自动更新")
+    ap.add_argument("--only-new", action="store_true", help="配合 --seen，只输出本次新增")
     ap.add_argument("--ua", help="覆盖 User-Agent（抖音域名下会被拒绝）")
     ap.add_argument("--json", action="store_true", help="强制 JSON 输出")
     ap.add_argument("--out", help="写入文件而不是打印")

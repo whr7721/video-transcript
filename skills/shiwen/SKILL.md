@@ -166,8 +166,39 @@ RSS 未指定 `--episode` 时只列出节目，等用户选定再处理。
 
 抖音/快手的纯请求这条路不通，浏览器是唯一入口：`httpx` 直连抖音接口返回 `403 Blocked by ArgusSecurityPlugin`，快手 graphql 返回 `{"result":2}`（风控码）。它们拦的不是 TLS，是 JS 算出来的签名（`a_bogus` / `x-s`），curl_cffi 过不了这一层。
 
-**选择器靠探，不靠猜。** 先数一下有没有：
+## 批量：翻页 + 去重
 
+列表页翻页分三种，按稳定性排：
+
+1. **URL 参数**（最稳）：`--page-param page`。把 URL 里的 page 换成 2、3、4……，其余参数原样不动。
+2. **下一页按钮**：`--next "a.next"`。点不到会直接报错，并提示先数一下选择器。
+3. **无限滚动**：两个都不给，默认滚到底再抓。最不稳，容易反复抓到同一批。
+
+```powershell
+# 抓 5 页，自动去重
+... scrape.py "<url>" --selector ".item" --pages 5 --page-param page
+
+# 元素是复合对象时，按某个字段去重（不然整条 JSON 里带时间戳就永远不重复）
+... scrape.py "<url>" --js "<返回数组的表达式>" --pages 5 --page-param page --dedupe url
+```
+
+去重是逐条做的：本页内重复、跨页重复、跟基准文件重复，都算。stderr 每页打一行：
+
+```
+[page 3/5] 本页 20 条，新增 18，重复 2
+```
+
+**某页返回 0 条就停**，不再往下点——继续只会拿到同一批东西或错误页。
+
+**增量**：`--seen 基准.json` 让第二次跑只报新增，跑完基准自动更新成全量。加 `--only-new` 则只输出新增。
+
+```powershell
+... scrape.py "<url>" --pages 5 --page-param page --selector ".item" --seen data/jobs.json --only-new
+```
+
+**不能和 `--xhr` 一起用。** 翻页会连续触发请求，多页的接口数据混在一起分不清先后。先用 `--xhr-list` 找到接口地址，再用 `--page-param` 直接改 URL 翻页。
+
+**选择器靠探，不靠猜。** 先数一下有没有：
 ```powershell
 ... scrape.py "<url>" --js "document.querySelectorAll('.rank-item').length"
 ```
