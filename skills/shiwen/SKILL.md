@@ -1,11 +1,21 @@
 ---
 name: shiwen
-description: 用本机拾文把视频、播客链接或本地音视频转成带时间码的文字，并给出原始视频/音频的位置。适用于"转写这个视频""把这段音频变成文字""这期播客讲了什么"。
+description: 用本机拾文把视频、播客链接或本地音视频转成带时间码的文字，并给出原始视频/音频的位置。也能抓网页列表、盯页面变化、列博主更新、批量翻页去重；抓不到的时候说清是反爬、要登录还是前端渲染。适用于"转写这个视频""把这段音频变成文字""这期播客讲了什么""把这个榜单或搜索结果抓下来""盯着这个页面变没变""他更新了吗"。
 ---
 
 # 拾文（自用版）
 
 只做一件 agent 做不到的事：**把音频变成带时间码的文字**，并告诉你原始文件在哪。
+
+## 不确定能不能用，先跑这个
+
+```powershell
+D:\zcode1\video-transcript\.venv\Scripts\python.exe -X utf8 D:\zcode1\video-transcript\status.py
+```
+
+十秒内打印：每个站点的登录态在不在、有效期到哪天、最后什么时候用过；关注源 / 监控项 / 历史任务各有多少；依赖缺没缺。**不启动浏览器、不联网，纯读本地文件。**
+
+用户说"抓不动""登录态好像掉了"，第一步就跑它，别猜。
 
 ## 先分清手里是什么
 
@@ -105,11 +115,26 @@ Michael大麦哥　共 210 条作品　本次看最近 20 条
 
 **专名成系统错。** 见下节。数字通常可信，人名地名机构名要核。
 
-## 平台
+## 平台与登录态
 
 抖音、小红书、B站、YouTube、TikTok、X、小宇宙、Spotify、RSS、本地音视频。
 
-抖音、小红书依赖本机已有的登录态（`link_ingest.configure(True)` 已开启）。遇到验证码或登录过期，请用户本人完成；MediaCrawler / meme-lab 的配置与定时任务由它们各自维护，改动交回用户。
+登录态有三套机制并存，别搞混。`status.py` 会直接告诉你每站在哪一套里：
+
+| 站点 | 存在哪 | 走什么 | 实测状态 |
+| --- | --- | --- | --- |
+| 抖音 | `data/browser`（Chromium profile） | 浏览器 | 已登录，`a_bogus` / `msToken` 由页面 JS 现场算 |
+| 小红书 | `data/browser` 同一个 profile | 浏览器 | 已登录；`xhs_auth.py` 还提供 cookie 通道，尚未跑过 |
+| B站 | 无（`bilibili_auth.py` 负责建 `data/cookies/bilibili.json`） | cookie + httpx | **未登录**，只有设备号 `buvid3` |
+| 微博 | — | — | 未登录 |
+
+同一个 profile 能装多个站点，`--login` 跑一次就多一个站点的 cookie，不必为每个平台开新目录。`data/browser-bilibili` / `data/browser-xiaohongshu` 是 auth 模块留下的独立目录方案，目前不存在——只有 `data/browser` 一套在真用。
+
+**为什么抖音不能只存 cookie。** 它拦的是 JS 算出来的签名（`a_bogus`），不是 TLS 指纹。把 `sessionid` 抠出来塞给 `httpx` 或 `curl_cffi`，拿回的是 `403 Blocked by ArgusSecurityPlugin`——现象很像"登录态失效"，实际是绕过了算签名的那一层。所以抖音必须留 profile，用浏览器开页面。
+
+**反过来，B站 / 小红书 / 微博这类只要 cookie 就能过的站，导成 JSON 更省事**：不用每次起浏览器，`httpx` 带着 cookie 直连就行。这就是 `data/cookies/` 那套的用途，和抖音的 profile 不是二选一，是各走各的。
+
+遇到验证码或登录过期，请用户本人完成；MediaCrawler / meme-lab 的配置与定时任务由它们各自维护，改动交回用户。
 
 RSS 未指定 `--episode` 时只列出节目，等用户选定再处理。
 
