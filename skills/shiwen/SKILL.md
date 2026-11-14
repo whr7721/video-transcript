@@ -11,11 +11,20 @@ description: 用本机拾文把视频、播客链接或本地音视频转成带�
 
 ```powershell
 D:\zcode1\video-transcript\.venv\Scripts\python.exe -X utf8 D:\zcode1\video-transcript\status.py
+D:\zcode1\video-transcript\.venv\Scripts\python.exe -X utf8 D:\zcode1\video-transcript\status.py --live
 ```
 
-十秒内打印：每个站点的登录态在不在、有效期到哪天、最后什么时候用过；关注源 / 监控项 / 历史任务各有多少；依赖缺没缺。**不启动浏览器、不联网，纯读本地文件。**
+不带参数 0.1 秒，读本地记录；加 `--live` 约 3 秒，解密 cookie 直接问服务端"还认不认"。
 
-用户说"抓不动""登录态好像掉了"，第一步就跑它，别猜。
+**`--live` 才是真判断。** 本地 cookie 没过期，不代表服务端还认——小红书就是活例子：`web_session` 标称有效期到 2027 年，本地看着好好的，一请求 `302 /login`。只看 cookie 会得出"登录有效"的错结论。
+
+用户说"抓不动""登录态好像掉了"，先跑 `--live`，别猜。
+
+抖音这种签名鉴权的站探不了，用 `--set` 人工记一笔：
+
+```powershell
+... status.py --set douyin.com=ok "浏览器开搜索页返回了笔记标题/作者"
+```
 
 ## 先分清手里是什么
 
@@ -121,12 +130,17 @@ Michael大麦哥　共 210 条作品　本次看最近 20 条
 
 登录态有三套机制并存，别搞混。`status.py` 会直接告诉你每站在哪一套里：
 
-| 站点 | 存在哪 | 走什么 | 实测状态 |
+| 站点 | 走什么 | 实测（2026-11-14） | 说明 |
 | --- | --- | --- | --- |
-| 抖音 | `data/browser`（Chromium profile） | 浏览器 | 已登录，`a_bogus` / `msToken` 由页面 JS 现场算 |
-| 小红书 | `data/browser` 同一个 profile | 浏览器 | 已登录；`xhs_auth.py` 还提供 cookie 通道，尚未跑过 |
-| B站 | 无（`bilibili_auth.py` 负责建 `data/cookies/bilibili.json`） | cookie + httpx | **未登录**，只有设备号 `buvid3` |
-| 微博 | — | — | 未登录 |
+| 抖音 | 浏览器 + `data/browser` profile | **可用** | 搜索页返回真实笔记；`a_bogus` / `msToken` 由页面 JS 算 |
+| 小红书 | 浏览器 / cookie + 签名 | **已失效，要重登** | 本地 `web_session` 标到 2027，服务端 `302 /login` |
+| B站 | cookie + httpx | **游客态，照常能用** | 无 `SESSDATA`，但公开接口、评论、热门榜不登录也能读 |
+| 微博 | — | 未登录 | |
+
+**三档状态，别只看"登没登"：**
+- **可用** — 带登录态抓，能看到关注流、私密内容
+- **游客态** — 没登录，但公开内容照样抓得到。**B站、微博大量场景属于这一档，不等于"不能用"**
+- **已失效** — 本地还留着 cookie，服务端已经踢了，必须重登
 
 同一个 profile 能装多个站点，`--login` 跑一次就多一个站点的 cookie，不必为每个平台开新目录。`data/browser-bilibili` / `data/browser-xiaohongshu` 是 auth 模块留下的独立目录方案，目前不存在——只有 `data/browser` 一套在真用。
 
