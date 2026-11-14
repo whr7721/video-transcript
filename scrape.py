@@ -9,27 +9,99 @@
     python scrape.py <url> --xhr "/aweme/v1/web/"            # 拦接口响应
     python scrape.py <url> --js "document.title"             # 任意提取
     python scrape.py <url> --scroll 5 --shot page.png        # 边滚边截图
+    python scrape.py <url> --fast                            # 不开浏览器，直接拿正文
     python scrape.py --login <url>                           # 新建登录态，扫码后回车
 
 公共参数：--profile（默认 data/browser）、--wait 秒、--json、--out 文件。
 
 签名不用管：页面自己的 JS 会算 a_bogus / msToken，浏览器带着走。
+
+--fast 是快路径：用 curl_cffi 伪装 Chrome 的 TLS 指纹直接发 HTTP，拿 trafilatura
+提正文，0.2 秒一页。只对「服务端直出 HTML」的页面有效（政府公告、新闻、博客、
+文档站），遇到前端渲染页或反爬挑战会自动降级到浏览器，并在 stderr 说明原因。
 """
 import argparse
 import asyncio
 import json
+import re
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_PROFILE = ROOT / "data" / "browser"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 
+# 抖音的 webid / msToken 是按 UA + 屏幕分辨率生成的，换 UA 就破坏了 webid 与 UA 的
+# 一致性，服务端 a_bogus 校验直接失败——现象像「登录态失效」，实际是自己把环境改坏了。
+UA_LOCKED_HOSTS = ("douyin.com", "iesdouyin.com")
+
+# 反爬挑战页的特征。命中就不必再解析了，直接降级浏览器让人去看。
+CHALLENGE_MARKS = ("Just a moment", "cf-challenge", "Checking your browser",
+                   "Attention Required", "人机验证", "安全验证", "滑动验证",
+                   "请开启JavaScript", "访问过于频繁")
+
 PICK = """([sel, attr]) => Array.from(document.querySelectorAll(sel))
     .map(e => attr ? e.getAttribute(attr) : e.innerText)
     .map(s => (s || '').replace(/\\s+/g, ' ').trim())
     .filter(s => s.length > 0)"""
+
+
+def guard_ua(url, ua):
+    """抖音场景禁止覆盖 UA。"""
+    if not ua or ua == "-":
+        return
+    host = urlsplit(url).netloc.lower()
+    if any(host == h or host.endswith("." + h) for h in UA_LOCKED_HOSTS):
+        raise SystemExit(
+            "拒绝覆盖 UA：抖音的 webid 与 User-Agent 绑定，换 UA 会导致 a_bogus "
+            "签名校验失败，看起来像登录态失效。抖音场景请去掉 --ua。"
+        )
+
+
+def decode_html(resp):
+    """国内站点一半是 gb18030，按顺序试。"""
+    raw = resp.content
+    for enc in ("utf-8", "gb18030", "big5"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="ignore")
+
+
+def fast_fetch(url, timeout):
+    """不开浏览器直接拿正文。返回 (payload, reason)，失败时 payload 为 None。"""
+    try:
+        from curl_cffi import requests as creq
+    except ImportError:
+        return None, "curl_cffi 未安装"
+    try:
+        r = creq.get(url, impersonate="chrome", timeout=timeout, allow_redirects=True)
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"[:110]
+    if r.status_code != 200:
+        return None, f"HTTP {r.status_code}"
+
+    html = decode_html(r)
+    for mark in CHALLENGE_MARKS:
+        if mark in html:
+            return None, f"反爬挑战页（{mark}）"
+
+    try:
+        import trafilatura
+        text = trafilatura.extract(html, include_comments=False, include_tables=True) or ""
+    except ImportError:                       # 退化成粗暴去标签，聊胜于无
+        text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+    if len(text) < 200:
+        return None, "正文过短（多半是前端渲染页）"
+
+    m = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
+    title = re.sub(r"\s+", " ", m.group(1)).strip() if m else ""
+    return {"url": url, "title": title, "mode": "fast", "chars": len(text), "data": text}, None
 
 
 def clean_needle(text):
@@ -48,6 +120,24 @@ def clean_needle(text):
 
 
 async def run(args):
+    guard_ua(args.url, args.ua)
+
+    # 只有纯文字模式才走快路径：要选择器 / 要接口 / 要截图，都必须有浏览器。
+    pure_text = not (args.selector or args.js or args.xhr or args.xhr_list or args.shot)
+    if args.fast and pure_text and not args.login:
+        payload, reason = fast_fetch(args.url, args.fast)
+        if payload:
+            text = json.dumps(payload, ensure_ascii=False, indent=2) if args.json else payload["data"]
+            if args.out:
+                Path(args.out).write_text(text, encoding="utf-8")
+                print(f"写入 {Path(args.out).resolve()}", file=sys.stderr)
+            else:
+                sys.stdout.reconfigure(encoding="utf-8")
+                print(text)
+            print(f"[fast] {payload['chars']} 字，{payload['title'][:40]}", file=sys.stderr)
+            return 0
+        print(f"[fast] 降级到浏览器：{reason}", file=sys.stderr)
+
     from playwright.async_api import async_playwright
 
     profile = Path(args.profile).resolve()
@@ -174,7 +264,9 @@ def main():
     ap.add_argument("--xhr-parse", action="store_true", help="把响应体按 JSON 解析")
     ap.add_argument("--js", help="在页面里执行表达式并返回结果")
     ap.add_argument("--shot", help="截图路径")
-    ap.add_argument("--ua", help="覆盖 User-Agent")
+    ap.add_argument("--fast", nargs="?", const=15, type=float,
+                    help="先不开浏览器直接抓正文，可选超时秒数（默认 15），失败自动降级")
+    ap.add_argument("--ua", help="覆盖 User-Agent（抖音域名下会被拒绝）")
     ap.add_argument("--json", action="store_true", help="强制 JSON 输出")
     ap.add_argument("--out", help="写入文件而不是打印")
     args = ap.parse_args()

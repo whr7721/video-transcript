@@ -19,7 +19,7 @@
 .\.venv\Scripts\python.exe -X utf8 facts.py <job_id> --steps   # 操作流：操作句按时间排开
 ```
 
-榜单 / 活动页 / 专题页 / 搜索页不属于单条作品，`grab.py` 和 `follow.py` 都不处理，用 `scrape.py` 抓一次；要盯变化就用 `watch.py`。两者都用 `data/browser` 的登录态，签名由页面 JS 算。做法和实测结论见 `skills/shiwen/SKILL.md` 的「页面型内容」和「盯变化」。
+榜单 / 活动页 / 专题页 / 搜索页不属于单条作品，`grab.py` 和 `follow.py` 都不处理，用 `scrape.py` 抓一次；要盯变化就用 `watch.py`。两者都用 `data/browser` 的登录态，签名由页面 JS 算。做法和实测结论见 `skills/shiwen/SKILL.md` 的「页面型内容」和「盯变化」。服务端直出的页面（政府公告 / 新闻 / 博客）加 `--fast` 可以完全跳过浏览器，0.2 秒一页；前端渲染页会自动降级。
 
 ## 盯变化
 

@@ -131,6 +131,9 @@ RSS 未指定 `--episode` 时只列出节目，等用户选定再处理。
 ... scrape.py "<url>" --js "document.title"
 ... scrape.py "<url>" --shot shot.png
 
+# 不开浏览器，直接拿正文（政府公告 / 新闻 / 博客 / 文档站）
+... scrape.py "<url>" --fast
+
 # 新站点：扫码建登录态
 ... scrape.py --login "https://www.kuaishou.com"
 ```
@@ -151,7 +154,17 @@ RSS 未指定 `--episode` 时只列出节目，等用户选定再处理。
 
 **Git Bash 会把以 `/` 开头的参数改写成 Windows 路径。** `--xhr "/aweme/v1/web/"` 会变成 `C:/Program Files/Git/aweme/v1/web/`，然后安静地返回 0 条——不报错，最难查。脚本里已经做了还原，但更稳的写法是不带开头斜杠：`--xhr "aweme/v1/web"`。
 
-纯请求这条路不通，浏览器是唯一入口：`httpx` 直连抖音接口返回 `403 Blocked by ArgusSecurityPlugin`，快手 graphql 返回 `{"result":2}`（风控码）。
+**`--fast` 是快路径，先试它。** 它用 curl_cffi 伪造 Chrome 的 TLS 指纹直接发 HTTP（不是 `httpx`，`httpx` 用的是 OpenSSL 的握手顺序，一眼就被识别），再用 trafilatura 提正文，0.2 秒一页，不消耗浏览器登录态。
+
+适用：服务端直出 HTML 的页面——政府公告、新闻、博客、文档站、论坛。实测天津政采网 1844 字、52pojie 首页 2608 字，都在 1 秒内。
+
+不管用：前端渲染页（`<div id="app"></div>` 那种）和 JSON 接口。这两种会自动降级到浏览器，stderr 打一行 `[fast] 降级到浏览器：正文过短`。所以**放心先加 `--fast`**，最坏情况是多花一次请求。
+
+它和 `--selector` / `--xhr` / `--js` / `--shot` 互斥：要这些就必须起浏览器，`--fast` 会被忽略。
+
+**不要给抖音加 `--ua`。** 抖音的 webid 是按 UA + 屏幕分辨率生成的，换 UA 就破坏了 webid 与 UA 的一致性，a_bogus 签名校验直接失败——现象像「登录态突然失效」，其实是自己把环境改坏了。脚本已在抖音域名下拒绝该参数。
+
+抖音/快手的纯请求这条路不通，浏览器是唯一入口：`httpx` 直连抖音接口返回 `403 Blocked by ArgusSecurityPlugin`，快手 graphql 返回 `{"result":2}`（风控码）。它们拦的不是 TLS，是 JS 算出来的签名（`a_bogus` / `x-s`），curl_cffi 过不了这一层。
 
 **选择器靠探，不靠猜。** 先数一下有没有：
 
