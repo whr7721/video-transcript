@@ -112,34 +112,61 @@ RSS 未指定 `--episode` 时只列出节目，等用户选定再处理。
 
 ## 页面型内容
 
-榜单、活动页、专题页、搜索页、快手的任何页面 —— 这些不是「一条作品」，`grab.py` 和 `follow.py` 都不处理。数据在页面上，页面自己带签名，直接用浏览器读：
+榜单、活动页、专题页、搜索页、快手的任何页面 —— 这些不是「一条作品」，`grab.py` 和 `follow.py` 都不处理。用 `scrape.py`，它就是这个骨架的参数化版本：
 
-```python
-from playwright.sync_api import sync_playwright
+```powershell
+# 先看这页调了哪些接口（不取响应体，最快）
+... scrape.py "<url>" --xhr-list "aweme/v1/web"
 
-with sync_playwright() as p:
-    ctx = p.chromium.launch_persistent_context(
-        r"D:\zcode1\video-transcript\data\browser", headless=True,
-        args=["--no-proxy-server"], locale="zh-CN")
-    page = ctx.pages[0] if ctx.pages else ctx.new_page()
-    page.goto(url, wait_until="domcontentloaded")
-    page.wait_for_timeout(6000)
-    for _ in range(5):                    # 滚动加载
-        page.mouse.wheel(0, 3000)
-        page.wait_for_timeout(1500)
-    print(page.evaluate("document.body.innerText.slice(0, 4000)"))
-    ctx.close()
+# 拿到感兴趣的接口，取结构化数据
+... scrape.py "<url>" --xhr "aweme/v1/web/hot/search/list" --xhr-parse
+
+# 页面上直接取元素
+... scrape.py "<url>" --selector "a[href*='/hot/']"
+... scrape.py "<url>" --selector "a.video" --attr href
+
+# 整页文字 / 任意表达式 / 滚动后截图
+... scrape.py "<url>" --text --scroll 3
+... scrape.py "<url>" --js "document.title"
+... scrape.py "<url>" --shot shot.png
+
+# 新站点：扫码建登录态
+... scrape.py --login "https://www.kuaishou.com"
 ```
 
-`data/browser` 是抖音的登录态（扫码得来），用它开抖音页面跟真人浏览器没区别：`a_bogus`、`msToken`、`uifid` 都由页面里的 JS 现场算出来，不需要实现签名。
+`data/browser` 里存着抖音的登录态，用它开页面跟真人浏览器没区别：`a_bogus`、`msToken`、`uifid` 都由页面里的 JS 现场算，不用实现签名。同一个 profile 可以装多个站点，`--login` 跑一次就多了一个站点的 cookie，不必为每个平台开新目录。
 
-三条实测结论：
+三种取法的差别，实测抖音热榜：
 
-- 直接用 `httpx` 请求抖音接口返回 `403 Blocked by ArgusSecurityPlugin`，快手 graphql 返回 `{"result":2}`（风控码）。纯请求这条路不通，浏览器是唯一入口。
-- DOM 里能直接读到条目。实测 `douyin.com/hot`：51 个条目链接，内容完整。
-- 快手登录态独立，要另开一个用户目录扫码登录；抖音这个 `data/browser` 对快手无效。
+| 方式 | 拿到 | 什么时候用 |
+| --- | --- | --- |
+| `--selector` | 51 个词，只有文字 | 页面上看得见的就够 |
+| `--xhr` | 51 个词 + 热度值 + 榜位 | 要排序、要筛选、要字段 |
+| `--text` | 3277 字，但只有导航和页脚 | 内容不是虚拟滚动时 |
 
-页面结构随时会变，所以这类活每次现场看 DOM 或拦 XHR，不写成固定脚本。从页面上拿到具体作品链接之后，再喂给 `grab.py` 转写。
+两个坑：
+
+**`--text` 常常拿不到正文。** 列表是虚拟滚动的，`innerText` 只有导航和页脚。这时候用 `--selector` 针对条目取，或者 `--xhr` 直接拦接口。
+
+**Git Bash 会把以 `/` 开头的参数改写成 Windows 路径。** `--xhr "/aweme/v1/web/"` 会变成 `C:/Program Files/Git/aweme/v1/web/`，然后安静地返回 0 条——不报错，最难查。脚本里已经做了还原，但更稳的写法是不带开头斜杠：`--xhr "aweme/v1/web"`。
+
+纯请求这条路不通，浏览器是唯一入口：`httpx` 直连抖音接口返回 `403 Blocked by ArgusSecurityPlugin`，快手 graphql 返回 `{"result":2}`（风控码）。
+
+**选择器靠探，不靠猜。** 先数一下有没有：
+
+```powershell
+... scrape.py "<url>" --js "document.querySelectorAll('.rank-item').length"
+```
+
+返回 0 就换一个，20 就对了。想一次试几个就传数组：
+
+```powershell
+... scrape.py "<url>" --js "[document.querySelectorAll('.rank-item').length, document.querySelectorAll('.video-card').length]"
+```
+
+实测 B站热门榜：`.rank-item` 是 0，`.video-card` 是 20。改对之后一条命令出 20 条「标题 + 作者 + 播放 + 弹幕」，因为卡片容器的 `innerText` 本来就是连着的。
+
+页面结构随时会变，所以每次现场探，不把选择器写成固定脚本。从页面上拿到具体作品链接之后，再喂给 `grab.py` 转写。
 
 ## 误差边界
 

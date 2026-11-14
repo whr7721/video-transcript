@@ -63,8 +63,8 @@ def guard_url(url):
         raise SystemExit(
             "快手不在支持范围，本工具只认单条作品：\n"
             "  抖音 / 小红书 / B站 / YouTube / TikTok / X / 小宇宙 / Spotify / RSS / 本地文件。\n"
-            "  要抓快手，自己开浏览器读页面（见 SKILL.md「页面型内容」）。\n"
-            "  注意快手登录态是独立的，不能复用抖音那个 data/browser 目录。")
+            "  要抓快手，用 scrape.py 开浏览器读页面（见 SKILL.md「页面型内容」）。\n"
+            "  还没登录过就先跑：scrape.py --login \"https://www.kuaishou.com\"")
 
     if "douyin.com" in low or "iesdouyin.com" in low:
         single = ("/video/" in path or "/note/" in path or "/share/video/" in path
