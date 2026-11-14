@@ -45,19 +45,51 @@ def grab(url, language="auto", episode=None):
     return ident
 
 
-def guard_channel(url):
-    """频道链接喂给单条入口时，报错要说人话。
+def guard_url(url):
+    """不是单条作品的链接，报错要说清该走哪条路。
 
-    底层只会说「无法取得作品编号」，读起来像链接坏了，agent 会反复重试。
-    这里提前拦下，直接告诉它该用哪个入口。
+    底层只会说「无法取得作品编号」，或者把 HTML 当 RSS 解析后报
+    「不支持含 DTD 的 RSS」，读起来都像链接坏了，agent 会反复重试。
+    这里提前判形态，把三种情况分开说：
+
+    - 主页 / 频道 → follow.py 扫
+    - 榜单 / 活动 / 专题 / 搜索页 → 本工具不做，用浏览器现场抓
+    - 快手 → 本工具不支持，同上
     """
+    low = url.lower()
+    path = low.split("?")[0]
+
+    if "kuaishou.com" in low:
+        raise SystemExit(
+            "快手不在支持范围，本工具只认单条作品：\n"
+            "  抖音 / 小红书 / B站 / YouTube / TikTok / X / 小宇宙 / Spotify / RSS / 本地文件。\n"
+            "  要抓快手，自己开浏览器读页面（见 SKILL.md「页面型内容」）。\n"
+            "  注意快手登录态是独立的，不能复用抖音那个 data/browser 目录。")
+
+    if "douyin.com" in low or "iesdouyin.com" in low:
+        single = ("/video/" in path or "/note/" in path or "/share/video/" in path
+                  or "/share/note/" in path or "v.douyin.com" in low)
+        if single:
+            return
+        if "/user/" in path or "/share/user/" in path:
+            raise SystemExit(
+                f"这是抖音博主主页，不是单条作品，所以取不到作品编号。\n"
+                f"  看它有哪些内容、最新一条是什么：follow.py add \"{url}\" 然后 follow.py\n"
+                f"  只转其中一条：把那条作品的链接给我")
+        raise SystemExit(
+            f"这是抖音的页面（榜单 / 活动 / 专题 / 搜索 / 合集），不是单条作品。\n"
+            f"  本工具只处理单条作品和博主主页，页面型内容要自己开浏览器读。\n"
+            f"  做法见 SKILL.md「页面型内容」：复用 data/browser 登录态，读 DOM 或拦 XHR，\n"
+            f"  签名（a_bogus / msToken）由页面自己的 JS 算，不用你管。\n"
+            f"  从页面上拿到具体作品链接之后，再喂给本工具转写。")
+
     try:
         import source_enumeration as sources
         kind, _ = sources.identify(url)
     except Exception:
         return
-    hint = {"douyin": "抖音博主主页", "youtube": "YouTube 频道",
-            "bilibili": "B站 UP 主主页", "rss": "RSS / 播客订阅源"}.get(kind)
+    hint = {"youtube": "YouTube 频道", "bilibili": "B站 UP 主主页",
+            "rss": "RSS / 播客订阅源"}.get(kind)
     if hint:
         raise SystemExit(
             f"这是{hint}，不是单条作品，所以取不到作品编号。\n"
@@ -76,7 +108,7 @@ def main(argv=None):
     parser.add_argument("--json", action="store_true", help="只输出 JSON")
     args = parser.parse_args(argv)
 
-    guard_channel(args.url)
+    guard_url(args.url)
     ident = grab(args.url, args.lang, args.episode)
 
     import store

@@ -19,6 +19,8 @@
 .\.venv\Scripts\python.exe -X utf8 facts.py <job_id> --steps   # 操作流：操作句按时间排开
 ```
 
+榜单 / 活动页 / 专题页 / 搜索页不属于单条作品，这两个入口都不处理。用 `data/browser` 的登录态自己开浏览器读，签名由页面 JS 算。做法和实测结论见 `skills/shiwen/SKILL.md` 的「页面型内容」。
+
 ## 关注源
 
 记住一批在跟的人，每次只处理新作品：

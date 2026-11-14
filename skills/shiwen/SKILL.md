@@ -13,8 +13,9 @@ description: 用本机拾文把视频、播客链接或本地音视频转成带�
 | --- | --- | --- |
 | 一条视频 / 一期播客 / 一个本地文件 | `grab.py` | 下载 → 转写 → 打印概览和文件路径 |
 | 一个博主主页 / YouTube 频道 / B站 UP 主 / RSS | `follow.py` | 先 `add` 记住，再扫出共几条、最新哪条 |
+| 一个榜单 / 活动页 / 专题页 / 搜索页 | 自己开浏览器 | 本工具不处理页面，见下面「页面型内容」 |
 
-就这两个入口，其余都是内部实现。`grab.py` 收到主页链接会直接告诉你改用 `follow.py`，不用自己判断。
+工具提供的就这两个入口，其余都是内部实现。`grab.py` 收到主页链接会直接告诉你改用 `follow.py`，收到页面链接会告诉你该自己开浏览器，不用自己判断。
 
 ## 入口
 
@@ -108,6 +109,37 @@ Michael大麦哥　共 210 条作品　本次看最近 20 条
 抖音、小红书依赖本机已有的登录态（`link_ingest.configure(True)` 已开启）。遇到验证码或登录过期，请用户本人完成；MediaCrawler / meme-lab 的配置与定时任务由它们各自维护，改动交回用户。
 
 RSS 未指定 `--episode` 时只列出节目，等用户选定再处理。
+
+## 页面型内容
+
+榜单、活动页、专题页、搜索页、快手的任何页面 —— 这些不是「一条作品」，`grab.py` 和 `follow.py` 都不处理。数据在页面上，页面自己带签名，直接用浏览器读：
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    ctx = p.chromium.launch_persistent_context(
+        r"D:\zcode1\video-transcript\data\browser", headless=True,
+        args=["--no-proxy-server"], locale="zh-CN")
+    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+    page.goto(url, wait_until="domcontentloaded")
+    page.wait_for_timeout(6000)
+    for _ in range(5):                    # 滚动加载
+        page.mouse.wheel(0, 3000)
+        page.wait_for_timeout(1500)
+    print(page.evaluate("document.body.innerText.slice(0, 4000)"))
+    ctx.close()
+```
+
+`data/browser` 是抖音的登录态（扫码得来），用它开抖音页面跟真人浏览器没区别：`a_bogus`、`msToken`、`uifid` 都由页面里的 JS 现场算出来，不需要实现签名。
+
+三条实测结论：
+
+- 直接用 `httpx` 请求抖音接口返回 `403 Blocked by ArgusSecurityPlugin`，快手 graphql 返回 `{"result":2}`（风控码）。纯请求这条路不通，浏览器是唯一入口。
+- DOM 里能直接读到条目。实测 `douyin.com/hot`：51 个条目链接，内容完整。
+- 快手登录态独立，要另开一个用户目录扫码登录；抖音这个 `data/browser` 对快手无效。
+
+页面结构随时会变，所以这类活每次现场看 DOM 或拦 XHR，不写成固定脚本。从页面上拿到具体作品链接之后，再喂给 `grab.py` 转写。
 
 ## 误差边界
 
