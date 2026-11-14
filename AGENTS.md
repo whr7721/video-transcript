@@ -19,7 +19,21 @@
 .\.venv\Scripts\python.exe -X utf8 facts.py <job_id> --steps   # 操作流：操作句按时间排开
 ```
 
-榜单 / 活动页 / 专题页 / 搜索页不属于单条作品，这两个入口都不处理。用 `data/browser` 的登录态自己开浏览器读，签名由页面 JS 算。做法和实测结论见 `skills/shiwen/SKILL.md` 的「页面型内容」。
+榜单 / 活动页 / 专题页 / 搜索页不属于单条作品，`grab.py` 和 `follow.py` 都不处理，用 `scrape.py` 抓一次；要盯变化就用 `watch.py`。两者都用 `data/browser` 的登录态，签名由页面 JS 算。做法和实测结论见 `skills/shiwen/SKILL.md` 的「页面型内容」和「盯变化」。
+
+## 盯变化
+
+`scrape.py` 抓一次就结束。要比较「和上次比变了什么」，用 `watch.py`：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 watch.py add 显卡价格 "https://..." --selector "span.price"
+.\.venv\Scripts\python.exe -X utf8 watch.py run          # 只报变动
+.\.venv\Scripts\python.exe -X utf8 watch.py list / show <名字> / rm <名字>
+```
+
+`add` 第一次抓的当基线，不报变化。`--strip` 抹掉行内会动的片段（播放量、时间），`--ignore` 整行剔除，`--only` 只留关心的行——不抗噪的 diff 天天报「全变了」，等于没有。抓到 0 条时不算变化（选择器失效的可能性远大于页面真的空了），只报错、不覆盖基线。
+
+状态在 `data/watch/<名字>/`：`config.json`、`state.json`（当前条目）、`log.jsonl`（变化历史）、`snapshots/`（最近 20 份）。
 
 ## 关注源
 
@@ -46,7 +60,7 @@
 
 ## 代码地图
 
-43 个文件、5300 行，但只有两条链，入口各一个：
+45 个文件、6000 行，两条主链 + 两个页面工具：
 
 ```
 grab.py   ─┬─ link_ingest ─ pipeline ─ transcribe ─ store ─ facts
@@ -54,9 +68,14 @@ follow.py ─┘       │
                    ├─ 抖音：extractor.py（子进程，页面内算签名）
                    ├─ 小红书图文：xhs_ingest ─ image_documents ─ articles ─ ocr_reading
                    └─ 摘要导图：cli_summary ─ manuscript / mindmap（summarize=False 时不触发）
+
+scrape.py ─── Playwright（自己一个文件，不 import 仓库里任何模块）
+watch.py  ─── 子进程调 scrape.py ─ 规范化 ─ 比对 ─ data/watch/
 ```
 
 **主链就是这条竖线上的十几个文件**，平时改的就是这些。图文 OCR 那 10 个、摘要导图那 5 个是支路：只有小红书图文笔记和 `--summarize` 才会走，抖音视频一根线都不碰，但因为被 `link_ingest` 顶层 import 着，看上去像主干。
+
+`scrape.py` 和 `watch.py` 是刻意独立的两块：`scrape.py` 不 import 仓库任何模块，`watch.py` 用子进程调 `scrape.py` 而不是 import 它。这样抓取方式变化（选择器失效、改拦接口）不会传染到比对逻辑，改哪边都不打断另一边。
 
 那两条支路里有 7 处循环 import（`articles ↔ ocr_reading`、`ocr_reading ↔ image_editorial` 等）。Python 能容忍——只要不在模块顶层互相取名字——实测不影响运行。要动那几块先看 `SELFUSE.md`。
 
