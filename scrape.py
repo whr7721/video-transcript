@@ -72,16 +72,42 @@ def decode_html(resp):
     return raw.decode("utf-8", errors="ignore")
 
 
-def fast_fetch(url, timeout):
-    """不开浏览器直接拿正文。返回 (payload, reason)，失败时 payload 为 None。"""
+def strip_tags(html):
+    """把 HTML 抹成纯文字，保留换行。列表页、首页只能靠这个。"""
+    text = re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
+    text = re.sub(r"<br\s*/?>|</(p|div|li|tr|h[1-6])>", "\n", text, flags=re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = (text.replace("&nbsp;", " ").replace("&#160;", " ")
+                .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+                .replace("&quot;", '"').replace("&#39;", "'"))
+    text = re.sub(r"[ \t\u3000]+", " ", text)
+    text = re.sub(r"(\s*\n\s*){2,}", "\n", text)
+    return text.strip()
+
+
+def fast_fetch(url, timeout, whole=False):
+    """不开浏览器直接拿正文。返回 (payload, reason)，失败时 payload 为 None。
+
+    两级取法，失败原因必须分清，否则会误导成「这站抓不到」：
+      1. trafilatura 找主文章 —— 适合新闻、公告、博客的正文页，输出干净无导航。
+      2. 去标签全文（whole=True 强制，或在 1 失败时自动兜底）—— 适合列表页、
+         首页、搜索结果页，这些页面本来就没有「一篇主文章」，只有一堆块。
+    三种失败长得很像但完全不同：
+      - HTML 里真没字（SPA 壳、跳转页）→ 只能开浏览器
+      - HTML 里有字但没主文章（列表页）→ 用 raw 兜底，不是失败
+      - 反爬挑战页 → 换浏览器带登录态
+    """
     try:
         from curl_cffi import requests as creq
     except ImportError:
-        return None, "curl_cffi 未安装"
+        return None, "curl_cffi 未安装（pip install curl_cffi trafilatura）"
     try:
         r = creq.get(url, impersonate="chrome", timeout=timeout, allow_redirects=True)
     except Exception as exc:
-        return None, f"{type(exc).__name__}: {exc}"[:110]
+        hint = ""
+        if any(k in str(exc) for k in ("Timeout", "timed out", "CONNECT", "Connection")):
+            hint = "（外网站点检查代理：$https_proxy / $http_proxy）"
+        return None, f"{type(exc).__name__}: {exc}"[:100] + hint
     if r.status_code != 200:
         return None, f"HTTP {r.status_code}"
 
@@ -90,19 +116,28 @@ def fast_fetch(url, timeout):
         if mark in html:
             return None, f"反爬挑战页（{mark}）"
 
-    try:
-        import trafilatura
-        text = trafilatura.extract(html, include_comments=False, include_tables=True) or ""
-    except ImportError:                       # 退化成粗暴去标签，聊胜于无
-        text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
-        text = re.sub(r"<[^>]+>", " ", text)
-        text = re.sub(r"\s+", " ", text).strip()
-    if len(text) < 200:
-        return None, "正文过短（多半是前端渲染页）"
-
     m = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
-    title = re.sub(r"\s+", " ", m.group(1)).strip() if m else ""
-    return {"url": url, "title": title, "mode": "fast", "chars": len(text), "data": text}, None
+    title = strip_tags(m.group(1)) if m else ""
+
+    text, mode = "", "fast"
+    if not whole:
+        try:
+            import trafilatura
+            text = trafilatura.extract(html, include_comments=False, include_tables=True) or ""
+        except ImportError:
+            pass
+        if len(text) < 200:                   # 没主文章：列表页、首页的常态，用全文兜底
+            raw = strip_tags(html)
+            if len(raw) >= 200:
+                text, mode = raw, "fast-raw"
+
+    if len(text) < 200:
+        raw = strip_tags(html)
+        if len(raw) < 200:
+            return None, (f"HTML 里没有正文（可见文字仅 {len(raw)} 字，多为前端渲染页或跳转壳页）")
+        text, mode = raw, "fast-raw"
+
+    return {"url": url, "title": title, "mode": mode, "chars": len(text), "data": text}, None
 
 
 def clean_needle(text):
@@ -229,11 +264,13 @@ async def paginate(page, args):
 
 async def run(args):
     guard_ua(args.url, args.ua)
+    if args.fast_whole and not args.fast:
+        print("[fast-whole] 只在 --fast 下生效，这次被忽略", file=sys.stderr)
 
     # 只有纯文字模式才走快路径：要选择器 / 要接口 / 要截图 / 要翻页，都必须有浏览器。
     pure_text = not (args.selector or args.js or args.xhr or args.xhr_list or args.shot)
     if args.fast and pure_text and args.pages == 1 and not args.login:
-        payload, reason = fast_fetch(args.url, args.fast)
+        payload, reason = fast_fetch(args.url, args.fast, args.fast_whole)
         if payload:
             text = json.dumps(payload, ensure_ascii=False, indent=2) if args.json else payload["data"]
             if args.out:
@@ -242,7 +279,8 @@ async def run(args):
             else:
                 sys.stdout.reconfigure(encoding="utf-8")
                 print(text)
-            print(f"[fast] {payload['chars']} 字，{payload['title'][:40]}", file=sys.stderr)
+            tag = "" if payload["mode"] == "fast" else "（全文模式，含导航噪音）"
+            print(f"[fast] {payload['chars']} 字，{payload['title'][:40]}{tag}", file=sys.stderr)
             return 0
         print(f"[fast] 降级到浏览器：{reason}", file=sys.stderr)
 
@@ -386,6 +424,8 @@ def main():
     ap.add_argument("--shot", help="截图路径")
     ap.add_argument("--fast", nargs="?", const=15, type=float,
                     help="先不开浏览器直接抓正文，可选超时秒数（默认 15），失败自动降级")
+    ap.add_argument("--fast-whole", action="store_true",
+                    help="--fast 时跳过正文提取，直接要整页文字（列表页/首页用这个）")
     ap.add_argument("--pages", type=int, default=1, help="抓几页，默认 1")
     ap.add_argument("--next", help="翻页元素选择器；不给则用滚动加载")
     ap.add_argument("--page-param", help="URL 翻页参数名（如 page），比点按钮稳")

@@ -111,6 +111,8 @@ def fetch(cfg):
             cmd += ["--attr", cfg["attr"]]
     elif cfg.get("mode") == "js":
         cmd += ["--js", cfg["js"]]
+    elif cfg.get("fast"):                 # 整页文字 + 静态站，可以不开浏览器
+        cmd += ["--fast"]
     if cfg.get("profile"):
         cmd += ["--profile", cfg["profile"]]
 
@@ -206,9 +208,12 @@ def cmd_add(args):
         raise SystemExit(f"「{args.name}」已经存在。换个名字，或先 watch.py rm {args.name}")
 
     mode = "selector" if args.selector else ("js" if args.js else "text")
+    fast = bool(getattr(args, "fast", False)) and mode == "text"
+    if getattr(args, "fast", False) and mode != "text":
+        print("提示：--fast 只对整页文字生效，给 --selector / --js 时忽略", file=sys.stderr)
     cfg = {
         "name": args.name, "url": args.url, "mode": mode,
-        "selector": args.selector, "attr": args.attr, "js": args.js,
+        "selector": args.selector, "attr": args.attr, "js": args.js, "fast": fast,
         "strip": args.strip or [], "ignore": args.ignore or [], "only": args.only,
         "scroll": args.scroll, "wait": args.wait, "profile": args.profile,
         "created": time.time(), "last_run": None, "runs": 0,
@@ -240,6 +245,8 @@ def cmd_add(args):
 
     kind = {"selector": f"逐条（{args.selector}）", "js": "逐条（js 表达式）",
             "text": "整页文字按行"}[mode]
+    if fast:
+        kind += "，不开浏览器"
     print(f"已建基线：{args.name}")
     print(f"  标题：{title or '（无）'}")
     print(f"  粒度：{kind}")
@@ -403,6 +410,8 @@ def main(argv=None):
     p.add_argument("--selector", help="CSS 选择器，逐条比对")
     p.add_argument("--attr", help="配合 --selector，取属性")
     p.add_argument("--js", help="表达式返回字符串数组，逐条比对")
+    p.add_argument("--fast", action="store_true",
+                   help="不开浏览器直接拿正文，只对静态站有效（政府公告/新闻/博客），跑得快十倍")
     p.add_argument("--strip", action="append", metavar="正则", help="抹掉行内会动的片段，可多次")
     p.add_argument("--ignore", action="append", metavar="正则", help="整行剔除，可多次")
     p.add_argument("--only", metavar="正则", help="只保留匹配的行")

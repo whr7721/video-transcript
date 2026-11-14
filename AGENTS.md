@@ -4,6 +4,8 @@
 
 完整产品版（Web 工作台、前端、云端）封存在 git tag `v1.0-portfolio`，需要时 `git worktree add ../shiwen-full v1.0-portfolio` 取出。
 
+**动手前先看 `BOUNDARY.md`**：哪类站点能抓、抓不到时是哪一种错、三个「看起来能其实不能」的坑。失败现象长得很像，判断依据都在那一页。
+
 ## 入口
 
 ```powershell
