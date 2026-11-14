@@ -44,6 +44,24 @@
 
 转完之后的事——摘要、金句、二创、切片、导图、选题判断——由你直接读产物完成。这条稿子该怎么用，用户可能有完全不同的打算。
 
+## 代码地图
+
+43 个文件、5300 行，但只有两条链，入口各一个：
+
+```
+grab.py   ─┬─ link_ingest ─ pipeline ─ transcribe ─ store ─ facts
+follow.py ─┘       │
+                   ├─ 抖音：extractor.py（子进程，页面内算签名）
+                   ├─ 小红书图文：xhs_ingest ─ image_documents ─ articles ─ ocr_reading
+                   └─ 摘要导图：cli_summary ─ manuscript / mindmap（summarize=False 时不触发）
+```
+
+**主链就是这条竖线上的十几个文件**，平时改的就是这些。图文 OCR 那 10 个、摘要导图那 5 个是支路：只有小红书图文笔记和 `--summarize` 才会走，抖音视频一根线都不碰，但因为被 `link_ingest` 顶层 import 着，看上去像主干。
+
+那两条支路里有 7 处循环 import（`articles ↔ ocr_reading`、`ocr_reading ↔ image_editorial` 等）。Python 能容忍——只要不在模块顶层互相取名字——实测不影响运行。要动那几块先看 `SELFUSE.md`。
+
+名字容易混的几个文件，分工是：`article_fetch` 抓网页 → `article_parser` 切块 → `articles` 存快照；`image_documents` 存图片原件 → `ocr_reading` 取文字 → `image_editorial` 拼成可读文档。`documents.py` 是本地草稿版本管理，和这两串都无关。
+
 ## 硬规则
 
 1. 转写原稿、事实卡、编辑稿是用户内容，任何改动不得使其被动变更或丢失。
