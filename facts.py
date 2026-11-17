@@ -277,7 +277,7 @@ def render_steps(job, data, pack):
     body.append("")
     body.append("> 这是转写稿里的操作句按时间排开，不是原作者的分步。"
                 "口播在描述画面时（「点这里」「选这个」），这里只剩半句——"
-                "那部分信息在画面里，用 `--frames` 抽出来看。")
+                "那部分信息在画面里，按给出的原始视频路径自行抽帧查看。")
     return "\n".join(body)
 
 
@@ -323,9 +323,13 @@ def recorrect(directory, data):
     import asr_hotwords
     import link_ingest
 
+    if data.get("corrections") and not data.get("raw_segments"):
+        raise SystemExit("这份旧稿没有保留原始分段，不能安全重新纠正；原稿未改动。请重新转写后再纠正。")
     base = {k: v for k, v in data.items() if k != "corrections"}
     if base.get("raw_text"):
-        base["text"] = base.pop("raw_text")
+        base["text"] = base["raw_text"]
+    base["segments"] = [dict(s) for s in (base.get("raw_segments") or base.get("segments") or [])]
+    base["raw_segments"] = [dict(s) for s in base["segments"]]
     fixed = asr_hotwords.apply(base)
     link_ingest.export(directory, fixed, {})
     applied = {item["term"]: item["count"] for item in fixed.get("corrections") or []}

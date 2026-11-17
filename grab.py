@@ -20,11 +20,13 @@ sys.path.insert(0, str(ROOT))
 import facts  # noqa: E402
 
 
-def grab(url, language="auto", episode=None):
+def grab(url, language="auto", episode=None, *, episode_guid=None, episode_id=None, episode_snapshot=None):
     import link_ingest
 
     args = argparse.Namespace(url=url, language=language, episode=episode,
-                              diarize=False, speakers=0, summarize=False)
+                              diarize=False, speakers=0, summarize=False,
+                              episode_guid=episode_guid, episode_id=episode_id,
+                              episode_snapshot=episode_snapshot)
     link_ingest.configure(True)  # 私有平台（抖音/小红书）需要；公开平台不受影响
 
     def progress(**fields):

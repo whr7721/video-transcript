@@ -166,7 +166,7 @@ def check_one(channel, limit):
                            (json.dumps(kept, ensure_ascii=False), channel["id"], row["id"]))
                 continue
             payload = {**row, "read": False, "discovered_at": time.time(),
-                       "job_id": None, "transcribed_at": None}
+                       "job_id": None, "transcribed_at": None, "baseline": first}
             db.execute("INSERT INTO feed_items(channel_id,content_id,payload) VALUES (?,?,?)",
                        (channel["id"], row["id"], json.dumps(payload, ensure_ascii=False)))
             fresh += 1
@@ -223,7 +223,8 @@ def pending():
     with store.connect() as db:
         return [dict(seq=r["seq"], channel_id=r["channel_id"], **json.loads(r["payload"]))
                 for r in db.execute("SELECT seq,channel_id,payload FROM feed_items "
-                                    "WHERE json_extract(payload,'$.job_id') IS NULL ORDER BY seq")]
+                                    "WHERE json_extract(payload,'$.job_id') IS NULL "
+                                    "AND COALESCE(json_extract(payload,'$.baseline'),0)=0 ORDER BY seq")]
 
 
 def stamp(ts):
@@ -293,7 +294,8 @@ def cmd_run(args):
         print(f"\n=== {stamp(r.get('published'))}　{short(r['title'])}")
         try:
             with contextlib.redirect_stdout(sys.stderr):   # 底层模块往 stdout 吐路径，别混进结果里
-                ident = grab.grab(r["url"])
+                ident = grab.grab(r["url"], episode_guid=r.get("episode_guid"),
+                                  episode_id=r.get("episode_id"), episode_snapshot=r.get("episode_snapshot"))
         except SystemExit as exc:
             print(f"    跳过：{exc}")
             failed += 1
